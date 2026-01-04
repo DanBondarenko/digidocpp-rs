@@ -1,6 +1,10 @@
+[workspace]
+members = ["libdigidocpp-sys"]
+
 [package]
-name = "libdigidocpp-rs-sys"
+name = "libdigidocpp"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+libdigidocpp-sys = { path = "libdigidocpp-sys" }
