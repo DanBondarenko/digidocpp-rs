@@ -8,3 +8,4 @@ edition = "2024"
 
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
+cxx = "1"
