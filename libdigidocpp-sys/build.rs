@@ -2,7 +2,9 @@ use std::env;
 
 fn main() {
     let mut build = cxx_build::bridge("src/lib.rs");
-    build.std("c++20");
+    build
+        .std("c++20")
+        .file("src/exception_ffi.cpp");
 
     println!("cargo:rerun-if-env-changed=DIGIDOCPP_FRAMEWORK_DIR");
 
@@ -15,4 +17,7 @@ fn main() {
     println!("cargo:rustc-link-search=framework={framework_dir}");
     println!("cargo:rustc-link-lib=framework=digidocpp");
     println!("cargo:rustc-link-arg=-Wl,-rpath,{framework_dir}");
+
+    println!("cargo:rerun-if-changed=src/exception_ffi.cpp");
+    println!("cargo:rerun-if-changed=include/exception_ffi.h");
 }
