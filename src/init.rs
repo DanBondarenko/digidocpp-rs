@@ -1,5 +1,5 @@
-use libdigidocpp_sys::FfiException;
-use libdigidocpp_sys::ffi;
+use libdigidocpp_sys::exception::FfiException;
+use libdigidocpp_sys::init::ffi;
 
 pub fn initialize_default() -> Result<(), FfiException> {
     crate::fallible(ffi::initialize_default)

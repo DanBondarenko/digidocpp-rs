@@ -1,8 +1,7 @@
 #pragma once
-#include <string>
 #include "rust/cxx.h"
 
-namespace digidoc_rs {
+namespace digidoc_rs::init {
     rust::String version();
     rust::String app_info();
     rust::String user_agent();

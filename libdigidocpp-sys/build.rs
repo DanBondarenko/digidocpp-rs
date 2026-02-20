@@ -1,7 +1,10 @@
 use std::env;
 
 fn main() {
-    let mut build = cxx_build::bridge("src/lib.rs");
+    let mut build = cxx_build::bridges([
+        "src/init.rs",
+        "src/exception.rs",
+    ]);
     build
         .std("c++20")
         .file("src/init_ffi.cpp")

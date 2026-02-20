@@ -2,7 +2,7 @@
 #include "digidocpp/Container.h"
 #include "rust/cxx.h"
 
-namespace digidoc_rs {
+namespace digidoc_rs::init {
 
 rust::String version() {
     return digidoc::version();
