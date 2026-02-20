@@ -9,3 +9,6 @@ edition = "2024"
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
 cxx = "1"
+
+[dev-dependencies]
+serial_test = "3.3.1"

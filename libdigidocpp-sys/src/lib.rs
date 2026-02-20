@@ -46,6 +46,30 @@ pub mod ffi {
 
         #[namespace = "digidoc_rs"]
         fn exception_magic() -> String;
+
+        include!("libdigidocpp-sys/include/init_ffi.h");
+
+        #[namespace = "digidoc_rs"]
+        fn initialize_default() -> Result<()>;
+
+        #[namespace = "digidoc_rs"]
+        fn initialize(app_info: &str) -> Result<()>;
+
+        #[namespace = "digidoc_rs"]
+        fn initialize_with_user_agent(app_info: &str, user_agent: &str) -> Result<()>;
+
+        include!("digidocpp/Container.h");
+
+        #[namespace = "digidoc_rs"]
+        fn version() -> Result<String>;
+
+        #[namespace = "digidoc_rs"]
+        fn app_info() -> Result<String>;
+
+        #[namespace = "digidoc_rs"]
+        fn user_agent() -> Result<String>;
+
+        fn terminate() -> Result<()>;
     }
 }
 
