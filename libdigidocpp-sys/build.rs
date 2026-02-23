@@ -4,11 +4,15 @@ fn main() {
     let mut build = cxx_build::bridges([
         "src/init.rs",
         "src/exception.rs",
+        "src/container.rs",
+        "src/data_file.rs",
     ]);
     build
         .std("c++20")
         .file("src/init_ffi.cpp")
-        .file("src/exception_ffi.cpp");
+        .file("src/exception_ffi.cpp")
+        .file("src/container_ffi.cpp")
+        .file("src/data_file_ffi.cpp");
 
     println!("cargo:rerun-if-env-changed=DIGIDOCPP_FRAMEWORK_DIR");
 
@@ -26,4 +30,8 @@ fn main() {
     println!("cargo:rerun-if-changed=include/exception_ffi.h");
     println!("cargo:rerun-if-changed=src/init_ffi.cpp");
     println!("cargo:rerun-if-changed=include/init_ffi.h");
+    println!("cargo:rerun-if-changed=src/container_ffi.cpp");
+    println!("cargo:rerun-if-changed=include/container_ffi.h");
+    println!("cargo:rerun-if-changed=src/data_file_ffi.cpp");
+    println!("cargo:rerun-if-changed=include/data_file_ffi.h");
 }

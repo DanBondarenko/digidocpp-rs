@@ -1,6 +1,10 @@
 mod init;
+mod container;
+mod data_file;
 
 pub use init::*;
+pub use container::*;
+pub use data_file::*;
 
 use libdigidocpp_sys::exception::FfiException;
 
