@@ -2,15 +2,15 @@ use libdigidocpp_sys::exception::FfiException;
 use libdigidocpp_sys::init::ffi;
 
 pub fn initialize_default() -> Result<(), FfiException> {
-    crate::fallible(ffi::initialize_default)
+    Ok(ffi::initialize_default()?)
 }
 
 pub fn initialize_with_user_agent(app_info: &str, user_agent: &str) -> Result<(), FfiException> {
-    crate::fallible(|| ffi::initialize_with_user_agent(app_info, user_agent))
+    Ok(ffi::initialize_with_user_agent(app_info, user_agent)?)
 }
 
 pub fn terminate() -> Result<(), FfiException> {
-    crate::fallible(ffi::terminate)
+    Ok(ffi::terminate()?)
 }
 
 #[cfg(test)]

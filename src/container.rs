@@ -8,20 +8,20 @@ pub struct Container(cxx::UniquePtr<ffi::Container>);
 impl Container {
     pub fn open(path: &str) -> Result<Self, FfiException> {
         let_cxx_string!(path = path);
-        crate::fallible(|| ffi::Container::openPtr(&*path)).map(Self)
+        Ok(ffi::Container::openPtr(&*path)?).map(Self)
     }
 
     pub fn create(path: &str) -> Result<Self, FfiException> {
         let_cxx_string!(path = path);
-        crate::fallible(|| ffi::Container::createPtr(&*path)).map(Self)
+        Ok(ffi::Container::createPtr(&*path)?).map(Self)
     }
 
     pub fn media_type(&self) -> Result<String, FfiException> {
-        crate::fallible(|| ffi::media_type(&*self.0))
+        Ok(ffi::media_type(&*self.0)?)
     }
 
     pub fn data_files(&self) -> Result<Vec<DataFile<'_>>, FfiException> {
-        let count = crate::fallible(|| ffi::data_files_size(&self.0))?;
+        let count = ffi::data_files_size(&self.0)?;
         let data_files = (0..count)
             .map(|index| ffi::data_file_at(&self.0, index).map(DataFile) )
             .collect::<Result<_, _>>()?;
