@@ -1,0 +1,30 @@
+---
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  google-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -clang-analyzer-optin*,
+  clang-analyzer-optin.core.EnumCastOutOfRange,
+  clang-analyzer-optin.core.UnconditionalVAArg,
+  clang-analyzer-optin.core.FixedAddressDereference,
+  clang-analyzer-optin.cplusplus.UninitializedObject,
+  clang-analyzer-optin.cplusplus.VirtualCall,
+  clang-analyzer-optin.portability.UnixAPI,
+  clang-analyzer-optin.taint.GenericTaint,
+  clang-analyzer-optin.taint.TaintedAlloc,
+  clang-analyzer-optin.taint.TaintedDiv
+WarningsAsErrors: '*'
+HeaderFilterRegex: '/libdigidocpp-sys/(src|include)/'
+ExcludeHeaderFilterRegex: '/target/'
+FormatStyle: file
+CheckOptions:
+  google-readability-namespace-comments.ShortNamespaceLines: '10'
+  google-readability-namespace-comments.SpacesBeforeComments: '2'
+  google-readability-braces-around-statements.ShortStatementLines: '1'
+#  cppcoreguidelines-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: 'true'
+...
