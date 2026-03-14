@@ -5,6 +5,7 @@ members = ["libdigidocpp-sys"]
 name = "libdigidocpp"
 version = "0.1.0"
 edition = "2024"
+publish = false
 
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
@@ -14,7 +15,7 @@ cxx = "1"
 serial_test = "3.3.1"
 
 [workspace.lints.rust]
-missing_docs = "warn"
+missing_docs = "allow" # TODO: Turn on before publishing
 unreachable_pub = "warn"
 unsafe_op_in_unsafe_fn = "warn"
 missing_debug_implementations = "warn"
@@ -39,6 +40,8 @@ as_conversions = "warn"
 indexing_slicing = "warn"
 exhaustive_structs = "warn"
 exhaustive_enums = "warn"
+missing_errors_doc = "allow" # TODO: Turn on before publishing
+cargo_common_metadata = "allow" # TODO: Turn on before publishing
 
 [lints]
 workspace = true

@@ -2,6 +2,8 @@ use std::error::Error;
 use std::fmt::Display;
 
 #[cxx::bridge]
+#[allow(clippy::exhaustive_structs)]
+#[allow(clippy::exhaustive_enums)]
 pub mod ffi {
     /// See `digidoc::Exception::ExceptionCode` in libdigidocpp
     #[namespace = "digidoc"]
@@ -48,11 +50,13 @@ pub mod ffi {
     #[namespace = "digidoc_rs::exception"]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/exception_ffi.h");
+        #[must_use]
         fn magic() -> String;
     }
 }
 
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct FfiException {
     pub code: ffi::ExceptionCode,
     pub message: String,
@@ -61,6 +65,7 @@ pub struct FfiException {
 }
 
 impl FfiException {
+    #[must_use]
     pub fn parse(value: &str) -> Option<Self> {
         let bytes = value.as_bytes();
         let magic = ffi::magic();
@@ -73,7 +78,8 @@ impl FfiException {
 
         let code = u32::from_str_radix(std::str::from_utf8(&bytes[0..8]).ok()?, 16).ok()? as i32;
         let line = u32::from_str_radix(std::str::from_utf8(&bytes[8..16]).ok()?, 16).ok()? as i32;
-        let file_len = u32::from_str_radix(std::str::from_utf8(&bytes[16..24]).ok()?, 16).ok()? as usize;
+        let file_len =
+            u32::from_str_radix(std::str::from_utf8(&bytes[16..24]).ok()?, 16).ok()? as usize;
 
         let rest = &bytes[24..];
         if rest.len() < file_len {
@@ -81,7 +87,7 @@ impl FfiException {
         }
         let (file, message) = rest.split_at(file_len);
 
-        Some(FfiException {
+        Some(Self {
             code: ffi::ExceptionCode { repr: code },
             message: String::from_utf8(message.to_vec()).ok()?,
             file: String::from_utf8(file.to_vec()).ok()?,
@@ -92,7 +98,7 @@ impl FfiException {
 
 impl From<cxx::Exception> for FfiException {
     fn from(exception: cxx::Exception) -> Self {
-        Self::parse(exception.what()).unwrap_or_else(|| FfiException {
+        Self::parse(exception.what()).unwrap_or_else(|| Self {
             code: ffi::ExceptionCode { repr: -1 },
             message: exception.what().to_owned(),
             file: String::new(),
@@ -108,4 +114,3 @@ impl Display for FfiException {
 }
 
 impl Error for FfiException {}
-

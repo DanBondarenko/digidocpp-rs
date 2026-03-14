@@ -1,6 +1,7 @@
 #[cxx::bridge]
 pub mod ffi {
     #[namespace = "digidoc"]
+    #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
         include!("digidocpp/Container.h");
 

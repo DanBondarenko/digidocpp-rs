@@ -1,6 +1,9 @@
 #[cxx::bridge]
+#[allow(clippy::exhaustive_structs)]
+#[allow(clippy::exhaustive_enums)]
 pub mod ffi {
     #[namespace = "digidoc"]
+    #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
         include!("digidocpp/DataFile.h");
         type DataFile;

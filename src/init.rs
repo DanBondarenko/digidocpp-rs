@@ -17,21 +17,21 @@ pub fn terminate() -> Result<(), FfiException> {
 mod tests {
     use super::*;
 
-    use std::error::Error;
     use serial_test::serial;
+    use std::error::Error;
 
     #[test]
     #[serial]
     fn gets_library_info() -> Result<(), Box<dyn Error>> {
         initialize_default()?;
 
-        let version = dbg!(ffi::version()?);
-        let app_info = dbg!(ffi::app_info()?);
-        let user_agent = dbg!(ffi::user_agent()?);
+        let version = ffi::version()?;
+        let app_info = ffi::app_info()?;
+        let user_agent = ffi::user_agent()?;
 
-        assert!(version.len() > 0);
-        assert!(app_info.len() > 0);
-        assert!(user_agent.len() > 0);
+        assert!(!version.is_empty());
+        assert!(!app_info.is_empty());
+        assert!(!user_agent.is_empty());
 
         Ok(())
     }
@@ -44,8 +44,8 @@ mod tests {
 
         initialize_with_user_agent(expected_app_info, expected_user_agent)?;
 
-        let app_info = dbg!(ffi::app_info()?);
-        let user_agent = dbg!(ffi::user_agent()?);
+        let app_info = ffi::app_info()?;
+        let user_agent = ffi::user_agent()?;
 
         assert_eq!(app_info, expected_app_info);
         assert_eq!(user_agent, expected_user_agent);

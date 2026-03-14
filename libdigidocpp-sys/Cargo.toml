@@ -3,6 +3,7 @@ name = "libdigidocpp-sys"
 version = "0.1.0"
 edition = "2024"
 links = "digidocpp"
+publish = false
 
 [dependencies]
 cxx = "1.0"

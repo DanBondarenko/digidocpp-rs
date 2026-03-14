@@ -7,7 +7,7 @@ impl DataFile<'_> {
     pub fn id(&self) -> Result<String, FfiException> {
         Ok(ffi::id(self.0)?)
     }
-    
+
     pub fn file_name(&self) -> Result<String, FfiException> {
         Ok(ffi::file_name(self.0)?)
     }

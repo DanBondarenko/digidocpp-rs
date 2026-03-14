@@ -1,4 +1,6 @@
 #[cxx::bridge]
+#[allow(clippy::exhaustive_structs)]
+#[allow(clippy::exhaustive_enums)]
 pub mod ffi {
     #[namespace = "digidoc"]
     unsafe extern "C++" {
