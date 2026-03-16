@@ -2,6 +2,7 @@ use crate::DataFile;
 use cxx::let_cxx_string;
 use libdigidocpp_sys::container::ffi;
 use libdigidocpp_sys::exception::FfiException;
+use std::fmt::{Debug, Display, Formatter};
 
 pub struct Container(cxx::UniquePtr<ffi::Container>);
 
@@ -27,6 +28,31 @@ impl Container {
             .collect::<Result<_, _>>()?;
 
         Ok(data_files)
+    }
+}
+
+impl Display for Container {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let media_type = self
+            .media_type()
+            .unwrap_or_else(|_| String::from("<unknown>"));
+        let data_files_count = self.data_files().map_or_else(
+            |_| String::from("<unknown>"),
+            |files| files.len().to_string(),
+        );
+        write!(
+            f,
+            "Container of type {media_type} with {data_files_count} files"
+        )
+    }
+}
+
+impl Debug for Container {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Container")
+            .field("media_type()", &self.media_type())
+            .field("data_files()", &self.data_files())
+            .finish_non_exhaustive()
     }
 }
 
