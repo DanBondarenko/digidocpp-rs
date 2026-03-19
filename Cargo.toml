@@ -10,6 +10,7 @@ publish = false
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
 cxx = "1"
+num_enum = "0.7.6"
 
 [dev-dependencies]
 serial_test = "3.3.1"

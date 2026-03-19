@@ -1,27 +1,26 @@
-use crate::DataFile;
+use crate::{DataFile, Error};
 use cxx::let_cxx_string;
 use libdigidocpp_sys::container::ffi;
-use libdigidocpp_sys::exception::FfiException;
 use std::fmt::{Debug, Display, Formatter};
 
 pub struct Container(cxx::UniquePtr<ffi::Container>);
 
 impl Container {
-    pub fn open(path: &str) -> Result<Self, FfiException> {
+    pub fn open(path: &str) -> Result<Self, Error> {
         let_cxx_string!(path = path);
         Ok(Self(ffi::Container::openPtr(&path)?))
     }
 
-    pub fn create(path: &str) -> Result<Self, FfiException> {
+    pub fn create(path: &str) -> Result<Self, Error> {
         let_cxx_string!(path = path);
         Ok(Self(ffi::Container::createPtr(&path)?))
     }
 
-    pub fn media_type(&self) -> Result<String, FfiException> {
+    pub fn media_type(&self) -> Result<String, Error> {
         Ok(ffi::media_type(&self.0)?)
     }
 
-    pub fn data_files(&self) -> Result<Vec<DataFile<'_>>, FfiException> {
+    pub fn data_files(&self) -> Result<Vec<DataFile<'_>>, Error> {
         let count = ffi::data_files_size(&self.0)?;
         let data_files = (0..count)
             .map(|index| ffi::data_file_at(&self.0, index).map(DataFile))
@@ -101,7 +100,7 @@ mod tests {
             panic!("opening invalid container should fail");
         };
 
-        assert_eq!(ffi_exception.code, ExceptionCode::General);
+        assert_eq!(ffi_exception.code(), ExceptionCode::General);
     }
 
     #[test]

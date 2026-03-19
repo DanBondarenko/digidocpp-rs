@@ -1,14 +1,12 @@
-use std::error::Error;
-use std::fmt::Display;
-
 #[cxx::bridge]
 #[allow(clippy::exhaustive_structs)]
 #[allow(clippy::exhaustive_enums)]
 pub mod ffi {
     /// See `digidoc::Exception::ExceptionCode` in libdigidocpp
     #[namespace = "digidoc"]
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     #[repr(i32)]
+    #[allow(deprecated)]
     enum ExceptionCode {
         General = 0,
         NetworkError = 20,
@@ -38,7 +36,23 @@ pub mod ffi {
         ProducedATLateWarning = 16,
         MimeTypeWarning = 17,
         //DDoc error codes
+        #[deprecated]
         DDocError = 512, //DIGIDOCPP_DEPRECATED
+    }
+
+    #[namespace = "digidoc_rs::exception"]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    struct ExceptionData {
+        code: ExceptionCode,
+        message: String,
+        file: String,
+        line: i32,
+        is_file_and_line_determined: bool,
+    }
+
+    #[namespace = "digidoc_rs::exception"]
+    extern "Rust" {
+        fn to_json(self: &ExceptionData) -> Result<String>;
     }
 
     #[namespace = "digidoc"]
@@ -46,71 +60,28 @@ pub mod ffi {
         include!("libdigidocpp-sys/include/exception_ffi.h");
         type ExceptionCode;
     }
+}
 
-    #[namespace = "digidoc_rs::exception"]
-    unsafe extern "C++" {
-        include!("libdigidocpp-sys/include/exception_ffi.h");
-        #[must_use]
-        fn magic() -> String;
+impl ffi::ExceptionData {
+    fn to_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string(self)
     }
 }
 
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct FfiException {
-    pub code: ffi::ExceptionCode,
-    pub message: String,
-    pub file: String,
-    pub line: i32,
-}
-
-impl FfiException {
-    #[must_use]
-    pub fn parse(value: &str) -> Option<Self> {
-        let bytes = value.as_bytes();
-        let magic = ffi::magic();
-        let magic = magic.as_bytes();
-
-        if bytes.len() < 4 + 24 || &bytes[0..4] != magic {
-            return None;
-        }
-        let bytes = &bytes[4..];
-
-        let code = u32::from_str_radix(std::str::from_utf8(&bytes[0..8]).ok()?, 16).ok()? as i32;
-        let line = u32::from_str_radix(std::str::from_utf8(&bytes[8..16]).ok()?, 16).ok()? as i32;
-        let file_len =
-            u32::from_str_radix(std::str::from_utf8(&bytes[16..24]).ok()?, 16).ok()? as usize;
-
-        let rest = &bytes[24..];
-        if rest.len() < file_len {
-            return None;
-        }
-        let (file, message) = rest.split_at(file_len);
-
-        Some(Self {
-            code: ffi::ExceptionCode { repr: code },
-            message: String::from_utf8(message.to_vec()).ok()?,
-            file: String::from_utf8(file.to_vec()).ok()?,
-            line,
-        })
-    }
-}
-
-impl From<cxx::Exception> for FfiException {
-    fn from(exception: cxx::Exception) -> Self {
-        Self::parse(exception.what()).unwrap_or_else(|| Self {
-            code: ffi::ExceptionCode { repr: -1 },
-            message: exception.what().to_owned(),
+impl From<serde_json::Error> for ffi::ExceptionData {
+    fn from(error: serde_json::Error) -> Self {
+        Self {
+            code: ffi::ExceptionCode::General,
+            message: error.to_string(),
             file: String::new(),
-            line: 0,
-        })
+            line: 0i32,
+            is_file_and_line_determined: false,
+        }
     }
 }
 
-impl Display for FfiException {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ({}:{})", self.message, self.file, self.line)
+impl From<cxx::Exception> for ffi::ExceptionData {
+    fn from(exception: cxx::Exception) -> Self {
+        serde_json::from_str(exception.what()).unwrap_or_else(serde_json::Error::into)
     }
 }
-
-impl Error for FfiException {}

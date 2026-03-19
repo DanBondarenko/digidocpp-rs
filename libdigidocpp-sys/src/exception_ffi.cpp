@@ -1,23 +1,35 @@
 #include "libdigidocpp-sys/include/exception_ffi.h"
 
-#include <cstdint>
-#include <format>
+#include <exception>
 #include <string>
 
 #include "digidocpp/Exception.h"
-#include "rust/cxx.h"
+#include "libdigidocpp-sys/src/exception.rs.h"
 
 namespace digidoc_rs::exception {
 
-auto magic() -> rust::String { return {std::string(kMagic)}; }
+auto serialize_exception(const digidoc::Exception& exception) noexcept
+    -> std::string {
+  return std::string(ExceptionData{
+      .code = exception.code(),
+      .message = exception.msg(),
+      .file = exception.file(),
+      .line = exception.line(),
+      .is_file_and_line_determined = true,
+  }
+                         .to_json());
+}
 
-auto serialize(const digidoc::Exception& exception) -> std::string {
-  std::string file = exception.file();
-
-  return std::format("{}{:08x}{:08x}{:08x}{}{}", kMagic,
-                     static_cast<uint32_t>(exception.code()),
-                     static_cast<uint32_t>(exception.line()),
-                     static_cast<uint32_t>(file.size()), file, exception.msg());
+auto serialize_exception(const std::exception& exception) noexcept
+    -> std::string {
+  return std::string(ExceptionData{
+      .code = digidoc::ExceptionCode::General,
+      .message = exception.what(),
+      .file = "",
+      .line = 0,
+      .is_file_and_line_determined = false,
+  }
+                         .to_json());
 }
 
 }  // namespace digidoc_rs::exception
