@@ -59,7 +59,7 @@ impl Debug for DataFile<'_> {
             .field("id()", &self.id())
             .field("file_name()", &self.file_name())
             .field("file_size()", &self.file_size())
-            .field("media_type()", &self.file_size())
+            .field("media_type()", &self.media_type())
             .field(
                 "calc_digest_default()",
                 &self.calc_digest_default().as_deref().map(hex_encode),
