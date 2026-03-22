@@ -11,6 +11,10 @@ auto id(const digidoc::DataFile& data_file) -> rust::String {
   return data_file.id();
 }
 
+auto media_type(const digidoc::DataFile& data_file) -> rust::String {
+  return data_file.mediaType();
+}
+
 auto file_name(const digidoc::DataFile& data_file) -> rust::String {
   return data_file.fileName();
 }

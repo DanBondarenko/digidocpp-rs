@@ -64,10 +64,11 @@ mod tests {
     use std::error::Error;
 
     struct SingleFileContainerExpectation<'a> {
-        media_type: &'a str,
+        container_media_type: &'a str,
         file_id: &'a str,
         file_name: &'a str,
         file_size: u64,
+        file_media_type: &'a str,
     }
 
     type Sfce<'a> = SingleFileContainerExpectation<'a>;
@@ -78,7 +79,7 @@ mod tests {
     ) -> Result<(), Box<dyn Error>> {
         let container = Container::open(path)?;
 
-        assert_eq!(container.media_type()?, expectations.media_type);
+        assert_eq!(container.media_type()?, expectations.container_media_type);
 
         let data_files = container.data_files()?;
         assert_eq!(data_files.len(), 1);
@@ -89,6 +90,7 @@ mod tests {
         assert_eq!(data_file.id()?, expectations.file_id);
         assert_eq!(data_file.file_name()?, expectations.file_name);
         assert_eq!(data_file.file_size()?, expectations.file_size);
+        assert_eq!(data_file.media_type()?, expectations.file_media_type);
 
         Ok(())
     }
@@ -110,10 +112,11 @@ mod tests {
         assert_opening_container_and_reading_contents(
             concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/test.asice"),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-e+zip",
+                container_media_type: "application/vnd.etsi.asic-e+zip",
                 file_id: "test1.txt",
                 file_name: "test1.txt",
                 file_size: 5,
+                file_media_type: "file",
             },
         )
     }
@@ -125,10 +128,11 @@ mod tests {
         assert_opening_container_and_reading_contents(
             concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/test.asics"),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-s+zip",
+                container_media_type: "application/vnd.etsi.asic-s+zip",
                 file_id: "test1.txt",
                 file_name: "test1.txt",
                 file_size: 5,
+                file_media_type: "application/octet-stream",
             },
         )
     }
@@ -143,10 +147,11 @@ mod tests {
                 "/tests/fixtures/test-meta.asics"
             ),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-s+zip",
+                container_media_type: "application/vnd.etsi.asic-s+zip",
                 file_id: "test1.txt",
                 file_name: "test1.txt",
                 file_size: 5,
+                file_media_type: "application/octet-stream",
             },
         )
     }
@@ -161,10 +166,11 @@ mod tests {
                 "/tests/fixtures/test-invalidts.asics"
             ),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-s+zip",
+                container_media_type: "application/vnd.etsi.asic-s+zip",
                 file_id: "test2.txt",
                 file_name: "test2.txt",
                 file_size: 10,
+                file_media_type: "application/octet-stream",
             },
         )
     }
@@ -179,10 +185,11 @@ mod tests {
                 "/tests/fixtures/test-tera-empty.asics"
             ),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-s+zip",
+                container_media_type: "application/vnd.etsi.asic-s+zip",
                 file_id: "emptyFile.ddoc",
                 file_name: "emptyFile.ddoc",
                 file_size: 0,
+                file_media_type: "application/octet-stream",
             },
         )
     }
@@ -197,10 +204,11 @@ mod tests {
                 "/tests/fixtures/test-tera.asics"
             ),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-s+zip",
+                container_media_type: "application/vnd.etsi.asic-s+zip",
                 file_id: "ddoc_for_testing.ddoc",
                 file_name: "ddoc_for_testing.ddoc",
                 file_size: 8736,
+                file_media_type: "application/octet-stream",
             },
         )
     }
@@ -215,10 +223,11 @@ mod tests {
                 "/tests/fixtures/asice-path.asice"
             ),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-e+zip",
+                container_media_type: "application/vnd.etsi.asic-e+zip",
                 file_id: "folder/test1.txt",
                 file_name: "folder/test1.txt",
                 file_size: 4,
+                file_media_type: "text/plain",
             },
         )
     }
@@ -233,10 +242,11 @@ mod tests {
                 "/tests/fixtures/forged_lt.asice"
             ),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-e+zip",
+                container_media_type: "application/vnd.etsi.asic-e+zip",
                 file_id: "example-for-signing.txt",
                 file_name: "example-for-signing.txt",
                 file_size: 57,
+                file_media_type: "text/plain",
             },
         )
     }
@@ -248,10 +258,11 @@ mod tests {
         assert_opening_container_and_reading_contents(
             concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/tsl.asice"),
             &Sfce {
-                media_type: "application/vnd.etsi.asic-e+zip",
+                container_media_type: "application/vnd.etsi.asic-e+zip",
                 file_id: "test.txt",
                 file_name: "test.txt",
                 file_size: 4,
+                file_media_type: "application/octet-stream",
             },
         )
     }

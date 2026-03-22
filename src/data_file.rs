@@ -10,15 +10,22 @@ impl DataFile<'_> {
         Ok(ffi::id(self.0)?)
     }
 
+    pub fn media_type(&self) -> Result<String, Error> {
+        Ok(ffi::media_type(self.0)?)
+    }
+
     pub fn file_name(&self) -> Result<String, Error> {
         Ok(ffi::file_name(self.0)?)
     }
+
     pub fn file_size(&self) -> Result<u64, Error> {
         Ok(ffi::file_size(self.0)?)
     }
+
     pub fn calc_digest(&self, method: &str) -> Result<Vec<u8>, Error> {
         Ok(ffi::calc_digest(self.0, method)?)
     }
+
     pub fn calc_digest_default(&self) -> Result<Vec<u8>, Error> {
         Ok(ffi::calc_digest(self.0, "")?)
     }
@@ -52,6 +59,7 @@ impl Debug for DataFile<'_> {
             .field("id()", &self.id())
             .field("file_name()", &self.file_name())
             .field("file_size()", &self.file_size())
+            .field("media_type()", &self.file_size())
             .field(
                 "calc_digest_default()",
                 &self.calc_digest_default().as_deref().map(hex_encode),

@@ -103,7 +103,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `id()`
 - [x] `fileName()`
 - [x] `fileSize()`
-- [ ] `mediaType()`
+- [x] `mediaType()`
 - [x] `calcDigest(method)`
 - [ ] `saveAs(path)`
 

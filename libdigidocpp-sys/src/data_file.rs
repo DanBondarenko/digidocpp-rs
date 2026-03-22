@@ -15,6 +15,7 @@ pub mod ffi {
         include!("libdigidocpp-sys/include/exception_ffi.h");
 
         fn id(data_file: &DataFile) -> Result<String>;
+        fn media_type(data_file: &DataFile) -> Result<String>;
         fn file_name(data_file: &DataFile) -> Result<String>;
         fn file_size(data_file: &DataFile) -> Result<u64>;
         fn calc_digest(data_file: &DataFile, method: &str) -> Result<Vec<u8>>;
