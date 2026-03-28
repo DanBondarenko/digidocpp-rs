@@ -1,4 +1,5 @@
 use cxx::Exception;
+use libdigidocpp_sys::exception::ffi;
 use libdigidocpp_sys::exception::ffi::ExceptionData;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
@@ -39,6 +40,15 @@ pub enum ExceptionCode {
     DDocError = 512,
 }
 
+impl From<ffi::ExceptionCode> for ExceptionCode {
+    fn from(value: ffi::ExceptionCode) -> Self {
+        Self::try_from(value.repr).unwrap_or({
+            // TODO: Log?
+            Self::General
+        })
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Error(ExceptionData);
 
@@ -50,11 +60,7 @@ impl Error {
 
     #[must_use]
     pub fn code(&self) -> ExceptionCode {
-        self.0
-            .code
-            .repr
-            .try_into()
-            .unwrap_or(ExceptionCode::General)
+        self.0.code.into()
     }
 
     #[must_use]
