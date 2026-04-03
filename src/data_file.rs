@@ -1,6 +1,5 @@
-use crate::Error;
+use crate::{Error, util};
 use libdigidocpp_sys::data_file::ffi;
-use std::fmt::Write;
 use std::fmt::{Debug, Display, Formatter};
 
 pub struct DataFile<'a>(pub(crate) &'a ffi::DataFile);
@@ -48,13 +47,6 @@ impl Display for DataFile<'_> {
 
 impl Debug for DataFile<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        fn hex_encode(digest: &[u8]) -> String {
-            digest.iter().fold(String::new(), |mut output, byte| {
-                let _ = write!(output, "{byte:02x}");
-                output
-            })
-        }
-
         f.debug_struct("DataFile")
             .field("id()", &self.id())
             .field("file_name()", &self.file_name())
@@ -62,7 +54,7 @@ impl Debug for DataFile<'_> {
             .field("media_type()", &self.media_type())
             .field(
                 "calc_digest_default()",
-                &self.calc_digest_default().as_deref().map(hex_encode),
+                &self.calc_digest_default().map(util::hex_encode),
             )
             .finish_non_exhaustive()
     }

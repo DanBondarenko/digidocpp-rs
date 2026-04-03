@@ -4,6 +4,7 @@ mod container;
 mod data_file;
 mod exception;
 mod init;
+mod util;
 
 pub use container::*;
 pub use data_file::*;
