@@ -37,7 +37,7 @@ fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn Error
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("test.asice"))?;
     container_expectation.assert(&container)
 }
@@ -50,7 +50,7 @@ fn opens_asics_container() -> Result<(), Box<dyn Error>> {
         .data_files([DataFileExpectation::test1_expectation()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("test.asics"));
     container_expectation.assert(&container?)
 }
@@ -63,7 +63,7 @@ fn opens_asics_container_with_metadata() -> Result<(), Box<dyn Error>> {
         .data_files([DataFileExpectation::test1_expectation()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("test-meta.asics"))?;
     container_expectation.assert(&container)
 }
@@ -81,7 +81,7 @@ fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn Er
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("test-invalidts.asics"))?;
     container_expectation.assert(&container)
 }
@@ -99,7 +99,7 @@ fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn Error>>
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("test-tera-empty.asics"))?;
     container_expectation.assert(&container)
 }
@@ -117,7 +117,7 @@ fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn Error>> {
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("test-tera.asics"))?;
     container_expectation.assert(&container)
 }
@@ -135,7 +135,7 @@ fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn Error>>
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("asice-path.asice"))?;
     container_expectation.assert(&container)
 }
@@ -153,7 +153,7 @@ fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn Error>> {
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("forged_lt.asice"))?;
     container_expectation.assert(&container)
 }
@@ -171,7 +171,7 @@ fn opens_asice_container() -> Result<(), Box<dyn Error>> {
             .build()])
         .build();
 
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     let container = Container::open(&common::fixture_path("tsl.asice"))?;
     container_expectation.assert(&container)
 }
@@ -179,7 +179,7 @@ fn opens_asice_container() -> Result<(), Box<dyn Error>> {
 #[test]
 #[serial]
 fn fails_opening_asics_container_with_invalid_mimetype() -> Result<(), Box<dyn Error>> {
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("test-invalid.asics"));
     Ok(())
 }
@@ -187,7 +187,7 @@ fn fails_opening_asics_container_with_invalid_mimetype() -> Result<(), Box<dyn E
 #[test]
 #[serial]
 fn fails_opening_asics_container_with_subfolder() -> Result<(), Box<dyn Error>> {
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("asics-subfolder.asics"));
     Ok(())
 }
@@ -195,7 +195,7 @@ fn fails_opening_asics_container_with_subfolder() -> Result<(), Box<dyn Error>> 
 #[test]
 #[serial]
 fn fails_opening_asice_container_with_relative_path_in_contents() -> Result<(), Box<dyn Error>> {
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("asice-relative.asice"));
     Ok(())
 }
@@ -203,7 +203,7 @@ fn fails_opening_asice_container_with_relative_path_in_contents() -> Result<(), 
 #[test]
 #[serial]
 fn fails_opening_asice_with_content_file_with_dot_name() -> Result<(), Box<dyn Error>> {
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("dot.asice"));
     Ok(())
 }
@@ -211,7 +211,7 @@ fn fails_opening_asice_with_content_file_with_dot_name() -> Result<(), Box<dyn E
 #[test]
 #[serial]
 fn fails_opening_asice_with_content_file_with_empty_name() -> Result<(), Box<dyn Error>> {
-    libdigidocpp::initialize_default()?;
+    libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("pt-empty.asice"));
     Ok(())
 }

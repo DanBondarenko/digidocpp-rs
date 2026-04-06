@@ -1,3 +1,8 @@
+#![allow(
+    dead_code,
+    reason = "each integration test binary uses a subset of these helpers"
+)]
+
 use bon::Builder;
 use itertools::Itertools;
 use libdigidocpp::{Container, DataFile};
