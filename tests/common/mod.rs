@@ -21,7 +21,9 @@ pub(crate) fn fixture_path(name: &str) -> String {
         path.to_str().expect("Can't produce string from path")
     );
 
-    path.into_os_string().into_string().expect("Can't produce string from path")
+    path.into_os_string()
+        .into_string()
+        .expect("Can't produce string from path")
 }
 
 pub(crate) fn assert_if_some<T: PartialEq + Debug + ?Sized>(left: &T, right: Option<&T>) {

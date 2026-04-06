@@ -1,11 +1,18 @@
 [workspace]
 members = ["libdigidocpp-sys"]
 
-[package]
-name = "libdigidocpp"
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.88"
 publish = false
+
+[package]
+name = "libdigidocpp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
 
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
