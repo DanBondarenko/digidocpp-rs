@@ -1,4 +1,4 @@
-use crate::{Error, util};
+use crate::Error;
 use libdigidocpp_sys::data_file::ffi;
 use std::fmt::{Debug, Display, Formatter};
 
@@ -52,10 +52,6 @@ impl Debug for DataFile<'_> {
             .field("file_name()", &self.file_name())
             .field("file_size()", &self.file_size())
             .field("media_type()", &self.media_type())
-            .field(
-                "calc_digest_default()",
-                &self.calc_digest_default().map(util::hex_encode),
-            )
             .finish_non_exhaustive()
     }
 }
