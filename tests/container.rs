@@ -10,23 +10,23 @@
 mod common;
 
 use crate::common::{ContainerExpectation, DataFileExpectation};
-use libdigidocpp::{Container, ExceptionCode};
+use libdigidocpp::{Container, Error, ExceptionCode, LibraryError};
 use serial_test::serial;
-use std::error::Error;
+use std::error::Error as StdError;
 
 fn assert_opening_container_fails(path: impl AsRef<str>) {
     let container = Container::open(path.as_ref());
 
-    let Err(ffi_exception) = container else {
+    let Err(Error::Library(LibraryError::DigiDoc(error))) = container else {
         panic!("opening invalid container should fail");
     };
 
-    assert_eq!(ffi_exception.code(), ExceptionCode::General);
+    assert_eq!(error.code(), Some(ExceptionCode::General));
 }
 
 #[test]
 #[serial]
-fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn Error>> {
+fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .data_files([DataFileExpectation::builder()
@@ -44,7 +44,7 @@ fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn Error
 
 #[test]
 #[serial]
-fn opens_asics_container() -> Result<(), Box<dyn Error>> {
+fn opens_asics_container() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .data_files([DataFileExpectation::test1_expectation()])
@@ -57,7 +57,7 @@ fn opens_asics_container() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[serial]
-fn opens_asics_container_with_metadata() -> Result<(), Box<dyn Error>> {
+fn opens_asics_container_with_metadata() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .data_files([DataFileExpectation::test1_expectation()])
@@ -70,7 +70,7 @@ fn opens_asics_container_with_metadata() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[serial]
-fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn Error>> {
+fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .data_files([DataFileExpectation::builder()
@@ -88,7 +88,7 @@ fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn Er
 
 #[test]
 #[serial]
-fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn Error>> {
+fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .data_files([DataFileExpectation::builder()
@@ -106,7 +106,7 @@ fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn Error>>
 
 #[test]
 #[serial]
-fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn Error>> {
+fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .data_files([DataFileExpectation::builder()
@@ -124,7 +124,7 @@ fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[serial]
-fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn Error>> {
+fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .data_files([DataFileExpectation::builder()
@@ -142,7 +142,7 @@ fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn Error>>
 
 #[test]
 #[serial]
-fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn Error>> {
+fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .data_files([DataFileExpectation::builder()
@@ -160,7 +160,7 @@ fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[serial]
-fn opens_asice_container() -> Result<(), Box<dyn Error>> {
+fn opens_asice_container() -> Result<(), Box<dyn StdError>> {
     let container_expectation = ContainerExpectation::builder()
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .data_files([DataFileExpectation::builder()
@@ -178,7 +178,7 @@ fn opens_asice_container() -> Result<(), Box<dyn Error>> {
 
 #[test]
 #[serial]
-fn fails_opening_asics_container_with_invalid_mimetype() -> Result<(), Box<dyn Error>> {
+fn fails_opening_asics_container_with_invalid_mimetype() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("test-invalid.asics"));
     Ok(())
@@ -186,7 +186,7 @@ fn fails_opening_asics_container_with_invalid_mimetype() -> Result<(), Box<dyn E
 
 #[test]
 #[serial]
-fn fails_opening_asics_container_with_subfolder() -> Result<(), Box<dyn Error>> {
+fn fails_opening_asics_container_with_subfolder() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("asics-subfolder.asics"));
     Ok(())
@@ -194,7 +194,7 @@ fn fails_opening_asics_container_with_subfolder() -> Result<(), Box<dyn Error>> 
 
 #[test]
 #[serial]
-fn fails_opening_asice_container_with_relative_path_in_contents() -> Result<(), Box<dyn Error>> {
+fn fails_opening_asice_container_with_relative_path_in_contents() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("asice-relative.asice"));
     Ok(())
@@ -202,7 +202,7 @@ fn fails_opening_asice_container_with_relative_path_in_contents() -> Result<(), 
 
 #[test]
 #[serial]
-fn fails_opening_asice_with_content_file_with_dot_name() -> Result<(), Box<dyn Error>> {
+fn fails_opening_asice_with_content_file_with_dot_name() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("dot.asice"));
     Ok(())
@@ -210,7 +210,7 @@ fn fails_opening_asice_with_content_file_with_dot_name() -> Result<(), Box<dyn E
 
 #[test]
 #[serial]
-fn fails_opening_asice_with_content_file_with_empty_name() -> Result<(), Box<dyn Error>> {
+fn fails_opening_asice_with_content_file_with_empty_name() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("pt-empty.asice"));
     Ok(())

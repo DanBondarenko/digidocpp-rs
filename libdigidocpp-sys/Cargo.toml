@@ -7,12 +7,18 @@ links = "digidocpp"
 publish.workspace = true
 
 [dependencies]
-cxx = "1.0"
+cxx = "1.0.164"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 
 [build-dependencies]
-cxx-build = "1.0"
+cxx-build = "1.0.164"
+
+[features]
+test_util = []
+
+[dev-dependencies]
+libdigidocpp-sys = { path = ".", features = ["test_util"] }
 
 [lints]
 workspace = true

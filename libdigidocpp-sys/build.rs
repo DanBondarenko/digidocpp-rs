@@ -14,6 +14,12 @@ fn main() {
         .file("src/container_ffi.cpp")
         .file("src/data_file_ffi.cpp");
 
+    let test_util_feature = env::var_os("CARGO_FEATURE_TEST_UTIL").is_some();
+
+    if test_util_feature {
+        build.file("src/test_util.cpp");
+    }
+
     println!("cargo:rerun-if-env-changed=DIGIDOCPP_FRAMEWORK_DIR");
 
     #[expect(
@@ -38,4 +44,9 @@ fn main() {
     println!("cargo:rerun-if-changed=include/container_ffi.h");
     println!("cargo:rerun-if-changed=src/data_file_ffi.cpp");
     println!("cargo:rerun-if-changed=include/data_file_ffi.h");
+
+    if test_util_feature {
+        println!("cargo:rerun-if-changed=src/test_util.cpp");
+        println!("cargo:rerun-if-changed=include/test_util.h");
+    }
 }

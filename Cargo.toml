@@ -16,7 +16,8 @@ publish.workspace = true
 
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
-cxx = "1"
+cxx = "1.0.164"
+thiserror = "2.0.18"
 num_enum = "0.7.6"
 
 [dev-dependencies]
