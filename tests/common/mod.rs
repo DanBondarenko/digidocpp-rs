@@ -7,8 +7,9 @@ use bon::Builder;
 use itertools::Itertools;
 use libdigidocpp::{Container, DataFile};
 use std::error::Error;
+use std::ffi::OsString;
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub(crate) fn fixture_path(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -91,4 +92,19 @@ impl DataFileExpectation {
             .media_type(Self::MEDIA_TYPE_OCTET_STREAM)
             .build()
     }
+}
+
+#[cfg(unix)]
+pub(crate) fn non_utf8_path() -> PathBuf {
+    use std::os::unix::ffi::OsStringExt;
+
+    PathBuf::from(OsString::from_vec(b"invalid-\xff.asice".to_vec()))
+}
+
+#[cfg(windows)]
+pub(crate) fn non_utf8_path() -> PathBuf {
+    use std::os::windows::ffi::OsStringExt;
+
+    // 0xD800 is a lone surrogate, so it is not valid UTF-16.
+    PathBuf::from(OsString::from_wide(&[0x0069, 0xD800, 0x002E, 0x0061]))
 }

@@ -38,7 +38,7 @@ fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn StdEr
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("test.asice"))?;
+    let container = Container::open(common::fixture_path("test.asice"))?;
     container_expectation.assert(&container)
 }
 
@@ -51,7 +51,7 @@ fn opens_asics_container() -> Result<(), Box<dyn StdError>> {
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("test.asics"));
+    let container = Container::open(common::fixture_path("test.asics"));
     container_expectation.assert(&container?)
 }
 
@@ -64,7 +64,7 @@ fn opens_asics_container_with_metadata() -> Result<(), Box<dyn StdError>> {
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("test-meta.asics"))?;
+    let container = Container::open(common::fixture_path("test-meta.asics"))?;
     container_expectation.assert(&container)
 }
 
@@ -82,7 +82,7 @@ fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn St
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("test-invalidts.asics"))?;
+    let container = Container::open(common::fixture_path("test-invalidts.asics"))?;
     container_expectation.assert(&container)
 }
 
@@ -100,7 +100,7 @@ fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn StdErro
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("test-tera-empty.asics"))?;
+    let container = Container::open(common::fixture_path("test-tera-empty.asics"))?;
     container_expectation.assert(&container)
 }
 
@@ -118,7 +118,7 @@ fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn StdError>> 
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("test-tera.asics"))?;
+    let container = Container::open(common::fixture_path("test-tera.asics"))?;
     container_expectation.assert(&container)
 }
 
@@ -136,7 +136,7 @@ fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn StdErro
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("asice-path.asice"))?;
+    let container = Container::open(common::fixture_path("asice-path.asice"))?;
     container_expectation.assert(&container)
 }
 
@@ -154,7 +154,7 @@ fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn StdError>
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("forged_lt.asice"))?;
+    let container = Container::open(common::fixture_path("forged_lt.asice"))?;
     container_expectation.assert(&container)
 }
 
@@ -172,7 +172,7 @@ fn opens_asice_container() -> Result<(), Box<dyn StdError>> {
         .build();
 
     libdigidocpp::initialize()?;
-    let container = Container::open(&common::fixture_path("tsl.asice"))?;
+    let container = Container::open(common::fixture_path("tsl.asice"))?;
     container_expectation.assert(&container)
 }
 
@@ -213,5 +213,33 @@ fn fails_opening_asice_with_content_file_with_dot_name() -> Result<(), Box<dyn S
 fn fails_opening_asice_with_content_file_with_empty_name() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
     assert_opening_container_fails(common::fixture_path("pt-empty.asice"));
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn open_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
+    libdigidocpp::initialize()?;
+
+    let result = Container::open(common::non_utf8_path());
+    let Err(Error::Internal(message)) = result else {
+        panic!("Expected internal error, but was {result:?}")
+    };
+    assert!(message.contains("UTF-8"));
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn create_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
+    libdigidocpp::initialize()?;
+
+    let result = Container::create(common::non_utf8_path());
+    let Err(Error::Internal(message)) = result else {
+        panic!("Expected internal error, but was {result:?}")
+    };
+    assert!(message.contains("UTF-8"));
+
     Ok(())
 }

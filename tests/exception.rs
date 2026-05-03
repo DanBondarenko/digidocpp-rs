@@ -23,7 +23,7 @@ fn open_errors_carry_the_reason_as_a_cause() -> Result<(), Box<dyn StdError>> {
         ("asice-relative.asice", "invalid path"),
         ("pt-empty.asice", "full-path is empty"),
     ] {
-        let result = Container::open(&common::fixture_path(name));
+        let result = Container::open(common::fixture_path(name));
         let Err(Error::Library(LibraryError::DigiDoc(error))) = result else {
             panic!("Expected DigiDoc error");
         };
@@ -49,7 +49,7 @@ fn open_errors_carry_the_reason_as_a_cause() -> Result<(), Box<dyn StdError>> {
 fn error_and_source_report_details_separately() -> Result<(), Box<dyn StdError>> {
     libdigidocpp::initialize()?;
 
-    let result = Container::open(&common::fixture_path("dot.asice"));
+    let result = Container::open(common::fixture_path("dot.asice"));
     let Err(Error::Library(LibraryError::DigiDoc(digidoc_error))) = result else {
         panic!("Expected DigiDoc error");
     };
