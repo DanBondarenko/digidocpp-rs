@@ -9,7 +9,8 @@
 )]
 mod common;
 
-use libdigidocpp::{Container, DigiDocError, Error, LibraryError};
+use crate::common::assert_general_digidoc_err;
+use libdigidocpp::{Container, DigiDocError};
 use serial_test::serial;
 use std::error::Error as StdError;
 
@@ -24,9 +25,7 @@ fn open_errors_carry_the_reason_as_a_cause() -> Result<(), Box<dyn StdError>> {
         ("pt-empty.asice", "full-path is empty"),
     ] {
         let result = Container::open(common::fixture_path(name));
-        let Err(Error::Library(LibraryError::DigiDoc(error))) = result else {
-            panic!("Expected DigiDoc error");
-        };
+        let error = assert_general_digidoc_err!(result);
 
         let expected_start = "digidoc error: General: Failed to parse manifest";
         let error_message = error.to_string();
@@ -50,20 +49,14 @@ fn error_and_source_report_details_separately() -> Result<(), Box<dyn StdError>>
     libdigidocpp::initialize()?;
 
     let result = Container::open(common::fixture_path("dot.asice"));
-    let Err(Error::Library(LibraryError::DigiDoc(digidoc_error))) = result else {
-        panic!("Expected DigiDoc error");
-    };
+    let error = assert_general_digidoc_err!(result);
 
-    assert!(
-        digidoc_error
-            .to_string()
-            .contains("Failed to parse manifest")
-    );
-    assert!(!digidoc_error.to_string().contains("invalid path"));
-    assert!(!digidoc_error.cpp_file().is_empty());
-    assert!(digidoc_error.cpp_line() > 0);
+    assert!(error.message().contains("Failed to parse manifest"));
+    assert!(!error.message().contains("invalid path"));
+    assert!(!error.cpp_file().is_empty());
+    assert!(error.cpp_line() > 0);
 
-    let source = digidoc_error
+    let source = error
         .source()
         .expect("Expected error to have source")
         .downcast_ref::<DigiDocError>()
@@ -72,7 +65,7 @@ fn error_and_source_report_details_separately() -> Result<(), Box<dyn StdError>>
     assert!(source.source().is_none());
     assert!(!source.cpp_file().is_empty());
     assert!(source.cpp_line() > 0);
-    assert_ne!(source.message(), digidoc_error.message());
+    assert_ne!(source.message(), error.message());
 
     Ok(())
 }

@@ -9,19 +9,14 @@
 )]
 mod common;
 
-use crate::common::{ContainerExpectation, DataFileExpectation};
-use libdigidocpp::{Container, Error, ExceptionCode, LibraryError};
+use crate::common::{ContainerExpectation, DataFileExpectation, assert_general_digidoc_err};
+use libdigidocpp::{Container, Error};
 use serial_test::serial;
 use std::error::Error as StdError;
 
 fn assert_opening_container_fails(path: impl AsRef<str>) {
-    let container = Container::open(path.as_ref());
-
-    let Err(Error::Library(LibraryError::DigiDoc(error))) = container else {
-        panic!("opening invalid container should fail");
-    };
-
-    assert_eq!(error.code(), Some(ExceptionCode::General));
+    let result = Container::open(path.as_ref());
+    assert_general_digidoc_err!(result);
 }
 
 #[test]

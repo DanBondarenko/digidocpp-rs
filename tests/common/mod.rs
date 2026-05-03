@@ -11,6 +11,38 @@ use std::ffi::OsString;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
+#[allow(unused_macros)]
+macro_rules! assert_general_digidoc_err {
+    ($val:expr $(,)?) => {
+        match $val {
+            result => {
+                let Err(::libdigidocpp::Error::Library(::libdigidocpp::LibraryError::DigiDoc(error))) = result else {
+                    ::core::panic!("Expected digidoc error, instead got {result:?}");
+                };
+                ::core::assert_eq!(error.code(), Some(::libdigidocpp::ExceptionCode::General));
+                error
+            }
+        }
+    };
+    ($val:expr, $($arg:tt)+) => {
+        match $val {
+            result => {
+                let Err(::libdigidocpp::Error::Library(::libdigidocpp::LibraryError::DigiDoc(error))) = result else {
+                    ::core::panic!(
+                        "{}: Expected digidoc error, instead got {result:?}",
+                        ::core::format_args!($($arg)+)
+                    );
+                };
+                ::core::assert_eq!(error.code(), Some(::libdigidocpp::ExceptionCode::General));
+                error
+            }
+        }
+    };
+}
+
+#[allow(unused_imports)]
+pub(crate) use assert_general_digidoc_err;
+
 pub(crate) fn fixture_path(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
