@@ -6,6 +6,7 @@
 
 #include "digidocpp/Exception.h"
 #include "libdigidocpp-sys/src/exception.rs.h"
+#include "rust/cxx.h"
 
 namespace digidoc_rs::exception {
 namespace {

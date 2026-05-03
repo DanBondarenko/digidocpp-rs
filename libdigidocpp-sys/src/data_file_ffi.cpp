@@ -4,6 +4,7 @@
 #include <string>
 
 #include "digidocpp/DataFile.h"
+#include "libdigidocpp-sys/include/ffi_util.h"
 #include "rust/cxx.h"
 
 namespace digidoc_rs::data_file {
@@ -25,12 +26,6 @@ auto file_size(const digidoc::DataFile& data_file) -> uint64_t {
 
 auto calc_digest(const digidoc::DataFile& file, const rust::Str method)
     -> rust::Vec<uint8_t> {
-  const auto digest = file.calcDigest(std::string(method));
-  rust::Vec<uint8_t> out;
-  out.reserve(digest.size());
-  for (const unsigned char byte : digest) {
-    out.push_back(byte);
-  }
-  return out;
+  return util::to_rust_vec(file.calcDigest(std::string(method)));
 }
 }  // namespace digidoc_rs::data_file

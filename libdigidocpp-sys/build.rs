@@ -36,6 +36,7 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=digidocpp");
     println!("cargo:rustc-link-arg=-Wl,-rpath,{framework_dir}");
 
+    println!("cargo:rerun-if-changed=include/ffi_util.h");
     println!("cargo:rerun-if-changed=src/exception_ffi.cpp");
     println!("cargo:rerun-if-changed=include/exception_ffi.h");
     println!("cargo:rerun-if-changed=src/init_ffi.cpp");
