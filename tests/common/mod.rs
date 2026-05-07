@@ -68,8 +68,8 @@ pub(crate) fn assert_if_some<T: PartialEq + Debug + ?Sized>(left: &T, right: Opt
 #[derive(Builder)]
 #[builder(on(_, into))]
 pub(crate) struct ContainerExpectation {
-    pub(crate) media_type: String,
-    pub(crate) data_files: Vec<DataFileExpectation>,
+    pub(crate) media_type: Option<String>,
+    pub(crate) data_files: Option<Vec<DataFileExpectation>>,
 }
 
 impl ContainerExpectation {
@@ -77,14 +77,18 @@ impl ContainerExpectation {
     pub(crate) const MEDIA_TYPE_ASICS: &str = "application/vnd.etsi.asic-s+zip";
 
     pub(crate) fn assert(&self, container: &Container) -> Result<(), Box<dyn Error>> {
-        assert_eq!(container.media_type()?, self.media_type);
+        if let Some(expected_media_type) = &self.media_type {
+            assert_eq!(&container.media_type()?, expected_media_type);
+        }
 
-        let data_files = container.data_files()?;
-        assert_eq!(data_files.len(), self.data_files.len());
-        self.data_files
-            .iter()
-            .zip_eq(data_files)
-            .try_for_each(|(expectation, data_file)| expectation.assert(&data_file))?;
+        if let Some(expected_data_files) = &self.data_files {
+            let data_files = container.data_files()?;
+            assert_eq!(data_files.len(), expected_data_files.len());
+            expected_data_files
+                .iter()
+                .zip_eq(data_files)
+                .try_for_each(|(expectation, data_file)| expectation.assert(&data_file))?;
+        }
 
         Ok(())
     }
@@ -114,15 +118,6 @@ impl DataFileExpectation {
             self.calc_digest_default.as_ref(),
         );
         Ok(())
-    }
-
-    pub(crate) fn test1_expectation() -> Self {
-        Self::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type(Self::MEDIA_TYPE_OCTET_STREAM)
-            .build()
     }
 }
 
