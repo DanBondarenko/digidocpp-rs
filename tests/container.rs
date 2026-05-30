@@ -21,7 +21,7 @@ fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn StdEr
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test.asice"))?;
     container_expectation.assert(&container)
 }
@@ -33,7 +33,7 @@ fn opens_asics_container() -> Result<(), Box<dyn StdError>> {
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test.asics"));
     container_expectation.assert(&container?)
 }
@@ -45,7 +45,7 @@ fn opens_asics_container_with_metadata() -> Result<(), Box<dyn StdError>> {
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-meta.asics"))?;
     container_expectation.assert(&container)
 }
@@ -57,7 +57,7 @@ fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn St
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-invalidts.asics"))?;
     container_expectation.assert(&container)
 }
@@ -69,7 +69,7 @@ fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn StdErro
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-tera-empty.asics"))?;
     container_expectation.assert(&container)
 }
@@ -81,7 +81,7 @@ fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn StdError>> 
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-tera.asics"))?;
     container_expectation.assert(&container)
 }
@@ -93,7 +93,7 @@ fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn StdErro
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let container = Container::open(common::fixture_path("asice-path.asice"))?;
     container_expectation.assert(&container)
 }
@@ -105,7 +105,7 @@ fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn StdError>
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("forged_lt.asice"))?;
     container_expectation.assert(&container)
 }
@@ -117,7 +117,7 @@ fn opens_asice_container() -> Result<(), Box<dyn StdError>> {
         .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("EE_T.xml", &[])?;
     let container = Container::open(common::fixture_path("tsl.asice"))?;
     container_expectation.assert(&container)
 }
@@ -125,7 +125,7 @@ fn opens_asice_container() -> Result<(), Box<dyn StdError>> {
 #[test]
 #[serial]
 fn fails_opening_invalid_containers() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
 
     for (name, defect) in [
         ("test-invalid.asics", "invalid mimetype"),
@@ -143,7 +143,7 @@ fn fails_opening_invalid_containers() -> Result<(), Box<dyn StdError>> {
 #[test]
 #[serial]
 fn creates_empty_asice_container() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let container = Container::create("new.asice")?;
 
     ContainerExpectation::builder()
@@ -155,7 +155,7 @@ fn creates_empty_asice_container() -> Result<(), Box<dyn StdError>> {
 #[test]
 #[serial]
 fn open_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
 
     let result = Container::open(common::non_utf8_path());
     let Err(Error::Internal(message)) = result else {
@@ -169,7 +169,7 @@ fn open_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
 #[test]
 #[serial]
 fn create_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
 
     let result = Container::create(common::non_utf8_path());
     let Err(Error::Internal(message)) = result else {

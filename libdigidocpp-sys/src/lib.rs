@@ -3,6 +3,7 @@
     reason = "cxx generates code with multiple safe ops per block"
 )]
 
+pub mod conf;
 pub mod container;
 pub mod data_file;
 pub mod exception;

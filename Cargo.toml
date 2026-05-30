@@ -19,11 +19,13 @@ libdigidocpp-sys = { path = "libdigidocpp-sys" }
 cxx = "1.0.164"
 thiserror = "2.0.18"
 num_enum = "0.7.6"
+secrecy = "0.10.3"
 
 [dev-dependencies]
 bon = "3.9.1"
 itertools = "0.14.0"
 serial_test = "3.3.1"
+tempfile = "3.27.0"
 
 [workspace.lints.rust]
 missing_docs = "allow" # TODO: Turn on before publishing

@@ -28,7 +28,7 @@ fn reads_data_file_from_asice_container_with_expired_certificates() -> Result<()
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test.asice"))?;
     container_expectation.assert(&container)
 }
@@ -45,7 +45,7 @@ fn reads_data_file_from_asics_container() -> Result<(), Box<dyn StdError>> {
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test.asics"));
     container_expectation.assert(&container?)
 }
@@ -62,7 +62,7 @@ fn reads_data_file_from_asics_container_with_metadata() -> Result<(), Box<dyn St
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-meta.asics"))?;
     container_expectation.assert(&container)
 }
@@ -80,7 +80,7 @@ fn reads_data_file_from_asics_container_with_invalid_timestamp_token()
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-invalidts.asics"))?;
     container_expectation.assert(&container)
 }
@@ -97,7 +97,7 @@ fn reads_data_file_with_zero_size_contents_from_asics_container() -> Result<(), 
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-tera-empty.asics"))?;
     container_expectation.assert(&container)
 }
@@ -114,7 +114,7 @@ fn reads_data_file_with_large_contents_from_asics_container() -> Result<(), Box<
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("test-tera.asics"))?;
     container_expectation.assert(&container)
 }
@@ -131,7 +131,7 @@ fn reads_data_file_from_asice_container_with_subfolder_contents() -> Result<(), 
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let container = Container::open(common::fixture_path("asice-path.asice"))?;
     container_expectation.assert(&container)
 }
@@ -148,7 +148,7 @@ fn reads_data_file_from_asice_container_with_forged_signature() -> Result<(), Bo
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
     let container = Container::open(common::fixture_path("forged_lt.asice"))?;
     container_expectation.assert(&container)
 }
@@ -165,7 +165,7 @@ fn reads_data_file_from_asice_container() -> Result<(), Box<dyn StdError>> {
             .build()])
         .build();
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("EE_T.xml", &[])?;
     let container = Container::open(common::fixture_path("tsl.asice"))?;
     container_expectation.assert(&container)
 }
@@ -173,7 +173,7 @@ fn reads_data_file_from_asice_container() -> Result<(), Box<dyn StdError>> {
 #[test]
 #[serial]
 fn newly_crated_asice_container_has_no_data_files() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let container = Container::create("new.asice")?;
 
     ContainerExpectation::builder()
@@ -224,7 +224,7 @@ fn calculates_data_file_digests() -> Result<(), Box<dyn StdError>> {
         ),
     ];
 
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let container = Container::open(common::fixture_path("test.asice"))?;
     let data_files = container.data_files()?;
     let data_file = data_files.first().expect("test.asice should hold a file");

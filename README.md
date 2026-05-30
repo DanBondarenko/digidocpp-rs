@@ -8,79 +8,79 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `userAgent()`
 - [x] `version()`
 - [x] `terminate()`
-- [ ] `initializeLib(appName, userAgent, path)`
+- [x] `initializeLib(appName, userAgent, path)`
 - [x] `initializeLib(appName, userAgent)`
  
 ## `Conf`
-- [ ] `init()`
+- [x] `init()`
 - [ ] `instance()`
-- [ ] `logLevel()`
-- [ ] `logFile()`
-- [ ] `xsdPath()`
-- [ ] `PKCS11Driver()`
-- [ ] `proxyHost()`
-- [ ] `proxyPort()`
-- [ ] `proxyUser()`
-- [ ] `proxyPass()`
-- [ ] `proxyForceSSL()`
-- [ ] `proxyTunnelSSL()`
-- [ ] `digestUri()`
-- [ ] `signatureDigestUri()`
-- [ ] `ocsp(issuer)`
-- [ ] `TSUrl()`
-- [ ] `verifyServiceUri()`
-- [ ] `TSLAllowExpired()`
-- [ ] `TSLAutoUpdate()`
-- [ ] `TSLCache()`
-- [ ] `TSLOnlineDigest()`
-- [ ] `TSLTimeOut()`
-- [ ] `TSLUrl()`
+- [x] `logLevel()`
+- [x] `logFile()`
+- [x] `xsdPath()`
+- [x] `PKCS11Driver()`
+- [x] `proxyHost()`
+- [x] `proxyPort()`
+- [x] `proxyUser()`
+- [x] `proxyPass()`
+- [x] `proxyForceSSL()`
+- [x] `proxyTunnelSSL()`
+- [x] `digestUri()`
+- [x] `signatureDigestUri()`
+- [x] `ocsp(issuer)`
+- [x] `TSUrl()`
+- [x] `verifyServiceUri()`
+- [x] `TSLAllowExpired()`
+- [x] `TSLAutoUpdate()`
+- [x] `TSLCache()`
+- [x] `TSLOnlineDigest()`
+- [x] `TSLTimeOut()`
+- [x] `TSLUrl()`
  
 ## `XmlConf`
-- [ ] Constructor `(path = "", schema = "")`
+- [x] Constructor `(path = "", schema = "")`
 - [ ] `instance()`
-- [ ] `logLevel()`
-- [ ] `logFile()`
-- [ ] `PKCS11Driver()`
-- [ ] `proxyHost()`
-- [ ] `proxyPort()`
-- [ ] `proxyUser()`
-- [ ] `proxyPass()`
-- [ ] `proxyForceSSL()`
-- [ ] `proxyTunnelSSL()`
-- [ ] `digestUri()`
-- [ ] `signatureDigestUri()`
-- [ ] `ocsp(issuer)`
-- [ ] `TSUrl()`
-- [ ] `verifyServiceUri()`
-- [ ] `TSLAutoUpdate()`
-- [ ] `TSLCache()`
-- [ ] `TSLOnlineDigest()`
-- [ ] `TSLTimeOut()`
-- [ ] `setProxyHost(host)`
-- [ ] `setProxyPort(port)`
-- [ ] `setProxyUser(user)`
-- [ ] `setProxyPass(pass)`
-- [ ] `setProxyTunnelSSL(enable)`
-- [ ] `setTSLOnlineDigest(enable)`
-- [ ] `setTSLTimeOut(timeOut)`
-- [ ] `setTSUrl(url)`
-- [ ] `setVerifyServiceUri(url)`
+- [x] `logLevel()`
+- [x] `logFile()`
+- [x] `PKCS11Driver()`
+- [x] `proxyHost()`
+- [x] `proxyPort()`
+- [x] `proxyUser()`
+- [x] `proxyPass()`
+- [x] `proxyForceSSL()`
+- [x] `proxyTunnelSSL()`
+- [x] `digestUri()`
+- [x] `signatureDigestUri()`
+- [x] `ocsp(issuer)`
+- [x] `TSUrl()`
+- [x] `verifyServiceUri()`
+- [x] `TSLAutoUpdate()`
+- [x] `TSLCache()`
+- [x] `TSLOnlineDigest()`
+- [x] `TSLTimeOut()`
+- [x] `setProxyHost(host)`
+- [x] `setProxyPort(port)`
+- [x] `setProxyUser(user)`
+- [x] `setProxyPass(pass)`
+- [x] `setProxyTunnelSSL(enable)`
+- [x] `setTSLOnlineDigest(enable)`
+- [x] `setTSLTimeOut(timeOut)`
+- [x] `setTSUrl(url)`
+- [x] `setVerifyServiceUri(url)`
 
 ## `DigiDocConf`
-- [ ] Constructor `(cache = "")`
+- [ ] ~~Constructor `(cache = "")`~~
 - [ ] `instance()`
-- [ ] `setLogLevel(level)`
-- [ ] `setLogFile(file)`
-- [ ] `setTSCert(cert)`
-- [ ] `addTSCert(cert)`
-- [ ] `setTSLCert(cert)`
-- [ ] `addTSLCert(cert)`
-- [ ] `setTSLUrl(url)`
-- [ ] `setOCSPUrls(urls)`
-- [ ] `setOCSPTMProfiles(profiles)`
-- [ ] `setVerifyServiceCert(cert)`
-- [ ] `addVerifyServiceCert(cert)`
+- [x] `setLogLevel(level)`
+- [x] `setLogFile(file)`
+- [x] `setTSCert(cert)`
+- [x] `addTSCert(cert)`
+- [x] `setTSLCert(cert)`
+- [x] `addTSLCert(cert)`
+- [x] `setTSLUrl(url)`
+- [x] `setOCSPUrls(urls)`
+- [x] `setOCSPTMProfiles(profiles)`
+- [x] `setVerifyServiceCert(cert)`
+- [x] `addVerifyServiceCert(cert)`
 
 ## `Container`
 - [x] `open(path, ContainerOpenCB *cb)`

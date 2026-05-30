@@ -17,7 +17,7 @@ use std::error::Error as StdError;
 #[test]
 #[serial]
 fn open_errors_carry_the_reason_as_a_cause() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
 
     for (name, reason) in [
         ("dot.asice", "invalid path"),
@@ -46,7 +46,7 @@ fn open_errors_carry_the_reason_as_a_cause() -> Result<(), Box<dyn StdError>> {
 #[test]
 #[serial]
 fn error_and_source_report_details_separately() -> Result<(), Box<dyn StdError>> {
-    libdigidocpp::initialize()?;
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
 
     let result = Container::open(common::fixture_path("dot.asice"));
     let error = assert_general_digidoc_err!(result);

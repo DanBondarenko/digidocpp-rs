@@ -5,11 +5,13 @@
 
 use bon::Builder;
 use itertools::Itertools;
-use libdigidocpp::{Container, DataFile};
-use std::error::Error;
+use libdigidocpp::{Conf, Container, DataFile, Error};
+use std::error::Error as StdError;
 use std::ffi::OsString;
 use std::fmt::Debug;
+use std::fs;
 use std::path::{Path, PathBuf};
+use tempfile::TempDir;
 
 #[allow(unused_macros)]
 macro_rules! assert_general_digidoc_err {
@@ -43,11 +45,14 @@ macro_rules! assert_general_digidoc_err {
 #[allow(unused_imports)]
 pub(crate) use assert_general_digidoc_err;
 
-pub(crate) fn fixture_path(name: &str) -> String {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+fn fixtures_directory() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
         .join("fixtures")
-        .join(name);
+}
+
+pub(crate) fn fixture_path(name: &str) -> String {
+    let path = fixtures_directory().join(name);
     assert!(
         path.exists(),
         "Path {} doesn't exist",
@@ -57,6 +62,53 @@ pub(crate) fn fixture_path(name: &str) -> String {
     path.into_os_string()
         .into_string()
         .expect("Can't produce string from path")
+}
+
+pub(crate) fn path_to_string(path: impl AsRef<Path>) -> String {
+    path.as_ref()
+        .to_str()
+        .expect("Can't produce string from path")
+        .to_owned()
+}
+
+pub(crate) fn conf_from_fixture(name: &str) -> Result<Conf, Box<Error>> {
+    Ok(Conf::from_file(fixture_path(name))?)
+}
+
+// defend aganst libdigidocpp writing to user dir during test
+pub(crate) fn copy_fixtures(directory: &Path, names: &[&str]) -> Result<(), Box<dyn StdError>> {
+    for name in names {
+        fs::copy(fixture_path(name), directory.join(name))?;
+    }
+
+    Ok(())
+}
+
+pub(crate) fn offline_conf(directory: &Path, tsl_name: &str) -> Result<Conf, Box<dyn StdError>> {
+    // if we dont provide file, `libdigidocpp` searches system dirs
+    let mut conf = conf_from_fixture("empty.conf")?;
+    conf.set_log_file(directory.join("libdigidocpp.log"))?;
+    conf.set_tsl_url(path_to_string(directory.join(tsl_name)))?;
+    // `libdigidocpp` writes here
+    conf.set_tsl_cache(directory)?;
+    conf.set_tsl_auto_update(false)?;
+    conf.set_tsl_online_digest(false)?;
+    conf.set_tsl_allow_expired(true)?;
+    conf.add_tsl_cert(fs::read(fixture_path("TSL.der"))?)?;
+
+    Ok(conf)
+}
+
+pub(crate) fn initialize_offline(
+    tsl_name: &str,
+    other_fixtures: &[&str],
+) -> Result<TempDir, Box<dyn StdError>> {
+    let directory = TempDir::new()?;
+    copy_fixtures(directory.path(), &[&[tsl_name], other_fixtures].concat())?;
+    libdigidocpp::init_conf(offline_conf(directory.path(), tsl_name)?)?;
+    libdigidocpp::initialize()?;
+
+    Ok(directory)
 }
 
 pub(crate) fn assert_if_some<T: PartialEq + Debug + ?Sized>(left: &T, right: Option<&T>) {
@@ -76,7 +128,7 @@ impl ContainerExpectation {
     pub(crate) const MEDIA_TYPE_ASICE: &str = "application/vnd.etsi.asic-e+zip";
     pub(crate) const MEDIA_TYPE_ASICS: &str = "application/vnd.etsi.asic-s+zip";
 
-    pub(crate) fn assert(&self, container: &Container) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn assert(&self, container: &Container) -> Result<(), Box<dyn StdError>> {
         if let Some(expected_media_type) = &self.media_type {
             assert_eq!(&container.media_type()?, expected_media_type);
         }
@@ -108,7 +160,7 @@ impl DataFileExpectation {
     pub(crate) const MEDIA_TYPE_OCTET_STREAM: &str = "application/octet-stream";
     pub(crate) const MEDIA_TYPE_TEXT_PLAIN: &str = "text/plain";
 
-    pub(crate) fn assert(&self, data_file: &DataFile) -> Result<(), Box<dyn Error>> {
+    pub(crate) fn assert(&self, data_file: &DataFile) -> Result<(), Box<dyn StdError>> {
         assert_eq!(data_file.id()?, self.id);
         assert_eq!(data_file.file_name()?, self.file_name);
         assert_eq!(data_file.file_size()?, self.file_size);
