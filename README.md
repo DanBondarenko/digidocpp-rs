@@ -170,3 +170,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [ ] `PKCS12Signer` (subclass)
 - [ ] `PKCS11Signer` (subclass)
 - [ ] `WinSigner` (subclass)
+## Other ideas
+- [ ] add cxx shared struct for vectors of non-owned data e.g. `Container::dataFiles()` and `Container::signatures()`
+- [ ] use types to prevent invalid initialization and termination
+- [ ] use types to prevent invalid container ops
