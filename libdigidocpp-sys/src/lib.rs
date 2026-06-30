@@ -8,3 +8,4 @@ pub mod container;
 pub mod data_file;
 pub mod exception;
 pub mod init;
+pub mod signature;

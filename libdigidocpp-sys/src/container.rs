@@ -7,6 +7,7 @@ pub mod ffi {
 
         type Container;
         type DataFile = crate::data_file::ffi::DataFile;
+        type Signature = crate::signature::ffi::Signature;
 
         #[Self = "Container"]
         fn openPtr(path: &CxxString) -> Result<UniquePtr<Container>>;
@@ -23,5 +24,7 @@ pub mod ffi {
         fn media_type(container: &Container) -> Result<String>;
         fn data_files_size(container: &Container) -> Result<usize>;
         fn data_file_at(container: &Container, index: usize) -> Result<&DataFile>;
+        fn signatures_size(container: &Container) -> Result<usize>;
+        fn signature_at(container: &Container, index: usize) -> Result<&Signature>;
     }
 }

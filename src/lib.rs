@@ -5,6 +5,7 @@ mod container;
 mod data_file;
 mod exception;
 mod init;
+mod signature;
 mod util;
 
 pub use conf::*;
@@ -12,3 +13,4 @@ pub use container::*;
 pub use data_file::*;
 pub use exception::*;
 pub use init::*;
+pub use signature::*;

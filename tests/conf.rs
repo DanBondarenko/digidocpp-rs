@@ -10,7 +10,7 @@
 mod common;
 
 use crate::common::assert_general_digidoc_err;
-use libdigidocpp::{Conf, Error, ExposeSecret, init_conf, initialize};
+use libdigidocpp::{Conf, Container, Error, ExposeSecret, init_conf, initialize};
 use serial_test::serial;
 use std::error::Error as StdError;
 use std::fs;
@@ -19,6 +19,43 @@ use tempfile::TempDir;
 
 const SHA512_URI: &str = "http://www.w3.org/2001/04/xmlenc#sha512";
 const DEFAULT_OCSP_TM_PROFILE: &str = "1.3.6.1.4.1.10015.4.1.2";
+
+#[test]
+#[serial]
+fn config_file_tsl_settings_take_effect() -> Result<(), Box<dyn StdError>> {
+    let directory = TempDir::new()?;
+    common::copy_fixtures(directory.path(), &["EE_T.xml"])?;
+    let config_file = directory.path().join("digidocpp.conf");
+    fs::write(
+        &config_file,
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schema/conf.xsd">
+    <param name="tsl.autoupdate" lock="false">false</param>
+    <param name="tsl.onlineDigest" lock="false">false</param>
+    <param name="tsl.cache" lock="false">{}</param>
+</configuration>
+"#,
+            common::path_to_string(directory.path())
+        ),
+    )?;
+
+    let mut conf = Conf::from_file(config_file)?;
+    conf.set_tsl_url(common::path_to_string(directory.path().join("EE_T.xml")))?;
+    conf.add_tsl_cert(fs::read(common::fixture_path("TSL.der"))?)?;
+    init_conf(conf)?;
+    initialize()?;
+
+    let container = Container::open(common::fixture_path("tsl.asice"))?;
+    let signatures = container.signatures()?;
+    let signature = signatures
+        .first()
+        .expect("tsl.asice should contain a signature");
+
+    // signature only valid if using `EE_T.xml`
+    signature.validate()?;
+    Ok(())
+}
 
 #[test]
 #[serial]
@@ -50,6 +87,29 @@ fn log_level_filters_log_entries() -> Result<(), Box<dyn StdError>> {
     let log = fs::read_to_string(directory.path().join("libdigidocpp.log")).unwrap_or_default();
 
     assert!(!log.contains("digidocpp version"));
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn loads_tsl_and_writes_log_in_a_non_ascii_directory() -> Result<(), Box<dyn StdError>> {
+    let directory = TempDir::new()?;
+    let unicode_directory = directory.path().join("libdigidocpp-õ-ä-ö-ü");
+    fs::create_dir(&unicode_directory)?;
+    common::copy_fixtures(&unicode_directory, &["TSL.xml", "EE_T.xml"])?;
+    let conf = common::offline_conf(&unicode_directory, "TSL.xml")?;
+    init_conf(conf)?;
+    initialize()?;
+
+    let log = fs::read_to_string(unicode_directory.join("libdigidocpp.log"))?;
+    let container = Container::open(common::fixture_path("tsl.asice"))?;
+    let signatures = container.signatures()?;
+    let signature = signatures
+        .first()
+        .expect("tsl.asice should contain a signature");
+
+    assert!(log.contains("certificates into TSL certificate store"));
+    signature.validate()?;
     Ok(())
 }
 

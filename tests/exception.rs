@@ -10,7 +10,7 @@
 mod common;
 
 use crate::common::assert_general_digidoc_err;
-use libdigidocpp::{Container, DigiDocError};
+use libdigidocpp::{Container, DigiDocError, ExceptionCode};
 use serial_test::serial;
 use std::error::Error as StdError;
 
@@ -66,6 +66,77 @@ fn error_and_source_report_details_separately() -> Result<(), Box<dyn StdError>>
     assert!(!source.cpp_file().is_empty());
     assert!(source.cpp_line() > 0);
     assert_ne!(source.message(), error.message());
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn validation_errors_carry_a_tree_of_causes_with_cpp_locations() -> Result<(), Box<dyn StdError>> {
+    let result = common::validate_tsl_asice_with("EE_T-CA-non-qa.xml")?;
+
+    let error = assert_general_digidoc_err!(result);
+
+    let [
+        unverified_signing_certificate,
+        second_issuer_missing,
+        unknown_certificate_status,
+    ] = error.causes()
+    else {
+        panic!("expected three causes: {error:?}");
+    };
+
+    assert_eq!(error.message(), "Signature validation");
+    assert!(!error.cpp_file().is_empty());
+    assert!(error.cpp_line() > 0);
+
+    assert_eq!(
+        unverified_signing_certificate.message(),
+        "Unable to verify signing certificate"
+    );
+    assert_eq!(
+        unverified_signing_certificate.code(),
+        Some(ExceptionCode::General)
+    );
+    assert!(!unverified_signing_certificate.cpp_file().is_empty());
+    assert!(unverified_signing_certificate.cpp_line() > 0);
+
+    assert_eq!(
+        second_issuer_missing.message(),
+        "unable to get local issuer certificate"
+    );
+    assert_eq!(
+        second_issuer_missing.code(),
+        Some(ExceptionCode::CertificateIssuerMissing)
+    );
+    assert!(!second_issuer_missing.cpp_file().is_empty());
+    assert!(second_issuer_missing.cpp_line() > 0);
+
+    assert_eq!(
+        unknown_certificate_status.message(),
+        "Certificate status: unknown"
+    );
+    assert_eq!(
+        unknown_certificate_status.code(),
+        Some(ExceptionCode::CertificateUnknown)
+    );
+    assert!(!unknown_certificate_status.cpp_file().is_empty());
+    assert!(unknown_certificate_status.cpp_line() > 0);
+
+    let [first_issuer_missing] = unverified_signing_certificate.causes() else {
+        panic!("expected one cause: {unverified_signing_certificate:?}");
+    };
+
+    assert_eq!(
+        first_issuer_missing.message(),
+        "unable to get local issuer certificate"
+    );
+    assert_eq!(
+        first_issuer_missing.code(),
+        Some(ExceptionCode::CertificateIssuerMissing)
+    );
+    assert!(!first_issuer_missing.cpp_file().is_empty());
+    assert!(first_issuer_missing.cpp_line() > 0);
 
     Ok(())
 }

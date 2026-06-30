@@ -18,4 +18,13 @@ auto data_file_at(const digidoc::Container& container, const size_t index)
     -> const digidoc::DataFile& {
   return *container.dataFiles().at(index);
 }
+
+auto signatures_size(const digidoc::Container& container) -> size_t {
+  return container.signatures().size();
+}
+
+auto signature_at(const digidoc::Container& container, const size_t index)
+    -> const digidoc::Signature& {
+  return *container.signatures().at(index);
+}
 }  // namespace digidoc_rs::container

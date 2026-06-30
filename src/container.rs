@@ -1,3 +1,4 @@
+use crate::signature::Signature;
 use crate::util::path_to_str;
 use crate::{DataFile, Error};
 use cxx::let_cxx_string;
@@ -32,6 +33,15 @@ impl Container {
 
         Ok(data_files)
     }
+
+    pub fn signatures(&self) -> Result<Vec<Signature<'_>>, Error> {
+        let count = ffi::signatures_size(&self.0)?;
+        let data_files = (0..count)
+            .map(|index| ffi::signature_at(&self.0, index).map(Signature))
+            .collect::<Result<_, _>>()?;
+
+        Ok(data_files)
+    }
 }
 
 impl Display for Container {
@@ -43,9 +53,13 @@ impl Display for Container {
             |_| String::from("<unknown>"),
             |files| files.len().to_string(),
         );
+        let signatures_count = self.signatures().map_or_else(
+            |_| String::from("<unknown>"),
+            |signatures| signatures.len().to_string(),
+        );
         write!(
             f,
-            "Container of type {media_type} with {data_files_count} files"
+            "Container of type {media_type} with {data_files_count} files and {signatures_count} signatures"
         )
     }
 }
@@ -55,6 +69,7 @@ impl Debug for Container {
         f.debug_struct("Container")
             .field("media_type()", &self.media_type())
             .field("data_files()", &self.data_files())
+            .field("signatures()", &self.signatures())
             .finish_non_exhaustive()
     }
 }

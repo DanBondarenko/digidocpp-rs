@@ -26,6 +26,7 @@ bon = "3.9.1"
 itertools = "0.14.0"
 serial_test = "3.3.1"
 tempfile = "3.27.0"
+x509-parser = "0.18.1"
 
 [workspace.lints.rust]
 missing_docs = "allow" # TODO: Turn on before publishing

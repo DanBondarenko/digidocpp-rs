@@ -9,4 +9,7 @@ auto media_type(const digidoc::Container& container) -> rust::String;
 auto data_files_size(const digidoc::Container& container) -> size_t;
 auto data_file_at(const digidoc::Container& container, size_t index)
     -> const digidoc::DataFile&;
+auto signatures_size(const digidoc::Container& container) -> size_t;
+auto signature_at(const digidoc::Container& container, size_t index)
+    -> const digidoc::Signature&;
 }  // namespace digidoc_rs::container

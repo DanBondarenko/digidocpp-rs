@@ -108,44 +108,44 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [ ] `saveAs(path)`
 
 ## `Signature`
-- [ ] `POLv1`
-- [ ] `POLv2`
-- [ ] `id()`
-- [ ] `claimedSigningTime()`
-- [ ] `trustedSigningTime()`
-- [ ] `signingCertificate()`
-- [ ] `signatureMethod()`
-- [ ] `validate()`
-- [ ] `validate(policy)`
-- [ ] `dataToSign()`
+- [x] `POLv1`
+- [x] `POLv2`
+- [x] `id()`
+- [x] `claimedSigningTime()`
+- [x] `trustedSigningTime()`
+- [x] `signingCertificate()`
+- [x] `signatureMethod()`
+- [x] `validate()`
+- [x] `validate(policy)`
+- [x] `dataToSign()`
 - [ ] `setSignatureValue(bytes)`
-- [ ] `policy()`
-- [ ] `SPUri()`
-- [ ] `profile()`
-- [ ] `city()`
-- [ ] `stateOrProvince()`
-- [ ] `postalCode()`
-- [ ] `countryName()`
-- [ ] `streetAddress()`
-- [ ] `signerRoles()`
-- [ ] `OCSPProducedAt()`
-- [ ] `OCSPCertificate()`
-- [ ] `TimeStampCertificate()`
-- [ ] `TimeStampTime()`
-- [ ] `ArchiveTimeStamps()`
-- [ ] `signedBy()`
-- [ ] `messageImprint()`
+- [x] `policy()`
+- [x] `SPUri()`
+- [x] `profile()`
+- [x] `city()`
+- [x] `stateOrProvince()`
+- [x] `postalCode()`
+- [x] `countryName()`
+- [x] `streetAddress()`
+- [x] `signerRoles()`
+- [x] `OCSPProducedAt()`
+- [x] `OCSPCertificate()`
+- [x] `TimeStampCertificate()`
+- [x] `TimeStampTime()`
+- [x] `ArchiveTimeStamps()`
+- [x] `signedBy()`
+- [x] `messageImprint()`
 - [ ] `extendSignatureProfile(signer)`
  
 ## `Signature::Validator`
-- [ ] Constructor
-- [ ] `diagnostics()`
-- [ ] `status()`
-- [ ] `Status` (enum)
+- [ ] ~~Constructor~~
+- [x] `diagnostics()`
+- [x] `status()`
+- [x] `Status` (enum)
 
 ## `TSAInfo`
-- [ ] `cert`
-- [ ] `time`
+- [x] `cert`
+- [x] `time`
 
 ## `Signer`
 - [ ] `cert()`
@@ -170,6 +170,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [ ] `PKCS12Signer` (subclass)
 - [ ] `PKCS11Signer` (subclass)
 - [ ] `WinSigner` (subclass)
+
 ## Other ideas
 - [ ] add cxx shared struct for vectors of non-owned data e.g. `Container::dataFiles()` and `Container::signatures()`
 - [ ] use types to prevent invalid initialization and termination
