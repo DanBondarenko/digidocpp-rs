@@ -24,10 +24,6 @@ impl DataFile<'_> {
     pub fn calc_digest(&self, method: &str) -> Result<Vec<u8>, Error> {
         Ok(ffi::calc_digest(self.0, method)?)
     }
-
-    pub fn calc_digest_default(&self) -> Result<Vec<u8>, Error> {
-        Ok(ffi::calc_digest(self.0, "")?)
-    }
 }
 
 impl Display for DataFile<'_> {

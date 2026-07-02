@@ -191,7 +191,6 @@ pub(crate) struct DataFileExpectation {
     pub(crate) file_name: String,
     pub(crate) file_size: u64,
     pub(crate) media_type: String,
-    pub(crate) calc_digest_default: Option<Vec<u8>>,
 }
 
 impl DataFileExpectation {
@@ -203,10 +202,6 @@ impl DataFileExpectation {
         assert_eq!(data_file.file_name()?, self.file_name);
         assert_eq!(data_file.file_size()?, self.file_size);
         assert_eq!(data_file.media_type()?, self.media_type);
-        assert_if_some(
-            &data_file.calc_digest_default()?,
-            self.calc_digest_default.as_ref(),
-        );
         Ok(())
     }
 }
