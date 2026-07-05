@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <cstdint>
 
 #include "digidocpp/Container.h"
 #include "rust/cxx.h"
@@ -12,4 +13,7 @@ auto data_file_at(const digidoc::Container& container, size_t index)
 auto signatures_size(const digidoc::Container& container) -> size_t;
 auto signature_at(const digidoc::Container& container, size_t index)
     -> const digidoc::Signature&;
+auto add_data_file(digidoc::Container& container, rust::Str path,
+                   rust::Str media_type) -> void;
+auto remove_data_file(digidoc::Container& container, uint32_t index) -> void;
 }  // namespace digidoc_rs::container

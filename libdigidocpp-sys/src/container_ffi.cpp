@@ -1,6 +1,8 @@
 #include "libdigidocpp-sys/include/container_ffi.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <string>
 
 #include "digidocpp/Container.h"
 #include "rust/cxx.h"
@@ -27,4 +29,15 @@ auto signature_at(const digidoc::Container& container, const size_t index)
     -> const digidoc::Signature& {
   return *container.signatures().at(index);
 }
+
+auto add_data_file(digidoc::Container& container, const rust::Str path,
+                   const rust::Str media_type) -> void {
+  container.addDataFile(std::string(path), std::string(media_type));
+}
+
+auto remove_data_file(digidoc::Container& container, const uint32_t index)
+    -> void {
+  container.removeDataFile(index);
+}
+
 }  // namespace digidoc_rs::container

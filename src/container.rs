@@ -34,6 +34,20 @@ impl Container {
         Ok(data_files)
     }
 
+    pub fn add_data_file(&mut self, path: impl AsRef<Path>, media_type: &str) -> Result<(), Error> {
+        let path = path_to_str(path.as_ref())?;
+        ffi::add_data_file(self.0.pin_mut(), path, media_type)?;
+        Ok(())
+    }
+
+    pub fn remove_data_file(&mut self, index: usize) -> Result<(), Error> {
+        let index = u32::try_from(index).map_err(|_| {
+            Error::Internal(format!("data file index does not fit in 32 bits: {index}"))
+        })?;
+        ffi::remove_data_file(self.0.pin_mut(), index)?;
+        Ok(())
+    }
+
     pub fn signatures(&self) -> Result<Vec<Signature<'_>>, Error> {
         let count = ffi::signatures_size(&self.0)?;
         let data_files = (0..count)

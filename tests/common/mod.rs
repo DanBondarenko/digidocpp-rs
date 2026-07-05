@@ -13,6 +13,7 @@ use std::error::Error as StdError;
 use std::ffi::OsString;
 use std::fmt::Debug;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
@@ -47,6 +48,8 @@ macro_rules! assert_general_digidoc_err {
 
 #[allow(unused_imports)]
 pub(crate) use assert_general_digidoc_err;
+
+pub(crate) const URI_SHA256: &str = "http://www.w3.org/2001/04/xmlenc#sha256";
 
 fn fixtures_directory() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -85,6 +88,13 @@ pub(crate) fn copy_fixtures(directory: &Path, names: &[&str]) -> Result<(), Box<
     }
 
     Ok(())
+}
+
+pub(crate) fn write_file(directory: &Path, name: &str, contents: &[u8]) -> io::Result<PathBuf> {
+    let path = directory.join(name);
+    fs::write(&path, contents)?;
+
+    Ok(path)
 }
 
 pub(crate) fn offline_conf(directory: &Path, tsl_name: &str) -> Result<Conf, Box<dyn StdError>> {
@@ -139,6 +149,7 @@ fn parse_common_name(der: &DerBytes) -> Result<String, Box<dyn StdError>> {
     Ok(common_name.to_owned())
 }
 
+#[track_caller]
 pub(crate) fn assert_if_some<T: PartialEq + Debug + ?Sized>(left: &T, right: Option<&T>) {
     if let Some(value) = right {
         assert_eq!(left, value);
@@ -184,7 +195,7 @@ impl ContainerExpectation {
     }
 }
 
-#[derive(Builder)]
+#[derive(Builder, Clone)]
 #[builder(on(_, into))]
 pub(crate) struct DataFileExpectation {
     pub(crate) id: String,

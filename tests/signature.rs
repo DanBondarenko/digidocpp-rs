@@ -138,7 +138,6 @@ fn created_empty_asice_container_has_no_signatures() -> Result<(), Box<dyn StdEr
 const PROFILE_BES_TIME_STAMP: &str = "BES/time-stamp";
 const PROFILE_TIME_STAMP_TOKEN: &str = "TimeStampToken";
 const SIGNED_BY_DEMO: &str = "DEMO of SK TSA 2014";
-const SIGNATURE_METHOD_XMLENC_SHA_256: &str = "http://www.w3.org/2001/04/xmlenc#sha256";
 
 pub(crate) fn valid_signature_a() -> SignatureExpectation {
     SignatureExpectation::builder()
@@ -147,7 +146,7 @@ pub(crate) fn valid_signature_a() -> SignatureExpectation {
         .time_stamp_certificate_common_name(SIGNED_BY_DEMO)
         .claimed_signing_time("2016-11-02T11:07:45Z")
         .trusted_signing_time("2016-11-02T11:07:45Z")
-        .signature_method(SIGNATURE_METHOD_XMLENC_SHA_256)
+        .signature_method(common::URI_SHA256)
         .policy("")
         .sp_uri("")
         .profile(PROFILE_TIME_STAMP_TOKEN)
@@ -175,7 +174,7 @@ pub(crate) fn valid_signature_b() -> SignatureExpectation {
         .id("5641640388766379252")
         .claimed_signing_time("2017-04-10T06:27:29Z")
         .trusted_signing_time("2017-04-10T06:27:29Z")
-        .signature_method(SIGNATURE_METHOD_XMLENC_SHA_256)
+        .signature_method(common::URI_SHA256)
         .policy("")
         .sp_uri("")
         .profile(PROFILE_TIME_STAMP_TOKEN)
@@ -204,7 +203,7 @@ pub(crate) fn valid_signature_c() -> SignatureExpectation {
         .time_stamp_certificate_common_name(SIGNED_BY_DEMO)
         .claimed_signing_time("2017-04-10T06:27:28Z")
         .trusted_signing_time("2017-04-10T06:27:28Z")
-        .signature_method(SIGNATURE_METHOD_XMLENC_SHA_256)
+        .signature_method(common::URI_SHA256)
         .policy("")
         .sp_uri("")
         .profile(PROFILE_TIME_STAMP_TOKEN)
@@ -261,7 +260,7 @@ pub(crate) fn signature_with_invalid_timestamp() -> SignatureExpectation {
         .time_stamp_certificate_common_name(SIGNED_BY_DEMO)
         .claimed_signing_time("2016-11-02T11:07:45Z")
         .trusted_signing_time("2016-11-02T11:07:45Z")
-        .signature_method(SIGNATURE_METHOD_XMLENC_SHA_256)
+        .signature_method(common::URI_SHA256)
         .policy("")
         .sp_uri("")
         .profile(PROFILE_TIME_STAMP_TOKEN)

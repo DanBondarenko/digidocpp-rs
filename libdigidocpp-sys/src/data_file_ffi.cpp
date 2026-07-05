@@ -28,4 +28,8 @@ auto calc_digest(const digidoc::DataFile& file, const rust::Str method)
     -> rust::Vec<uint8_t> {
   return util::to_rust_vec(file.calcDigest(std::string(method)));
 }
+
+auto save_as(const digidoc::DataFile& data_file, const rust::Str path) -> void {
+  data_file.saveAs(std::string(path));
+}
 }  // namespace digidoc_rs::data_file

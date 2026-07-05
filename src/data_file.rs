@@ -1,6 +1,8 @@
 use crate::Error;
+use crate::util::path_to_str;
 use libdigidocpp_sys::data_file::ffi;
 use std::fmt::{Debug, Display, Formatter};
+use std::path::Path;
 
 pub struct DataFile<'a>(pub(crate) &'a ffi::DataFile);
 
@@ -23,6 +25,11 @@ impl DataFile<'_> {
 
     pub fn calc_digest(&self, method: &str) -> Result<Vec<u8>, Error> {
         Ok(ffi::calc_digest(self.0, method)?)
+    }
+
+    pub fn save_as(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        let path = path_to_str(path.as_ref())?;
+        Ok(ffi::save_as(self.0, path)?)
     }
 }
 

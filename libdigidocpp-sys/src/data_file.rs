@@ -19,5 +19,6 @@ pub mod ffi {
         fn file_name(data_file: &DataFile) -> Result<String>;
         fn file_size(data_file: &DataFile) -> Result<u64>;
         fn calc_digest(data_file: &DataFile, method: &str) -> Result<Vec<u8>>;
+        fn save_as(data_file: &DataFile, path: &str) -> Result<()>;
     }
 }

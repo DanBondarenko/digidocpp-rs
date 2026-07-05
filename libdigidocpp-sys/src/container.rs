@@ -26,5 +26,11 @@ pub mod ffi {
         fn data_file_at(container: &Container, index: usize) -> Result<&DataFile>;
         fn signatures_size(container: &Container) -> Result<usize>;
         fn signature_at(container: &Container, index: usize) -> Result<&Signature>;
+        fn add_data_file(
+            container: Pin<&mut Container>,
+            path: &str,
+            media_type: &str,
+        ) -> Result<()>;
+        fn remove_data_file(container: Pin<&mut Container>, index: u32) -> Result<()>;
     }
 }
