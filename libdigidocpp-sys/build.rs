@@ -8,6 +8,7 @@ fn main() {
         "src/container.rs",
         "src/data_file.rs",
         "src/signature.rs",
+        "src/stream.rs",
     ]);
     build
         .std("c++20")
@@ -16,7 +17,8 @@ fn main() {
         .file("src/exception_ffi.cpp")
         .file("src/container_ffi.cpp")
         .file("src/data_file_ffi.cpp")
-        .file("src/signature_ffi.cpp");
+        .file("src/signature_ffi.cpp")
+        .file("src/stream_ffi.cpp");
 
     let test_util_feature = env::var_os("CARGO_FEATURE_TEST_UTIL").is_some();
 
@@ -53,6 +55,8 @@ fn main() {
     println!("cargo:rerun-if-changed=include/data_file_ffi.h");
     println!("cargo:rerun-if-changed=src/signature_ffi.cpp");
     println!("cargo:rerun-if-changed=include/signature_ffi.h");
+    println!("cargo:rerun-if-changed=src/stream_ffi.cpp");
+    println!("cargo:rerun-if-changed=include/stream_ffi.h");
 
     if test_util_feature {
         println!("cargo:rerun-if-changed=src/test_util.cpp");
