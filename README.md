@@ -86,9 +86,10 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `open(path, ContainerOpenCB *cb)`
 - [ ] `save(path = "")`
 - [x] `mediaType()`
-- [ ] `addDataFile(path, mediaType)`
+- [x] `addDataFile(path, mediaType)`
+- [x] `addDataFile(stream, path, mediaType)`
 - [x] `dataFiles()`
-- [ ] `removeDataFile(index)`
+- [x] `removeDataFile(index)`
 - [ ] `addAdESSignature(bytes)`
 - [ ] `prepareSignature(signer)`
 - [ ] `signatures()`
@@ -105,7 +106,8 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `fileSize()`
 - [x] `mediaType()`
 - [x] `calcDigest(method)`
-- [ ] `saveAs(path)`
+- [x] `saveAs(path)`
+- [x] `saveAs(stream)`
 
 ## `Signature`
 - [x] `POLv1`

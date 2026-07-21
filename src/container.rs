@@ -3,7 +3,9 @@ use crate::util::path_to_str;
 use crate::{DataFile, Error};
 use cxx::let_cxx_string;
 use libdigidocpp_sys::container::ffi;
+use libdigidocpp_sys::stream::Source;
 use std::fmt::{Debug, Display, Formatter};
+use std::io::{Read, Seek};
 use std::path::Path;
 
 pub struct Container(cxx::UniquePtr<ffi::Container>);
@@ -37,6 +39,21 @@ impl Container {
     pub fn add_data_file(&mut self, path: impl AsRef<Path>, media_type: &str) -> Result<(), Error> {
         let path = path_to_str(path.as_ref())?;
         ffi::add_data_file(self.0.pin_mut(), path, media_type)?;
+        Ok(())
+    }
+
+    pub fn add_data_file_from_reader(
+        &mut self,
+        name: &str,
+        media_type: &str,
+        reader: impl Read + Seek + 'static,
+    ) -> Result<(), Error> {
+        ffi::add_data_file_from_reader(
+            self.0.pin_mut(),
+            name,
+            media_type,
+            Box::new(Source::new(reader)),
+        )?;
         Ok(())
     }
 

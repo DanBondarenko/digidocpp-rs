@@ -200,7 +200,7 @@ impl ContainerExpectation {
 pub(crate) struct DataFileExpectation {
     pub(crate) id: String,
     pub(crate) file_name: String,
-    pub(crate) file_size: u64,
+    pub(crate) file_size: Option<u64>,
     pub(crate) media_type: String,
 }
 
@@ -211,7 +211,9 @@ impl DataFileExpectation {
     pub(crate) fn assert(&self, data_file: &DataFile) -> Result<(), Box<dyn StdError>> {
         assert_eq!(data_file.id()?, self.id);
         assert_eq!(data_file.file_name()?, self.file_name);
-        assert_eq!(data_file.file_size()?, self.file_size);
+        if let Some(file_size) = self.file_size {
+            assert_eq!(data_file.file_size()?, file_size);
+        }
         assert_eq!(data_file.media_type()?, self.media_type);
         Ok(())
     }

@@ -4,7 +4,7 @@ use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error as ThisError;
 
-#[derive(ThisError, Debug, Clone)]
+#[derive(ThisError, Debug)]
 #[non_exhaustive]
 pub enum Error {
     #[error(transparent)]
@@ -13,6 +13,8 @@ pub enum Error {
     Internal(String),
     #[error("FFI error: {0}")]
     Ffi(String),
+    #[error("I/O error: {0}")]
+    Io(std::io::Error),
 }
 
 impl Error {

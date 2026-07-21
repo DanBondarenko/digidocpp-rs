@@ -1,10 +1,12 @@
 #include "libdigidocpp-sys/include/data_file_ffi.h"
 
 #include <cstdint>
+#include <ostream>
 #include <string>
 
 #include "digidocpp/DataFile.h"
 #include "libdigidocpp-sys/include/ffi_util.h"
+#include "libdigidocpp-sys/include/stream_ffi.h"
 #include "rust/cxx.h"
 
 namespace digidoc_rs::data_file {
@@ -31,5 +33,11 @@ auto calc_digest(const digidoc::DataFile& file, const rust::Str method)
 
 auto save_as(const digidoc::DataFile& data_file, const rust::Str path) -> void {
   data_file.saveAs(std::string(path));
+}
+
+auto write_to(const digidoc::DataFile& data_file, stream::Sink& sink) -> void {
+  stream::write_through(sink, [&data_file](std::ostream& output) -> void {
+    data_file.saveAs(output);
+  });
 }
 }  // namespace digidoc_rs::data_file

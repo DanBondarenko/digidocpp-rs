@@ -6,6 +6,7 @@ mod data_file;
 mod exception;
 mod init;
 mod signature;
+mod stream;
 mod util;
 
 pub use conf::*;

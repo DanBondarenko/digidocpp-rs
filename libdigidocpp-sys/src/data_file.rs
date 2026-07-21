@@ -9,6 +9,13 @@ pub mod ffi {
         type DataFile;
     }
 
+    #[namespace = "digidoc_rs::stream"]
+    unsafe extern "C++" {
+        include!("libdigidocpp-sys/src/stream.rs.h");
+
+        type Sink<'a> = crate::stream::Sink<'a>;
+    }
+
     #[namespace = "digidoc_rs::data_file"]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/data_file_ffi.h");
@@ -20,5 +27,6 @@ pub mod ffi {
         fn file_size(data_file: &DataFile) -> Result<u64>;
         fn calc_digest(data_file: &DataFile, method: &str) -> Result<Vec<u8>>;
         fn save_as(data_file: &DataFile, path: &str) -> Result<()>;
+        fn write_to(data_file: &DataFile, sink: &mut Sink<'_>) -> Result<()>;
     }
 }

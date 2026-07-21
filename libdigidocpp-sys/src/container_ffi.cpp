@@ -3,8 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "digidocpp/Container.h"
+#include "libdigidocpp-sys/include/stream_ffi.h"
 #include "rust/cxx.h"
 
 namespace digidoc_rs::container {
@@ -40,4 +42,10 @@ auto remove_data_file(digidoc::Container& container, const uint32_t index)
   container.removeDataFile(index);
 }
 
+auto add_data_file_from_reader(digidoc::Container& container,
+                               const rust::Str name, const rust::Str media_type,
+                               rust::Box<stream::Source> reader) -> void {
+  container.addDataFile(stream::make_input_stream(std::move(reader)),
+                        std::string(name), std::string(media_type));
+}
 }  // namespace digidoc_rs::container

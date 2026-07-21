@@ -5,6 +5,10 @@
 #include "digidocpp/Container.h"
 #include "rust/cxx.h"
 
+namespace digidoc_rs::stream {
+struct Source;
+}  // namespace digidoc_rs::stream
+
 namespace digidoc_rs::container {
 auto media_type(const digidoc::Container& container) -> rust::String;
 auto data_files_size(const digidoc::Container& container) -> size_t;
@@ -16,4 +20,7 @@ auto signature_at(const digidoc::Container& container, size_t index)
 auto add_data_file(digidoc::Container& container, rust::Str path,
                    rust::Str media_type) -> void;
 auto remove_data_file(digidoc::Container& container, uint32_t index) -> void;
+auto add_data_file_from_reader(digidoc::Container& container, rust::Str name,
+                               rust::Str media_type,
+                               rust::Box<stream::Source> reader) -> void;
 }  // namespace digidoc_rs::container

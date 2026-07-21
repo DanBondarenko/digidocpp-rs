@@ -1,7 +1,10 @@
 use crate::Error;
+use crate::stream::call_then_deliver_stream_failure;
 use crate::util::path_to_str;
 use libdigidocpp_sys::data_file::ffi;
+use libdigidocpp_sys::stream::Sink;
 use std::fmt::{Debug, Display, Formatter};
+use std::io::Write;
 use std::path::Path;
 
 pub struct DataFile<'a>(pub(crate) &'a ffi::DataFile);
@@ -20,16 +23,21 @@ impl DataFile<'_> {
     }
 
     pub fn file_size(&self) -> Result<u64, Error> {
-        Ok(ffi::file_size(self.0)?)
+        call_then_deliver_stream_failure(|| ffi::file_size(self.0))
     }
 
     pub fn calc_digest(&self, method: &str) -> Result<Vec<u8>, Error> {
-        Ok(ffi::calc_digest(self.0, method)?)
+        call_then_deliver_stream_failure(|| ffi::calc_digest(self.0, method))
     }
 
     pub fn save_as(&self, path: impl AsRef<Path>) -> Result<(), Error> {
         let path = path_to_str(path.as_ref())?;
-        Ok(ffi::save_as(self.0, path)?)
+        call_then_deliver_stream_failure(|| ffi::save_as(self.0, path))
+    }
+
+    pub fn write_to(&self, mut writer: impl Write) -> Result<(), Error> {
+        let mut sink = Sink::new(&mut writer);
+        call_then_deliver_stream_failure(|| ffi::write_to(self.0, &mut sink))
     }
 }
 

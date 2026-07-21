@@ -12,8 +12,16 @@ mod common;
 
 use crate::common::{ContainerExpectation, DataFileExpectation, assert_general_digidoc_err};
 use libdigidocpp::{Container, DataFile, Error};
+use rand_pcg::Pcg64Mcg;
+use rand_pcg::rand_core::{Rng, SeedableRng};
 use serial_test::serial;
+use std::cell::Cell;
 use std::error::Error as StdError;
+use std::fmt::Debug;
+use std::fs;
+use std::io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom};
+use std::panic::{self, AssertUnwindSafe};
+use std::rc::Rc;
 use tempfile::TempDir;
 
 #[test]
@@ -371,6 +379,25 @@ fn rejects_adding_a_data_file_to_a_signed_container() -> Result<(), Box<dyn StdE
 
 #[test]
 #[serial]
+fn rejects_reader_data_file_names_with_a_directory() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let mut container = Container::create("new.asice")?;
+
+    let result = container.add_data_file_from_reader(
+        "folder/test.txt",
+        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        Cursor::new(b"x"),
+    );
+
+    assert_general_digidoc_err!(result);
+    ContainerExpectation::builder()
+        .data_files([])
+        .build()
+        .assert(&container)
+}
+
+#[test]
+#[serial]
 fn removes_data_files_one_by_one() -> Result<(), Box<dyn StdError>> {
     let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let data_directory = TempDir::new()?;
@@ -493,4 +520,406 @@ fn rejects_an_index_that_does_not_fit_in_32_bits() -> Result<(), Box<dyn StdErro
     );
 
     expectation.assert(&container)
+}
+
+#[test]
+#[serial]
+fn calculates_the_digests_of_a_data_file_from_a_reader() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let mut container = Container::create("new.asice")?;
+    container.add_data_file_from_reader(
+        "test1.txt",
+        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        Cursor::new(b"1234\n".to_vec()),
+    )?;
+
+    ContainerExpectation::builder()
+        .data_files([DataFileExpectation::builder()
+            .id("test1.txt")
+            .file_name("test1.txt")
+            .file_size(5u64)
+            .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
+            .build()])
+        .build()
+        .assert(&container)?;
+
+    assert_digests(&container.data_files()?[0])
+}
+
+fn container_with_reader(
+    reader: impl Read + Seek + 'static,
+) -> Result<Container, Box<dyn StdError>> {
+    let mut container = Container::create("new.asice")?;
+    container.add_data_file_from_reader(
+        "data.bin",
+        DataFileExpectation::MEDIA_TYPE_OCTET_STREAM,
+        reader,
+    )?;
+    ContainerExpectation::builder()
+        .data_files([DataFileExpectation::builder()
+            .id("data.bin")
+            .file_name("data.bin")
+            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
+            .build()])
+        .build()
+        .assert(&container)?;
+
+    Ok(container)
+}
+
+#[track_caller]
+fn assert_io_error<T: Debug>(
+    result: &Result<T, Error>,
+    expected_kind: ErrorKind,
+    expected_message: &str,
+) {
+    let Err(Error::Io(io_error)) = &result else {
+        panic!("expected io error, got {result:?}");
+    };
+    assert_eq!(io_error.kind(), expected_kind);
+    assert_eq!(io_error.to_string(), expected_message);
+}
+
+#[track_caller]
+fn assert_scripted_panic<T: Debug>(outcome: std::thread::Result<T>) {
+    let payload = outcome.expect_err("expected panic");
+    assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
+}
+
+struct FailingReader {
+    bytes: Cursor<Vec<u8>>,
+    calls: Rc<Cell<usize>>,
+    fails_seeks: bool,
+}
+
+impl FailingReader {
+    fn failing_reads() -> Self {
+        Self {
+            bytes: Cursor::new(vec![0; 100]),
+            calls: Rc::default(),
+            fails_seeks: false,
+        }
+    }
+
+    fn failing_seeks() -> Self {
+        Self {
+            bytes: Cursor::new(vec![0; 100]),
+            calls: Rc::default(),
+            fails_seeks: true,
+        }
+    }
+}
+
+impl Read for FailingReader {
+    fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.calls.set(self.calls.get() + 1);
+        if self.bytes.position() > 0 {
+            return Err(io::Error::new(
+                ErrorKind::BrokenPipe,
+                "scripted read failure",
+            ));
+        }
+        self.bytes.read(buffer)
+    }
+}
+
+impl Seek for FailingReader {
+    fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+        self.calls.set(self.calls.get() + 1);
+        if self.fails_seeks {
+            return Err(io::Error::new(
+                ErrorKind::Unsupported,
+                "scripted seek failure",
+            ));
+        }
+        self.bytes.seek(position)
+    }
+}
+
+#[derive(Default)]
+struct PanickingReader {
+    calls: Rc<Cell<usize>>,
+}
+
+impl Read for PanickingReader {
+    fn read(&mut self, _buffer: &mut [u8]) -> io::Result<usize> {
+        self.calls.set(self.calls.get() + 1);
+        panic!("scripted panic");
+    }
+}
+
+impl Seek for PanickingReader {
+    fn seek(&mut self, _position: SeekFrom) -> io::Result<u64> {
+        self.calls.set(self.calls.get() + 1);
+        panic!("scripted panic");
+    }
+}
+
+#[test]
+#[serial]
+fn reports_reader_failures_as_io_errors() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let data_directory = TempDir::new()?;
+    let saved_path = data_directory.path().join("saved.bin");
+
+    let container = container_with_reader(FailingReader::failing_reads())?;
+    let result = container.data_files()?[0].calc_digest(common::URI_SHA256);
+    assert_io_error(&result, ErrorKind::BrokenPipe, "scripted read failure");
+
+    let container = container_with_reader(FailingReader::failing_reads())?;
+    let result = container.data_files()?[0].write_to(Vec::new());
+    assert_io_error(&result, ErrorKind::BrokenPipe, "scripted read failure");
+
+    let container = container_with_reader(FailingReader::failing_reads())?;
+    let result = container.data_files()?[0].save_as(&saved_path);
+    assert_io_error(&result, ErrorKind::BrokenPipe, "scripted read failure");
+
+    let container = container_with_reader(FailingReader::failing_seeks())?;
+    let result = container.data_files()?[0].file_size();
+    assert_io_error(&result, ErrorKind::Unsupported, "scripted seek failure");
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn never_uses_a_failed_reader_again() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let reader = FailingReader::failing_reads();
+    let calls = Rc::clone(&reader.calls);
+    let container = container_with_reader(reader)?;
+    let data_file = &container.data_files()?[0];
+
+    data_file
+        .calc_digest(common::URI_SHA256)
+        .expect_err("the first call should fail");
+    let calls_after_failure = calls.get();
+    let result = data_file.calc_digest(common::URI_SHA256);
+
+    assert!(
+        matches!(result, Err(Error::Io(_))),
+        "expected io error, got {result:?}"
+    );
+    assert_eq!(
+        calls.get(),
+        calls_after_failure,
+        "reader used after failure"
+    );
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn reader_panic_is_transferred_across_ffi() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let data_directory = TempDir::new()?;
+    let saved_path = data_directory.path().join("saved.bin");
+
+    let container = container_with_reader(PanickingReader::default())?;
+    let data_file = &container.data_files()?[0];
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
+        data_file.calc_digest(common::URI_SHA256)
+    }));
+    assert_scripted_panic(outcome);
+
+    let container = container_with_reader(PanickingReader::default())?;
+    let data_file = &container.data_files()?[0];
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| data_file.file_size()));
+    assert_scripted_panic(outcome);
+
+    let container = container_with_reader(PanickingReader::default())?;
+    let data_file = &container.data_files()?[0];
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| data_file.write_to(Vec::new())));
+    assert_scripted_panic(outcome);
+
+    let container = container_with_reader(PanickingReader::default())?;
+    let data_file = &container.data_files()?[0];
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| data_file.save_as(&saved_path)));
+    assert_scripted_panic(outcome);
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn never_uses_a_panicked_reader_again() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let reader = PanickingReader::default();
+    let calls = Rc::clone(&reader.calls);
+    let container = container_with_reader(reader)?;
+    let data_file = &container.data_files()?[0];
+
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
+        data_file.calc_digest(common::URI_SHA256)
+    }));
+    assert_scripted_panic(outcome);
+    let calls_after_panic = calls.get();
+    let result = data_file.calc_digest(common::URI_SHA256);
+
+    assert!(
+        matches!(result, Err(Error::Io(_))),
+        "expected io error, got {result:?}"
+    );
+    assert_eq!(calls.get(), calls_after_panic, "reader used after panic");
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn reader_ownership_is_transferred_to_cpp() -> Result<(), Box<dyn StdError>> {
+    struct TrackedBytes {
+        _reference_counter: Rc<()>,
+    }
+
+    impl AsRef<[u8]> for TrackedBytes {
+        fn as_ref(&self) -> &[u8] {
+            b"x"
+        }
+    }
+
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let reference_counter = Rc::new(());
+    let tracked_reader = || {
+        Cursor::new(TrackedBytes {
+            _reference_counter: Rc::clone(&reference_counter),
+        })
+    };
+
+    let mut container = Container::create("new.asice")?;
+    container.add_data_file_from_reader(
+        "removed.bin",
+        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        tracked_reader(),
+    )?;
+    assert_eq!(Rc::strong_count(&reference_counter), 2);
+    container.remove_data_file(0)?;
+    assert_eq!(Rc::strong_count(&reference_counter), 1);
+
+    let result = container.add_data_file_from_reader(
+        "folder/rejected.bin",
+        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        tracked_reader(),
+    );
+    assert_general_digidoc_err!(result);
+    assert_eq!(Rc::strong_count(&reference_counter), 1);
+
+    container.add_data_file_from_reader(
+        "kept.bin",
+        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        tracked_reader(),
+    )?;
+    drop(container);
+    assert_eq!(Rc::strong_count(&reference_counter), 1);
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn writes_out_the_exact_contents_of_data_files() -> Result<(), Box<dyn StdError>> {
+    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
+    let output_directory = TempDir::new()?;
+
+    for (fixture, expected) in [
+        ("test.asice", b"1234\n".as_slice()),
+        ("test-tera-empty.asics", b"".as_slice()),
+    ] {
+        let container = Container::open(common::fixture_path(fixture))?;
+        let data_file = &container.data_files()?[0];
+
+        let mut written = Vec::new();
+        data_file.write_to(&mut written)?;
+        assert_eq!(written, expected, "{fixture}");
+
+        let saved_path = output_directory.path().join("saved.bin");
+        data_file.save_as(&saved_path)?;
+        assert_eq!(fs::read(&saved_path)?, expected, "{fixture}");
+    }
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn reports_writer_failures_as_io_errors() -> Result<(), Box<dyn StdError>> {
+    struct FailingOnSecondWriteWriter {
+        calls: usize,
+    }
+
+    impl io::Write for FailingOnSecondWriteWriter {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            self.calls += 1;
+            if self.calls == 2 {
+                return Err(io::Error::new(ErrorKind::BrokenPipe, "scripted failure"));
+            }
+            Ok(data.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let container = container_with_reader(Cursor::new(vec![0; 200_000]))?;
+    let data_file = &container.data_files()?[0];
+    let mut writer = FailingOnSecondWriteWriter { calls: 0 };
+
+    let result = data_file.write_to(&mut writer);
+
+    let error = result.expect_err("write should fail");
+    assert_eq!(error.to_string(), "I/O error: scripted failure");
+    let Error::Io(inner) = &error else {
+        panic!("expected io error, got {error:?}");
+    };
+    assert_eq!(inner.kind(), ErrorKind::BrokenPipe);
+    assert_eq!(writer.calls, 2, "writer called after failure");
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+#[expect(clippy::manual_assert_eq, clippy::manual_assert)]
+fn writer_panic_is_transmitted_across_ffi() -> Result<(), Box<dyn StdError>> {
+    struct PanickingWriter {
+        calls: usize,
+    }
+
+    impl io::Write for PanickingWriter {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            self.calls += 1;
+            if self.calls == 2 {
+                panic!("scripted panic");
+            }
+            Ok(data.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let mut expected = vec![0; 200_000];
+    Pcg64Mcg::seed_from_u64(0).fill_bytes(&mut expected);
+    let container = container_with_reader(Cursor::new(expected.clone()))?;
+    let data_file = &container.data_files()?[0];
+    let mut panicking_writer = PanickingWriter { calls: 0 };
+
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
+        data_file.write_to(&mut panicking_writer)
+    }));
+
+    let payload = outcome.err().unwrap();
+    assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
+    assert_eq!(panicking_writer.calls, 2, "writer used after panic");
+
+    let mut written = Vec::new();
+    data_file.write_to(&mut written)?;
+    assert!(written == expected);
+
+    Ok(())
 }
