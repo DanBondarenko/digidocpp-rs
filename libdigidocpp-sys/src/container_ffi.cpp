@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -10,6 +11,14 @@
 #include "rust/cxx.h"
 
 namespace digidoc_rs::container {
+auto open(const rust::Str path) -> std::unique_ptr<digidoc::Container> {
+  return digidoc::Container::openPtr(std::string(path));
+}
+
+auto create(const rust::Str path) -> std::unique_ptr<digidoc::Container> {
+  return digidoc::Container::createPtr(std::string(path));
+}
+
 auto media_type(const digidoc::Container& container) -> rust::String {
   return container.mediaType();
 }

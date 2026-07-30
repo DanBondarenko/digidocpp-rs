@@ -1,7 +1,6 @@
 use crate::signature::Signature;
 use crate::util::path_to_str;
 use crate::{DataFile, Error};
-use cxx::let_cxx_string;
 use libdigidocpp_sys::container::ffi;
 use libdigidocpp_sys::stream::Source;
 use std::fmt::{Debug, Display, Formatter};
@@ -13,14 +12,12 @@ pub struct Container(cxx::UniquePtr<ffi::Container>);
 impl Container {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
-        let_cxx_string!(path = path);
-        Ok(Self(ffi::Container::openPtr(&path)?))
+        Ok(Self(ffi::open(path)?))
     }
 
     pub fn create(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
-        let_cxx_string!(path = path);
-        Ok(Self(ffi::Container::createPtr(&path)?))
+        Ok(Self(ffi::create(path)?))
     }
 
     pub fn media_type(&self) -> Result<String, Error> {

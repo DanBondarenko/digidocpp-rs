@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 #include "digidocpp/Container.h"
 #include "rust/cxx.h"
@@ -10,6 +11,8 @@ struct Source;
 }  // namespace digidoc_rs::stream
 
 namespace digidoc_rs::container {
+auto open(rust::Str path) -> std::unique_ptr<digidoc::Container>;
+auto create(rust::Str path) -> std::unique_ptr<digidoc::Container>;
 auto media_type(const digidoc::Container& container) -> rust::String;
 auto data_files_size(const digidoc::Container& container) -> size_t;
 auto data_file_at(const digidoc::Container& container, size_t index)
