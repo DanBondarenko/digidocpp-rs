@@ -15,13 +15,13 @@ use libdigidocpp::{Container, DataFile, Error};
 use rand_pcg::Pcg64Mcg;
 use rand_pcg::rand_core::{Rng, SeedableRng};
 use serial_test::serial;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::error::Error as StdError;
 use std::fmt::Debug;
 use std::fs;
 use std::io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom};
 use std::panic::{self, AssertUnwindSafe};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use tempfile::TempDir;
 
 #[test]
@@ -762,6 +762,68 @@ fn never_uses_a_panicked_reader_again() -> Result<(), Box<dyn StdError>> {
         "expected io error, got {result:?}"
     );
     assert_eq!(calls.get(), calls_after_panic, "reader used after panic");
+
+    Ok(())
+}
+
+#[test]
+#[serial]
+fn rejects_a_read_started_from_inside_the_reader() -> Result<(), Box<dyn StdError>> {
+    type NestedResult = Result<Vec<u8>, Error>;
+
+    struct ReenteringReader {
+        bytes: Cursor<Vec<u8>>,
+        container: Weak<RefCell<Container>>,
+        nested_result: Rc<RefCell<Option<NestedResult>>>,
+    }
+
+    impl Read for ReenteringReader {
+        fn read(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+            if self.nested_result.borrow().is_none() {
+                let container = self
+                    .container
+                    .upgrade()
+                    .ok_or_else(|| io::Error::other("the container was dropped"))?;
+                let result = container.borrow().data_files().map_err(io::Error::other)?[0]
+                    .calc_digest(common::URI_SHA256);
+                *self.nested_result.borrow_mut() = Some(result);
+            }
+            self.bytes.read(buffer)
+        }
+    }
+
+    impl Seek for ReenteringReader {
+        fn seek(&mut self, position: SeekFrom) -> io::Result<u64> {
+            self.bytes.seek(position)
+        }
+    }
+
+    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+    let container = Rc::new(RefCell::new(Container::create("new.asice")?));
+    let nested_result = Rc::new(RefCell::new(None));
+    let reader = ReenteringReader {
+        bytes: Cursor::new(b"1234\n".to_vec()),
+        container: Rc::downgrade(&container),
+        nested_result: Rc::clone(&nested_result),
+    };
+    container.borrow_mut().add_data_file_from_reader(
+        "test1.txt",
+        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        reader,
+    )?;
+
+    let outer_result = container.borrow().data_files()?[0].calc_digest(common::URI_SHA256);
+
+    let nested_result = nested_result.take().expect("reader didnt make nested call");
+    assert_io_error(
+        &nested_result,
+        ErrorKind::Other,
+        "the reader was used again while it was already in use",
+    );
+    assert!(
+        outer_result.is_err(),
+        "outer read should fail, got {outer_result:?}"
+    );
 
     Ok(())
 }

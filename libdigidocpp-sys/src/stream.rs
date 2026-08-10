@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::panic::{self, AssertUnwindSafe};
@@ -15,10 +15,10 @@ pub mod ffi {
 
         fn write(self: &mut Sink<'_>, data: &[u8]) -> Result<()>;
 
-        fn read(self: &mut Source, buffer: &mut [u8]) -> Result<usize>;
-        fn seek_from_start(self: &mut Source, offset: u64) -> Result<u64>;
-        fn seek_from_end(self: &mut Source, offset: i64) -> Result<u64>;
-        fn seek_from_current(self: &mut Source, offset: i64) -> Result<u64>;
+        fn read(self: &Source, buffer: &mut [u8]) -> Result<usize>;
+        fn seek_from_start(self: &Source, offset: u64) -> Result<u64>;
+        fn seek_from_end(self: &Source, offset: i64) -> Result<u64>;
+        fn seek_from_current(self: &Source, offset: i64) -> Result<u64>;
     }
 
     #[namespace = "digidoc_rs::stream"]
@@ -40,6 +40,7 @@ pub mod ffi {
 }
 
 const EARLIER_FAILURE: &str = "the data source failed earlier and cannot be used again";
+const REENTRANT_USE: &str = "the reader was used again while it was already in use";
 const PANIC_MESSAGE: &str = "the reader or writer panicked";
 
 enum StreamFailure {
@@ -110,33 +111,38 @@ trait ReadSeek: Read + Seek {}
 impl<T: Read + Seek> ReadSeek for T {}
 
 pub struct Source {
-    reader: Box<dyn ReadSeek>,
-    failed: bool,
+    // guard against reentrant reader calls
+    reader: RefCell<Box<dyn ReadSeek>>,
+    failed: Cell<bool>,
 }
 
 impl Source {
     pub fn new(reader: impl Read + Seek + 'static) -> Self {
         Self {
-            reader: Box::new(reader),
-            failed: false,
+            reader: RefCell::new(Box::new(reader)),
+            failed: Cell::new(false),
         }
     }
 
     fn run_unless_failed_and_store_failure<T>(
-        &mut self,
+        &self,
         reader_call: impl FnOnce(&mut dyn ReadSeek) -> io::Result<T>,
     ) -> Result<T, String> {
-        if self.failed {
+        if self.failed.get() {
             store_stream_failure(StreamFailure::Io(io::Error::other(EARLIER_FAILURE)));
             return Err(String::from(EARLIER_FAILURE));
         }
 
-        let result = run_and_store_failure(|| reader_call(&mut *self.reader));
-        self.failed = result.is_err();
+        let Ok(mut reader) = self.reader.try_borrow_mut() else {
+            store_stream_failure(StreamFailure::Io(io::Error::other(REENTRANT_USE)));
+            return Err(String::from(REENTRANT_USE));
+        };
+        let result = run_and_store_failure(|| reader_call(&mut **reader));
+        self.failed.set(result.is_err());
         result
     }
 
-    fn read(&mut self, buffer: &mut [u8]) -> Result<usize, String> {
+    fn read(&self, buffer: &mut [u8]) -> Result<usize, String> {
         let capacity = buffer.len();
         self.run_unless_failed_and_store_failure(|reader| {
             let count = loop {
@@ -155,19 +161,19 @@ impl Source {
         })
     }
 
-    fn seek_from_start(&mut self, offset: u64) -> Result<u64, String> {
+    fn seek_from_start(&self, offset: u64) -> Result<u64, String> {
         self.seek(SeekFrom::Start(offset))
     }
 
-    fn seek_from_end(&mut self, offset: i64) -> Result<u64, String> {
+    fn seek_from_end(&self, offset: i64) -> Result<u64, String> {
         self.seek(SeekFrom::End(offset))
     }
 
-    fn seek_from_current(&mut self, offset: i64) -> Result<u64, String> {
+    fn seek_from_current(&self, offset: i64) -> Result<u64, String> {
         self.seek(SeekFrom::Current(offset))
     }
 
-    fn seek(&mut self, position: SeekFrom) -> Result<u64, String> {
+    fn seek(&self, position: SeekFrom) -> Result<u64, String> {
         self.run_unless_failed_and_store_failure(|reader| reader.seek(position))
     }
 }
