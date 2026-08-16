@@ -84,7 +84,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 
 ## `Container`
 - [x] `open(path, ContainerOpenCB *cb)`
-- [ ] `save(path = "")`
+- [x] `save(path = "")`
 - [x] `mediaType()`
 - [x] `addDataFile(path, mediaType)`
 - [x] `addDataFile(stream, path, mediaType)`
@@ -177,3 +177,5 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [ ] add cxx shared struct for vectors of non-owned data e.g. `Container::dataFiles()` and `Container::signatures()`
 - [ ] use types to prevent invalid initialization and termination
 - [ ] use types to prevent invalid container ops
+- [ ] use a lock to ensure `libdigidocpp` can't be called from multiple threads
+- [ ] custom signers

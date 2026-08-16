@@ -23,6 +23,7 @@ auto signature_at(const digidoc::Container& container, size_t index)
 auto add_data_file(digidoc::Container& container, rust::Str path,
                    rust::Str media_type) -> void;
 auto remove_data_file(digidoc::Container& container, uint32_t index) -> void;
+auto save(digidoc::Container& container, rust::Str path) -> void;
 auto add_data_file_from_reader(digidoc::Container& container, rust::Str name,
                                rust::Str media_type,
                                rust::Box<stream::Source> reader) -> void;

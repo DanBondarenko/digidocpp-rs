@@ -51,6 +51,10 @@ auto remove_data_file(digidoc::Container& container, const uint32_t index)
   container.removeDataFile(index);
 }
 
+auto save(digidoc::Container& container, const rust::Str path) -> void {
+  container.save(std::string(path));
+}
+
 auto add_data_file_from_reader(digidoc::Container& container,
                                const rust::Str name, const rust::Str media_type,
                                rust::Box<stream::Source> reader) -> void {

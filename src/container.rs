@@ -1,4 +1,5 @@
 use crate::signature::Signature;
+use crate::stream::call_then_deliver_stream_failure;
 use crate::util::path_to_str;
 use crate::{DataFile, Error};
 use libdigidocpp_sys::container::ffi;
@@ -60,6 +61,19 @@ impl Container {
         })?;
         ffi::remove_data_file(self.0.pin_mut(), index)?;
         Ok(())
+    }
+
+    // reuse path container opened with
+    pub fn save(&mut self) -> Result<(), Error> {
+        call_then_deliver_stream_failure(|| ffi::save(self.0.pin_mut(), ""))
+    }
+
+    pub fn save_as(&mut self, path: impl AsRef<Path>) -> Result<(), Error> {
+        let path = path_to_str(path.as_ref())?;
+        if path.is_empty() {
+            return Err(Error::Internal(String::from("path is empty")));
+        }
+        call_then_deliver_stream_failure(|| ffi::save(self.0.pin_mut(), path))
     }
 
     pub fn signatures(&self) -> Result<Vec<Signature<'_>>, Error> {
