@@ -1,3 +1,4 @@
+use crate::stream::call_then_deliver_stream_failure;
 use crate::{Error, ExceptionCode};
 use libdigidocpp_sys::signature::ffi;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -115,15 +116,15 @@ impl Signature<'_> {
     }
 
     pub fn validate(&self) -> Result<(), Error> {
-        Ok(ffi::validate(self.0)?)
+        call_then_deliver_stream_failure(|| ffi::validate(self.0))
     }
 
     pub fn validate_with_policy(&self, policy: &str) -> Result<(), Error> {
-        Ok(ffi::validate_with_policy(self.0, policy)?)
+        call_then_deliver_stream_failure(|| ffi::validate_with_policy(self.0, policy))
     }
 
     pub fn data_to_sign(&self) -> Result<Vec<u8>, Error> {
-        Ok(ffi::data_to_sign(self.0)?)
+        call_then_deliver_stream_failure(|| ffi::data_to_sign(self.0))
     }
 
     pub fn policy(&self) -> Result<String, Error> {
@@ -194,7 +195,7 @@ impl Signature<'_> {
     }
 
     pub fn validator_result(&self) -> Result<ValidatorResult, Error> {
-        Ok(ValidatorResult(ffi::validator(self.0)?))
+        call_then_deliver_stream_failure(|| ffi::validator(self.0)).map(ValidatorResult)
     }
 }
 
