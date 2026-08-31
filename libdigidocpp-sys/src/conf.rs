@@ -52,29 +52,29 @@ pub mod ffi {
         fn digest_uri(self: &SettableConf) -> Result<String>;
         fn signature_digest_uri(self: &SettableConf) -> Result<String>;
 
-        fn set_log_level(self: Pin<&mut SettableConf>, level: i32) -> Result<()>;
+        fn set_log_level(self: Pin<&mut SettableConf>, level: i32);
         fn set_log_file(self: Pin<&mut SettableConf>, path: &str) -> Result<()>;
         fn set_tsl_url(self: Pin<&mut SettableConf>, url: &str) -> Result<()>;
-        fn clear_tsl_certs(self: Pin<&mut SettableConf>) -> Result<()>;
+        fn clear_tsl_certs(self: Pin<&mut SettableConf>);
         fn add_tsl_cert(self: Pin<&mut SettableConf>, der: &[u8]) -> Result<()>;
         fn set_ocsp_tm_profiles(self: Pin<&mut SettableConf>, profiles: &Vec<String>)
         -> Result<()>;
         fn set_ocsp_urls(self: Pin<&mut SettableConf>, urls: &Vec<OcspUrl>) -> Result<()>;
         fn set_ts_url(self: Pin<&mut SettableConf>, url: &str) -> Result<()>;
-        fn clear_ts_certs(self: Pin<&mut SettableConf>) -> Result<()>;
+        fn clear_ts_certs(self: Pin<&mut SettableConf>);
         fn add_ts_cert(self: Pin<&mut SettableConf>, der: &[u8]) -> Result<()>;
         fn set_tsl_cache(self: Pin<&mut SettableConf>, path: &str) -> Result<()>;
         fn set_xsd_path(self: Pin<&mut SettableConf>, path: &str) -> Result<()>;
-        fn set_tsl_allow_expired(self: Pin<&mut SettableConf>, enable: bool) -> Result<()>;
-        fn set_tsl_auto_update(self: Pin<&mut SettableConf>, enable: bool) -> Result<()>;
-        fn set_tsl_online_digest(self: Pin<&mut SettableConf>, enable: bool) -> Result<()>;
-        fn set_tsl_timeout(self: Pin<&mut SettableConf>, seconds: i32) -> Result<()>;
+        fn set_tsl_allow_expired(self: Pin<&mut SettableConf>, enable: bool);
+        fn set_tsl_auto_update(self: Pin<&mut SettableConf>, enable: bool);
+        fn set_tsl_online_digest(self: Pin<&mut SettableConf>, enable: bool);
+        fn set_tsl_timeout(self: Pin<&mut SettableConf>, seconds: i32);
         fn set_proxy_host(self: Pin<&mut SettableConf>, host: &str) -> Result<()>;
         fn set_proxy_port(self: Pin<&mut SettableConf>, port: &str) -> Result<()>;
         fn set_proxy_user(self: Pin<&mut SettableConf>, user: &str) -> Result<()>;
         fn set_proxy_pass(self: Pin<&mut SettableConf>, pass: &str) -> Result<()>;
-        fn set_proxy_tunnel_ssl(self: Pin<&mut SettableConf>, enable: bool) -> Result<()>;
-        fn clear_verify_service_certs(self: Pin<&mut SettableConf>) -> Result<()>;
+        fn set_proxy_tunnel_ssl(self: Pin<&mut SettableConf>, enable: bool);
+        fn clear_verify_service_certs(self: Pin<&mut SettableConf>);
         fn add_verify_service_cert(self: Pin<&mut SettableConf>, der: &[u8]) -> Result<()>;
         fn set_verify_service_uri(self: Pin<&mut SettableConf>, url: &str) -> Result<()>;
     }

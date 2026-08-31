@@ -221,7 +221,7 @@ auto SettableConf::signature_digest_uri() const -> rust::String {
 
 // Setters used by Rust
 
-auto SettableConf::set_log_level(const int level) -> void {
+auto SettableConf::set_log_level(const int level) noexcept -> void {
   log_level_ = level;
 }
 
@@ -233,7 +233,7 @@ auto SettableConf::set_tsl_url(const rust::Str url) -> void {
   tsl_url_ = std::string(url);
 }
 
-auto SettableConf::clear_tsl_certs() -> void { tsl_certs_.emplace(); }
+auto SettableConf::clear_tsl_certs() noexcept -> void { tsl_certs_.emplace(); }
 
 auto SettableConf::add_tsl_cert(const rust::Slice<const uint8_t> der) -> void {
   add_cert(tsl_certs_, der);
@@ -256,7 +256,7 @@ auto SettableConf::set_ts_url(const rust::Str url) -> void {
   ts_url_ = std::string(url);
 }
 
-auto SettableConf::clear_ts_certs() -> void { ts_certs_.emplace(); }
+auto SettableConf::clear_ts_certs() noexcept -> void { ts_certs_.emplace(); }
 
 auto SettableConf::add_ts_cert(const rust::Slice<const uint8_t> der) -> void {
   add_cert(ts_certs_, der);
@@ -270,19 +270,19 @@ auto SettableConf::set_xsd_path(const rust::Str path) -> void {
   xsd_path_ = std::string(path);
 }
 
-auto SettableConf::set_tsl_allow_expired(const bool enable) -> void {
+auto SettableConf::set_tsl_allow_expired(const bool enable) noexcept -> void {
   tsl_allow_expired_ = enable;
 }
 
-auto SettableConf::set_tsl_auto_update(const bool enable) -> void {
+auto SettableConf::set_tsl_auto_update(const bool enable) noexcept -> void {
   tsl_auto_update_ = enable;
 }
 
-auto SettableConf::set_tsl_online_digest(const bool enable) -> void {
+auto SettableConf::set_tsl_online_digest(const bool enable) noexcept -> void {
   tsl_online_digest_ = enable;
 }
 
-auto SettableConf::set_tsl_timeout(const int seconds) -> void {
+auto SettableConf::set_tsl_timeout(const int seconds) noexcept -> void {
   tsl_timeout_ = seconds;
 }
 
@@ -302,11 +302,11 @@ auto SettableConf::set_proxy_pass(const rust::Str pass) -> void {
   proxy_pass_ = std::string(pass);
 }
 
-auto SettableConf::set_proxy_tunnel_ssl(const bool enable) -> void {
+auto SettableConf::set_proxy_tunnel_ssl(const bool enable) noexcept -> void {
   proxy_tunnel_ssl_ = enable;
 }
 
-auto SettableConf::clear_verify_service_certs() -> void {
+auto SettableConf::clear_verify_service_certs() noexcept -> void {
   verify_service_certs_.emplace();
 }
 

@@ -34,8 +34,8 @@ impl Conf {
 }
 
 impl Conf {
-    pub fn set_log_level(&mut self, level: i32) -> Result<(), Error> {
-        Ok(self.0.pin_mut().set_log_level(level)?)
+    pub fn set_log_level(&mut self, level: i32) {
+        self.0.pin_mut().set_log_level(level);
     }
 
     pub fn set_log_file(&mut self, path: impl AsRef<Path>) -> Result<(), Error> {
@@ -46,8 +46,8 @@ impl Conf {
         Ok(self.0.pin_mut().set_tsl_url(url.as_ref())?)
     }
 
-    pub fn clear_tsl_certs(&mut self) -> Result<(), Error> {
-        Ok(self.0.pin_mut().clear_tsl_certs()?)
+    pub fn clear_tsl_certs(&mut self) {
+        self.0.pin_mut().clear_tsl_certs();
     }
 
     pub fn add_tsl_cert(&mut self, cert: impl AsRef<[u8]>) -> Result<(), Error> {
@@ -85,8 +85,8 @@ impl Conf {
         Ok(self.0.pin_mut().set_ts_url(url.as_ref())?)
     }
 
-    pub fn clear_ts_certs(&mut self) -> Result<(), Error> {
-        Ok(self.0.pin_mut().clear_ts_certs()?)
+    pub fn clear_ts_certs(&mut self) {
+        self.0.pin_mut().clear_ts_certs();
     }
 
     pub fn add_ts_cert(&mut self, cert: impl AsRef<[u8]>) -> Result<(), Error> {
@@ -104,20 +104,20 @@ impl Conf {
         Ok(self.0.pin_mut().set_xsd_path(path_to_str(path.as_ref())?)?)
     }
 
-    pub fn set_tsl_allow_expired(&mut self, enable: bool) -> Result<(), Error> {
-        Ok(self.0.pin_mut().set_tsl_allow_expired(enable)?)
+    pub fn set_tsl_allow_expired(&mut self, enable: bool) {
+        self.0.pin_mut().set_tsl_allow_expired(enable);
     }
 
-    pub fn set_tsl_auto_update(&mut self, enable: bool) -> Result<(), Error> {
-        Ok(self.0.pin_mut().set_tsl_auto_update(enable)?)
+    pub fn set_tsl_auto_update(&mut self, enable: bool) {
+        self.0.pin_mut().set_tsl_auto_update(enable);
     }
 
-    pub fn set_tsl_online_digest(&mut self, enable: bool) -> Result<(), Error> {
-        Ok(self.0.pin_mut().set_tsl_online_digest(enable)?)
+    pub fn set_tsl_online_digest(&mut self, enable: bool) {
+        self.0.pin_mut().set_tsl_online_digest(enable);
     }
 
-    pub fn set_tsl_timeout(&mut self, seconds: i32) -> Result<(), Error> {
-        Ok(self.0.pin_mut().set_tsl_timeout(seconds)?)
+    pub fn set_tsl_timeout(&mut self, seconds: i32) {
+        self.0.pin_mut().set_tsl_timeout(seconds);
     }
 
     pub fn set_proxy_host(&mut self, host: impl AsRef<str>) -> Result<(), Error> {
@@ -138,12 +138,12 @@ impl Conf {
         Ok(self.0.pin_mut().set_proxy_pass(pass.expose_secret())?)
     }
 
-    pub fn set_proxy_tunnel_ssl(&mut self, enable: bool) -> Result<(), Error> {
-        Ok(self.0.pin_mut().set_proxy_tunnel_ssl(enable)?)
+    pub fn set_proxy_tunnel_ssl(&mut self, enable: bool) {
+        self.0.pin_mut().set_proxy_tunnel_ssl(enable);
     }
 
-    pub fn clear_verify_service_certs(&mut self) -> Result<(), Error> {
-        Ok(self.0.pin_mut().clear_verify_service_certs()?)
+    pub fn clear_verify_service_certs(&mut self) {
+        self.0.pin_mut().clear_verify_service_certs();
     }
 
     pub fn add_verify_service_cert(&mut self, cert: impl AsRef<[u8]>) -> Result<(), Error> {

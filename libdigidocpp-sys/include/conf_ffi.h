@@ -28,28 +28,28 @@ class SettableConf final : public digidoc::XmlConfCurrent {
       -> std::unique_ptr<SettableConf>;
 
   // setters used by Rust
-  auto set_log_level(int level) -> void;
+  auto set_log_level(int level) noexcept -> void;
   auto set_log_file(rust::Str path) -> void;
   auto set_tsl_url(rust::Str url) -> void;
-  auto clear_tsl_certs() -> void;
+  auto clear_tsl_certs() noexcept -> void;
   auto add_tsl_cert(rust::Slice<const uint8_t> der) -> void;
   auto set_ocsp_tm_profiles(const rust::Vec<rust::String>& profiles) -> void;
   auto set_ocsp_urls(const rust::Vec<OcspUrl>& urls) -> void;
   auto set_ts_url(rust::Str url) -> void;
-  auto clear_ts_certs() -> void;
+  auto clear_ts_certs() noexcept -> void;
   auto add_ts_cert(rust::Slice<const uint8_t> der) -> void;
   auto set_tsl_cache(rust::Str path) -> void;
   auto set_xsd_path(rust::Str path) -> void;
-  auto set_tsl_allow_expired(bool enable) -> void;
-  auto set_tsl_auto_update(bool enable) -> void;
-  auto set_tsl_online_digest(bool enable) -> void;
-  auto set_tsl_timeout(int seconds) -> void;
+  auto set_tsl_allow_expired(bool enable) noexcept -> void;
+  auto set_tsl_auto_update(bool enable) noexcept -> void;
+  auto set_tsl_online_digest(bool enable) noexcept -> void;
+  auto set_tsl_timeout(int seconds) noexcept -> void;
   auto set_proxy_host(rust::Str host) -> void;
   auto set_proxy_port(rust::Str port) -> void;
   auto set_proxy_user(rust::Str user) -> void;
   auto set_proxy_pass(rust::Str pass) -> void;
-  auto set_proxy_tunnel_ssl(bool enable) -> void;
-  auto clear_verify_service_certs() -> void;
+  auto set_proxy_tunnel_ssl(bool enable) noexcept -> void;
+  auto clear_verify_service_certs() noexcept -> void;
   auto add_verify_service_cert(rust::Slice<const uint8_t> der) -> void;
   auto set_verify_service_uri(rust::Str url) -> void;
 

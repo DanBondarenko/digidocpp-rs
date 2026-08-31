@@ -104,9 +104,9 @@ pub(crate) fn offline_conf(directory: &Path, tsl_name: &str) -> Result<Conf, Box
     conf.set_tsl_url(path_to_string(directory.join(tsl_name)))?;
     // `libdigidocpp` writes here
     conf.set_tsl_cache(directory)?;
-    conf.set_tsl_auto_update(false)?;
-    conf.set_tsl_online_digest(false)?;
-    conf.set_tsl_allow_expired(true)?;
+    conf.set_tsl_auto_update(false);
+    conf.set_tsl_online_digest(false);
+    conf.set_tsl_allow_expired(true);
     conf.add_tsl_cert(fs::read(fixture_path("TSL.der"))?)?;
 
     Ok(conf)

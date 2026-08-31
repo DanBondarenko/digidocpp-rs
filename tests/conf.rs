@@ -80,7 +80,7 @@ fn log_level_filters_log_entries() -> Result<(), Box<dyn StdError>> {
     let directory = TempDir::new()?;
     common::copy_fixtures(directory.path(), &["TSL.xml"])?;
     let mut conf = common::offline_conf(directory.path(), "TSL.xml")?;
-    conf.set_log_level(0)?;
+    conf.set_log_level(0);
     init_conf(conf)?;
     initialize()?;
 
@@ -118,7 +118,7 @@ fn loads_tsl_and_writes_log_in_a_non_ascii_directory() -> Result<(), Box<dyn Std
 fn initialize_fails_without_trusted_tsl_certificates() -> Result<(), Box<dyn StdError>> {
     let directory = TempDir::new()?;
     let mut conf = common::offline_conf(directory.path(), "TSL.xml")?;
-    conf.clear_tsl_certs()?;
+    conf.clear_tsl_certs();
     init_conf(conf)?;
 
     let result = initialize();
@@ -192,22 +192,22 @@ fn each_setter_overrides_the_matching_getter() -> Result<(), Box<dyn StdError>> 
     let tsl_online_digest = conf.tsl_online_digest()?;
     let proxy_tunnel_ssl = conf.proxy_tunnel_ssl()?;
 
-    conf.set_log_level(1)?;
+    conf.set_log_level(1);
     conf.set_log_file(directory.path().join("set.log"))?;
     conf.set_tsl_url("https://tsl.example/lotl.xml")?;
     conf.set_ts_url("https://ts.example/tsa")?;
     conf.set_tsl_cache(directory.path().join("tsl-cache"))?;
     conf.set_xsd_path(directory.path().join("schemas"))?;
-    conf.set_tsl_timeout(17)?;
+    conf.set_tsl_timeout(17);
     conf.set_proxy_host("set-host")?;
     conf.set_proxy_port("8080")?;
     conf.set_proxy_user("set-user")?;
     conf.set_proxy_pass("set-pass")?;
     conf.set_verify_service_uri("https://verify.example/validate")?;
-    conf.set_tsl_allow_expired(!tsl_allow_expired)?;
-    conf.set_tsl_auto_update(!tsl_auto_update)?;
-    conf.set_tsl_online_digest(!tsl_online_digest)?;
-    conf.set_proxy_tunnel_ssl(!proxy_tunnel_ssl)?;
+    conf.set_tsl_allow_expired(!tsl_allow_expired);
+    conf.set_tsl_auto_update(!tsl_auto_update);
+    conf.set_tsl_online_digest(!tsl_online_digest);
+    conf.set_proxy_tunnel_ssl(!proxy_tunnel_ssl);
 
     let proxy_pass = conf.proxy_pass()?;
     assert_eq!(conf.log_level()?, 1);
@@ -241,7 +241,7 @@ fn clearing_and_adding_certificates_sets_each_certificate_list() -> Result<(), B
     let mut conf = common::conf_from_fixture("digidocpp.conf")?;
 
     assert!(!conf.tsl_certs()?.is_empty());
-    conf.clear_tsl_certs()?;
+    conf.clear_tsl_certs();
     assert!(conf.tsl_certs()?.is_empty());
 
     conf.add_tsl_cert(&certificate)?;
@@ -277,7 +277,7 @@ fn later_added_certificates_are_appended() -> Result<(), Box<dyn StdError>> {
     let certificate = fs::read(common::fixture_path("TSL.der"))?;
     let mut conf = common::conf_from_fixture("digidocpp.conf")?;
 
-    conf.clear_tsl_certs()?;
+    conf.clear_tsl_certs();
     conf.add_tsl_cert(&certificate)?;
     conf.add_tsl_cert(&certificate)?;
 
