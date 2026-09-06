@@ -4,16 +4,23 @@
         clippy::unwrap_used,
         clippy::expect_used,
         clippy::panic,
-        clippy::redundant_pub_crate,
+        unreachable_pub,
         clippy::indexing_slicing,
+        clippy::used_underscore_binding,
     )
 )]
 mod common;
 
-use crate::common::{ContainerExpectation, DataFileExpectation, assert_general_digidoc_err};
+use crate::common::{
+    MEDIA_TYPE_OCTET_STREAM, MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err,
+    assert_internal_err, create_empty_asice_container, init_with_valid_tsl, open_container,
+    required,
+};
+use itertools::Itertools;
 use libdigidocpp::{Container, DataFile, Error};
 use rand_pcg::Pcg64Mcg;
 use rand_pcg::rand_core::{Rng, SeedableRng};
+use rstest::{fixture, rstest};
 use serial_test::serial;
 use std::cell::{Cell, RefCell};
 use std::error::Error as StdError;
@@ -21,550 +28,395 @@ use std::fmt::Debug;
 use std::fs;
 use std::io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom};
 use std::panic::{self, AssertUnwindSafe};
+use std::path::Path;
 use std::rc::{Rc, Weak};
 use tempfile::TempDir;
 
-#[test]
-#[serial]
-fn reads_data_file_from_asice_container_with_expired_certificates() -> Result<(), Box<dyn StdError>>
-{
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type("file")
-            .build()])
-        .build();
+#[fixture]
+fn create_container_with_accepted_txt(
+    #[default(required())] directory: &Path,
+    #[from(create_empty_asice_container)] mut container: Container,
+) -> Container {
+    let accepted = common::write_file(directory, "accepted.txt", b"x").unwrap();
+    container
+        .add_data_file(&accepted, MEDIA_TYPE_TEXT_PLAIN)
+        .unwrap();
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test.asice"))?;
-    container_expectation.assert(&container)
+    container
 }
 
-#[test]
-#[serial]
-fn reads_data_file_from_asics_container() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test.asics"));
-    container_expectation.assert(&container?)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_from_asics_container_with_metadata() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-meta.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_from_asics_container_with_invalid_timestamp_token()
--> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test2.txt")
-            .file_name("test2.txt")
-            .file_size(10u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-invalidts.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_with_zero_size_contents_from_asics_container() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("emptyFile.ddoc")
-            .file_name("emptyFile.ddoc")
-            .file_size(0u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-tera-empty.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_with_large_contents_from_asics_container() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("ddoc_for_testing.ddoc")
-            .file_name("ddoc_for_testing.ddoc")
-            .file_size(8736u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-tera.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_from_asice_container_with_subfolder_contents() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("folder/test1.txt")
-            .file_name("folder/test1.txt")
-            .file_size(4u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = Container::open(common::fixture_path("asice-path.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_from_asice_container_with_forged_signature() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("example-for-signing.txt")
-            .file_name("example-for-signing.txt")
-            .file_size(57u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("forged_lt.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn reads_data_file_from_asice_container() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test.txt")
-            .file_name("test.txt")
-            .file_size(4u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build();
-
-    let _temp_dir = common::initialize_offline("EE_T.xml", &[])?;
-    let container = Container::open(common::fixture_path("tsl.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn newly_crated_asice_container_has_no_data_files() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = Container::create("new.asice")?;
-
-    ContainerExpectation::builder()
-        .data_files([])
-        .build()
-        .assert(&container)
-}
-
-fn assert_digests(data_file: &DataFile) -> Result<(), Box<dyn StdError>> {
-    const TEST1_DIGESTS: [(&str, &str); 9] = [
-        (
-            "http://www.w3.org/2000/09/xmldsig#sha1",
-            "1be168ff837f043bde17c0314341c84271047b31",
-        ),
-        (
-            "http://www.w3.org/2001/04/xmldsig-more#sha224",
-            "d76041112e343b2bdc14d43934e5aed7abf90192c6543bdf2ae4f81b",
-        ),
-        (
-            common::URI_SHA256,
-            "a883dafc480d466ee04e0d6da986bd78eb1fdd2178d04693723da3a8f95d42f4",
-        ),
-        (
-            "http://www.w3.org/2001/04/xmldsig-more#sha384",
-            "637e2edd555570eda966d99d4e77d9fbb3aab84a498ff55ac21b963c1e05c2addfb5c15cd2071e7edd47359d787941d3",
-        ),
-        (
-            "http://www.w3.org/2001/04/xmlenc#sha512",
-            "7985558370f0de86a864e0050afdf45d7029b8798bcd72cddbf781329f99380e3f3b1afdca6765d89fc388b213df8f6a193cfc56d4ff2ef6e0a99bd883a6d98c",
-        ),
-        (
-            "http://www.w3.org/2007/05/xmldsig-more#sha3-224",
-            "8a020a4c681207362dea91d59f660a47a183e1e3d488328ddd64a7e4",
-        ),
-        (
-            "http://www.w3.org/2007/05/xmldsig-more#sha3-256",
-            "859a7a7603028deeb3b66234cffa5191466d1a0538e449a19812273b0d98dc1c",
-        ),
-        (
-            "http://www.w3.org/2007/05/xmldsig-more#sha3-384",
-            "81ec6a885d9f59160b931855f3422e37072cda8059dae063eb64716fe4c4e9c0e701e3e6471315ba446bad4031811e5d",
-        ),
-        (
-            "http://www.w3.org/2007/05/xmldsig-more#sha3-512",
-            "0505da4c583d0bfa95692bf9845abf2a40f32e34caef5acc57bd3015aefa54777847cda68d017acfed634f07957a5ce601b23b1cc040a9dec5443a6c9f56c948",
-        ),
-    ];
-
-    for (method, expected) in TEST1_DIGESTS {
-        let digest = hex::encode(data_file.calc_digest(method)?);
-        assert_eq!(digest, expected, "digest for {method}");
-    }
-
-    Ok(())
-}
-
-#[test]
-#[serial]
-fn calculates_data_file_digests() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = Container::open(common::fixture_path("test.asice"))?;
+fn assert_data_files(
+    container: &Container,
+    expected: &[(&str, u64, &str)],
+) -> Result<(), Box<dyn StdError>> {
     let data_files = container.data_files()?;
-    let data_file = data_files.first().expect("test.asice should hold a file");
-
-    assert_digests(data_file)
-}
-
-#[test]
-#[serial]
-fn adds_data_files() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let first = common::write_file(data_directory.path(), "first.txt", b"12345")?;
-    let second = common::write_file(data_directory.path(), "second.bin", b"abc")?;
-    let mut container = Container::create("new.asice")?;
-
-    container.add_data_file(&first, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
-    container.add_data_file(&second, DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)?;
-
-    ContainerExpectation::builder()
-        .data_files([
-            DataFileExpectation::builder()
-                .id("first.txt")
-                .file_name("first.txt")
-                .file_size(5u64)
-                .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-                .build(),
-            DataFileExpectation::builder()
-                .id("second.bin")
-                .file_name("second.bin")
-                .file_size(3u64)
-                .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-                .build(),
-        ])
-        .build()
-        .assert(&container)
-}
-
-#[test]
-#[serial]
-fn adds_data_files_with_special_characters() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-
-    for name in ["0123456789~#%&()=`@{[]}'.txt", "öäüõ.txt"] {
-        let path = common::write_file(data_directory.path(), name, b"x")?;
-        let mut container = Container::create("new.asice")?;
-        container.add_data_file(&path, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
-
-        ContainerExpectation::builder()
-            .data_files([DataFileExpectation::builder()
-                .id(name)
-                .file_name(name)
-                .file_size(1u64)
-                .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-                .build()])
-            .build()
-            .assert(&container)?;
+    assert_eq!(data_files.len(), expected.len());
+    for (data_file, &(name, size, media_type)) in data_files.iter().zip_eq(expected) {
+        assert_eq!(data_file.id()?, name);
+        assert_eq!(data_file.file_name()?, name);
+        assert_eq!(data_file.file_size()?, size);
+        assert_eq!(data_file.media_type()?, media_type);
     }
-
     Ok(())
 }
 
-#[test]
+fn assert_holds_only_the_accepted_file(container: &Container) -> Result<(), Box<dyn StdError>> {
+    assert_data_files(container, &[("accepted.txt", 1, MEDIA_TYPE_TEXT_PLAIN)])
+}
+
+#[rstest]
+#[case::asice_with_expired_certificates("test.asice", "test1.txt", 5, "file")]
+#[case::asics("test.asics", "test1.txt", 5, MEDIA_TYPE_OCTET_STREAM)]
+#[case::asics_with_metadata("test-meta.asics", "test1.txt", 5, MEDIA_TYPE_OCTET_STREAM)]
+#[case::asics_with_invalid_timestamp_token(
+    "test-invalidts.asics",
+    "test2.txt",
+    10,
+    MEDIA_TYPE_OCTET_STREAM
+)]
+#[case::asics_with_zero_size_contents(
+    "test-tera-empty.asics",
+    "emptyFile.ddoc",
+    0,
+    MEDIA_TYPE_OCTET_STREAM
+)]
+#[case::asics_with_large_contents(
+    "test-tera.asics",
+    "ddoc_for_testing.ddoc",
+    8736,
+    MEDIA_TYPE_OCTET_STREAM
+)]
+#[case::asice_with_subfolder_contents(
+    "asice-path.asice",
+    "folder/test1.txt",
+    4,
+    MEDIA_TYPE_TEXT_PLAIN
+)]
+#[case::asice_with_forged_signature(
+    "forged_lt.asice",
+    "example-for-signing.txt",
+    57,
+    MEDIA_TYPE_TEXT_PLAIN
+)]
+#[case::asice_for_tsl_validation("tsl.asice", "test.txt", 4, MEDIA_TYPE_OCTET_STREAM)]
 #[serial]
-fn rejects_data_files_with_problems() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let accepted = common::write_file(data_directory.path(), "accepted.txt", b"x")?;
-    let reserved = common::write_file(data_directory.path(), "mimetype", b"x")?;
-    let other = common::write_file(data_directory.path(), "other.txt", b"x")?;
-    let missing = data_directory.path().join("missing.txt");
-    let mut container = Container::create("new.asice")?;
-    container.add_data_file(&accepted, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
+fn reads_data_files_from_containers(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[case] fixture: &str,
+    #[case] file_name_and_id: &str,
+    #[case] file_size: u64,
+    #[case] media_type: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let container = Container::open(common::fixture_path(fixture))?;
 
-    let cases = [
-        (
-            "reserved file name",
-            &reserved,
-            DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        ),
-        ("media type without a slash", &other, "textplain"),
-        (
-            "missing file",
-            &missing,
-            DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        ),
-        (
-            "duplicate file name",
-            &accepted,
-            DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        ),
-    ];
-    for (defect, path, media_type) in cases {
-        let result = container.add_data_file(path, media_type);
+    assert_data_files(&container, &[(file_name_and_id, file_size, media_type)])
+}
 
-        assert_general_digidoc_err!(result, "{defect}");
+#[rstest]
+#[serial]
+fn newly_crated_asice_container_has_no_data_files(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    assert_data_files(&container, &[])
+}
 
-        ContainerExpectation::builder()
-            .data_files([DataFileExpectation::builder()
-                .id("accepted.txt")
-                .file_name("accepted.txt")
-                .file_size(1u64)
-                .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-                .build()])
-            .build()
-            .assert(&container)?;
-    }
+#[rstest]
+#[case::sha1(
+    "http://www.w3.org/2000/09/xmldsig#sha1",
+    "1be168ff837f043bde17c0314341c84271047b31"
+)]
+#[case::sha224(
+    "http://www.w3.org/2001/04/xmldsig-more#sha224",
+    "d76041112e343b2bdc14d43934e5aed7abf90192c6543bdf2ae4f81b"
+)]
+#[case::sha256(
+    common::URI_SHA256,
+    "a883dafc480d466ee04e0d6da986bd78eb1fdd2178d04693723da3a8f95d42f4"
+)]
+#[case::sha384(
+    "http://www.w3.org/2001/04/xmldsig-more#sha384",
+    "637e2edd555570eda966d99d4e77d9fbb3aab84a498ff55ac21b963c1e05c2addfb5c15cd2071e7edd47359d787941d3"
+)]
+#[case::sha512(
+    "http://www.w3.org/2001/04/xmlenc#sha512",
+    "7985558370f0de86a864e0050afdf45d7029b8798bcd72cddbf781329f99380e3f3b1afdca6765d89fc388b213df8f6a193cfc56d4ff2ef6e0a99bd883a6d98c"
+)]
+#[case::sha3_224(
+    "http://www.w3.org/2007/05/xmldsig-more#sha3-224",
+    "8a020a4c681207362dea91d59f660a47a183e1e3d488328ddd64a7e4"
+)]
+#[case::sha3_256(
+    "http://www.w3.org/2007/05/xmldsig-more#sha3-256",
+    "859a7a7603028deeb3b66234cffa5191466d1a0538e449a19812273b0d98dc1c"
+)]
+#[case::sha3_384(
+    "http://www.w3.org/2007/05/xmldsig-more#sha3-384",
+    "81ec6a885d9f59160b931855f3422e37072cda8059dae063eb64716fe4c4e9c0e701e3e6471315ba446bad4031811e5d"
+)]
+#[case::sha3_512(
+    "http://www.w3.org/2007/05/xmldsig-more#sha3-512",
+    "0505da4c583d0bfa95692bf9845abf2a40f32e34caef5acc57bd3015aefa54777847cda68d017acfed634f07957a5ce601b23b1cc040a9dec5443a6c9f56c948"
+)]
+#[serial]
+fn calculates_data_file_digests(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[values(
+        open_container("test.asice"),
+        container_with_file_from_reader(
+            "test1.txt",
+            MEDIA_TYPE_TEXT_PLAIN,
+            Cursor::new(b"1234\n".to_vec())
+        )
+    )]
+    container: Container,
+    #[case] method: &str,
+    #[case] expected: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let digest = hex::encode(container.data_files()?[0].calc_digest(method)?);
 
+    assert_eq!(digest, expected);
     Ok(())
 }
 
-#[test]
+#[rstest]
+#[case::text_file("test1.txt", b"1234\n")]
+#[case::symbols_name("0123456789~#%&()=`@{[]}'.txt", b"x")]
+#[case::non_ascii_name("öäüõ.txt", b"x")]
 #[serial]
-fn rejects_adding_a_data_file_to_a_signed_container() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let data_directory = TempDir::new()?;
-    let path = common::write_file(data_directory.path(), "extra.txt", b"x")?;
-    let mut container = Container::open(common::fixture_path("test.asice"))?;
+fn adds_data_file_from_reader(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[case] file_name: &str,
+    #[case] contents: &[u8],
+) -> Result<(), Box<dyn StdError>> {
+    let container = container_with_file_from_reader(
+        file_name,
+        MEDIA_TYPE_TEXT_PLAIN,
+        Cursor::new(contents.to_vec()),
+    );
 
-    let result = container.add_data_file(&path, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN);
+    assert_data_files(
+        &container,
+        &[(
+            file_name,
+            u64::try_from(contents.len())?,
+            MEDIA_TYPE_TEXT_PLAIN,
+        )],
+    )
+}
+
+#[rstest]
+#[serial]
+fn adds_multiple_data_files(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    let first = common::write_file(temp_dir.path(), "first.txt", b"12345")?;
+    let second = common::write_file(temp_dir.path(), "second.bin", b"abc")?;
+
+    container.add_data_file(&first, MEDIA_TYPE_TEXT_PLAIN)?;
+    container.add_data_file(&second, MEDIA_TYPE_OCTET_STREAM)?;
+
+    assert_data_files(
+        &container,
+        &[
+            ("first.txt", 5, MEDIA_TYPE_TEXT_PLAIN),
+            ("second.bin", 3, MEDIA_TYPE_OCTET_STREAM),
+        ],
+    )
+}
+
+#[rstest]
+#[case::text_file("first.txt", b"12345", MEDIA_TYPE_TEXT_PLAIN)]
+#[case::binary_file("second.bin", b"abc", MEDIA_TYPE_OCTET_STREAM)]
+#[case::symbols_name("0123456789~#%&()=`@{[]}'.txt", b"x", MEDIA_TYPE_TEXT_PLAIN)]
+#[case::non_ascii_name("öäüõ.txt", b"x", MEDIA_TYPE_TEXT_PLAIN)]
+#[serial]
+fn adds_data_file(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+    #[case] file_name: &str,
+    #[case] contents: &[u8],
+    #[case] media_type: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let path = common::write_file(temp_dir.path(), file_name, contents)?;
+
+    container.add_data_file(&path, media_type)?;
+
+    assert_data_files(
+        &container,
+        &[(file_name, u64::try_from(contents.len())?, media_type)],
+    )
+}
+
+#[rstest]
+#[case::reserved_name("mimetype", Some("x"), MEDIA_TYPE_TEXT_PLAIN)]
+#[case::invalid_media_type("other.txt", Some("x"), "textplain")]
+#[case::duplicate_name("accepted.txt", Some("x"), MEDIA_TYPE_TEXT_PLAIN)]
+#[case::zero_bytes("empty.txt", Some(""), MEDIA_TYPE_TEXT_PLAIN)]
+#[case::missing_file("missing.txt", None, MEDIA_TYPE_TEXT_PLAIN)]
+#[serial]
+fn rejects_adding_an_invalid_data_file(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[with(temp_dir.path())] mut create_container_with_accepted_txt: Container,
+    #[case] file_name: &str,
+    #[case] contents: Option<&str>,
+    #[case] media_type: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let path = temp_dir.path().join(file_name);
+    if let Some(contents) = contents {
+        fs::write(&path, contents)?;
+    }
+
+    let result = create_container_with_accepted_txt.add_data_file(&path, media_type);
 
     assert_general_digidoc_err!(result);
-    ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type("file")
-            .build()])
-        .build()
-        .assert(&container)
+    assert_holds_only_the_accepted_file(&create_container_with_accepted_txt)
 }
 
-#[test]
-#[serial]
-fn rejects_reader_data_file_names_with_a_directory() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let mut container = Container::create("new.asice")?;
-
-    let result = container.add_data_file_from_reader(
-        "folder/test.txt",
-        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+#[rstest]
+#[case::add_data_file(|container: &mut Container, extra_file: &Path| {
+    container.add_data_file(extra_file, MEDIA_TYPE_TEXT_PLAIN)
+})]
+#[case::add_data_file_from_reader(|container: &mut Container, _: &Path| {
+    container.add_data_file_from_reader(
+        "extra.txt",
+        MEDIA_TYPE_TEXT_PLAIN,
         Cursor::new(b"x"),
-    );
+    )
+})]
+#[case::remove_data_file(|container: &mut Container, _: &Path| container.remove_data_file(0))]
+#[serial]
+fn rejects_data_file_modification_when_signed(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(open_container)]
+    #[with("test.asice")]
+    mut container: Container,
+    #[case] operation: fn(&mut Container, &Path) -> Result<(), Error>,
+) -> Result<(), Box<dyn StdError>> {
+    let extra_file = common::write_file(temp_dir.path(), "extra.txt", b"x")?;
+
+    let result = operation(&mut container, &extra_file);
 
     assert_general_digidoc_err!(result);
-    ContainerExpectation::builder()
-        .data_files([])
-        .build()
-        .assert(&container)
+    assert_data_files(&container, &[("test1.txt", 5, "file")])
 }
 
-#[test]
+#[rstest]
+#[case::directory_in_name("folder/test.txt")]
+#[case::parent_directory("../test.txt")]
+#[case::backslash("a\\b.txt")]
+#[case::dot(".")]
+#[case::empty_name("")]
+#[case::reserved_name("mimetype")]
 #[serial]
-fn removes_data_files_one_by_one() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let mut container = Container::create("new.asice")?;
+fn rejects_invalid_data_file_from_reader(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+    #[case] file_name: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let result =
+        container.add_data_file_from_reader(file_name, MEDIA_TYPE_TEXT_PLAIN, Cursor::new(b"x"));
 
-    let first = common::write_file(data_directory.path(), "first.txt", b"x")?;
-    container.add_data_file(&first, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
-    let first_file_expectation = DataFileExpectation::builder()
-        .id("first.txt")
-        .file_name("first.txt")
-        .file_size(1u64)
-        .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-        .build();
-
-    let second = common::write_file(data_directory.path(), "second.bin", b"x")?;
-    container.add_data_file(&second, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
-    let second_file_expectation = DataFileExpectation::builder()
-        .id("second.bin")
-        .file_name("second.bin")
-        .file_size(1u64)
-        .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-        .build();
-
-    ContainerExpectation::builder()
-        .data_files([first_file_expectation, second_file_expectation.clone()])
-        .build()
-        .assert(&container)?;
-
-    container.remove_data_file(0)?;
-    ContainerExpectation::builder()
-        .data_files([second_file_expectation])
-        .build()
-        .assert(&container)?;
-
-    container.remove_data_file(0)?;
-    ContainerExpectation::builder()
-        .data_files([])
-        .build()
-        .assert(&container)
-}
-
-#[test]
-#[serial]
-fn rejects_removing_a_data_file_at_an_invalid_index() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let path = common::write_file(data_directory.path(), "only.txt", b"x")?;
-    let mut container = Container::create("new.asice")?;
-    ContainerExpectation::builder()
-        .data_files([])
-        .build()
-        .assert(&container)?;
-
-    let result = container.remove_data_file(0);
     assert_general_digidoc_err!(result);
-    ContainerExpectation::builder()
-        .data_files([])
-        .build()
-        .assert(&container)?;
-
-    container.add_data_file(&path, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
-    let result = container.remove_data_file(1);
-    assert_general_digidoc_err!(result);
-    ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("only.txt")
-            .file_name("only.txt")
-            .file_size(1u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-            .build()])
-        .build()
-        .assert(&container)
+    assert_data_files(&container, &[])
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn rejects_removing_a_data_file_from_a_signed_container() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let mut container = Container::open(common::fixture_path("test.asice"))?;
+fn removes_data_files_one_by_one(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    let first = common::write_file(temp_dir.path(), "first.txt", b"x")?;
+    container.add_data_file(&first, MEDIA_TYPE_TEXT_PLAIN)?;
+    let first_file_expectation = ("first.txt", 1, MEDIA_TYPE_TEXT_PLAIN);
 
-    let result = container.remove_data_file(0);
-    assert_general_digidoc_err!(result);
-    ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type("file")
-            .build()])
-        .build()
-        .assert(&container)
-}
+    let second = common::write_file(temp_dir.path(), "second.bin", b"x")?;
+    container.add_data_file(&second, MEDIA_TYPE_TEXT_PLAIN)?;
+    let second_file_expectation = ("second.bin", 1, MEDIA_TYPE_TEXT_PLAIN);
 
-#[test]
-#[serial]
-fn rejects_an_index_that_does_not_fit_in_32_bits() -> Result<(), Box<dyn StdError>> {
-    let Ok(too_large) = usize::try_from(u64::from(u32::MAX) + 1) else {
-        return Ok(());
-    };
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let path = common::write_file(data_directory.path(), "only.txt", b"x")?;
-    let mut container = Container::create("new.asice")?;
-    container.add_data_file(&path, DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)?;
-    let expectation = ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("only.txt")
-            .file_name("only.txt")
-            .file_size(1u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-            .build()])
-        .build();
-
-    expectation.assert(&container)?;
-    let result = container.remove_data_file(too_large);
-
-    assert!(
-        matches!(result, Err(Error::Internal(_))),
-        "expected internal err, got {result:?}"
-    );
-
-    expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn calculates_the_digests_of_a_data_file_from_a_reader() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let mut container = Container::create("new.asice")?;
-    container.add_data_file_from_reader(
-        "test1.txt",
-        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        Cursor::new(b"1234\n".to_vec()),
+    assert_data_files(
+        &container,
+        &[first_file_expectation, second_file_expectation],
     )?;
 
-    ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("test1.txt")
-            .file_name("test1.txt")
-            .file_size(5u64)
-            .media_type(DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN)
-            .build()])
-        .build()
-        .assert(&container)?;
+    container.remove_data_file(0)?;
+    assert_data_files(&container, &[second_file_expectation])?;
 
-    assert_digests(&container.data_files()?[0])
+    container.remove_data_file(0)?;
+    assert_data_files(&container, &[])
 }
 
-fn container_with_reader(
+#[rstest]
+#[case::empty_container(&[], 0)]
+#[case::too_high(&["accepted.txt"], 1)]
+#[serial]
+fn rejects_removing_data_file_if_index_invalid(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+    #[case] existing_files: &[&str],
+    #[case] index: usize,
+) -> Result<(), Box<dyn StdError>> {
+    for file_name in existing_files {
+        let path = common::write_file(temp_dir.path(), file_name, b"x")?;
+        container.add_data_file(&path, MEDIA_TYPE_TEXT_PLAIN)?;
+    }
+
+    let result = container.remove_data_file(index);
+
+    assert_general_digidoc_err!(result);
+    let expected: Vec<_> = existing_files
+        .iter()
+        .map(|file_name| (*file_name, 1, MEDIA_TYPE_TEXT_PLAIN))
+        .collect();
+    assert_data_files(&container, &expected)
+}
+
+#[cfg(target_pointer_width = "64")]
+#[rstest]
+#[serial]
+fn rejects_index_unless_fits_32_bits(
+    #[allow(unused_variables)]
+    #[from(init_with_valid_tsl)]
+    temp_dir: TempDir,
+    #[with(temp_dir.path())] mut create_container_with_accepted_txt: Container,
+) -> Result<(), Box<dyn StdError>> {
+    let too_large = usize::try_from(u64::from(u32::MAX) + 1)?;
+
+    let result = create_container_with_accepted_txt.remove_data_file(too_large);
+
+    assert_internal_err!(result);
+    assert_holds_only_the_accepted_file(&create_container_with_accepted_txt)
+}
+
+#[rstest]
+#[case::save_as(|data_file: &DataFile, path: &Path| data_file.save_as(path))]
+#[serial]
+fn rejects_non_utf8_path(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(open_container)]
+    #[with("test.asice")]
+    container: Container,
+    #[case] operation: fn(&DataFile, &Path) -> Result<(), Error>,
+) -> Result<(), Box<dyn StdError>> {
+    let result = operation(&container.data_files()?[0], &common::non_utf8_path());
+
+    assert!(assert_internal_err!(result).contains("UTF-8"));
+    Ok(())
+}
+
+fn container_with_file_from_reader(
+    file_name: &str,
+    media_type: &str,
     reader: impl Read + Seek + 'static,
-) -> Result<Container, Box<dyn StdError>> {
-    let mut container = Container::create("new.asice")?;
-    container.add_data_file_from_reader(
-        "data.bin",
-        DataFileExpectation::MEDIA_TYPE_OCTET_STREAM,
-        reader,
-    )?;
-    ContainerExpectation::builder()
-        .data_files([DataFileExpectation::builder()
-            .id("data.bin")
-            .file_name("data.bin")
-            .media_type(DataFileExpectation::MEDIA_TYPE_OCTET_STREAM)
-            .build()])
-        .build()
-        .assert(&container)?;
+) -> Container {
+    let mut container = create_empty_asice_container();
+    container
+        .add_data_file_from_reader(file_name, media_type, reader)
+        .unwrap();
 
-    Ok(container)
+    container
 }
 
 #[track_caller]
@@ -578,12 +430,6 @@ fn assert_io_error<T: Debug>(
     };
     assert_eq!(io_error.kind(), expected_kind);
     assert_eq!(io_error.to_string(), expected_message);
-}
-
-#[track_caller]
-fn assert_scripted_panic<T: Debug>(outcome: std::thread::Result<T>) {
-    let payload = outcome.expect_err("expected panic");
-    assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
 }
 
 struct FailingReader {
@@ -655,39 +501,55 @@ impl Seek for PanickingReader {
     }
 }
 
-#[test]
+#[rstest]
+#[case::calc_digest(
+    |data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(drop),
+    FailingReader::failing_reads(),
+    ErrorKind::BrokenPipe,
+    "scripted read failure"
+)]
+#[case::write_to(
+    |data_file: &DataFile, _: &Path| data_file.write_to(Vec::new()),
+    FailingReader::failing_reads(),
+    ErrorKind::BrokenPipe,
+    "scripted read failure"
+)]
+#[case::save_as(
+    |data_file: &DataFile, directory: &Path| data_file.save_as(directory.join("saved.bin")),
+    FailingReader::failing_reads(),
+    ErrorKind::BrokenPipe,
+    "scripted read failure"
+)]
+#[case::file_size(
+    |data_file: &DataFile, _: &Path| data_file.file_size().map(drop),
+    FailingReader::failing_seeks(),
+    ErrorKind::Unsupported,
+    "scripted seek failure"
+)]
 #[serial]
-fn reports_reader_failures_as_io_errors() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let saved_path = data_directory.path().join("saved.bin");
+fn reports_failing_reader(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[case] operation: fn(&DataFile, &Path) -> Result<(), Error>,
+    #[case] reader: FailingReader,
+    #[case] expected_kind: ErrorKind,
+    #[case] expected_message: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let container = container_with_file_from_reader("data.bin", MEDIA_TYPE_OCTET_STREAM, reader);
 
-    let container = container_with_reader(FailingReader::failing_reads())?;
-    let result = container.data_files()?[0].calc_digest(common::URI_SHA256);
-    assert_io_error(&result, ErrorKind::BrokenPipe, "scripted read failure");
+    let result = operation(&container.data_files()?[0], temp_dir.path());
 
-    let container = container_with_reader(FailingReader::failing_reads())?;
-    let result = container.data_files()?[0].write_to(Vec::new());
-    assert_io_error(&result, ErrorKind::BrokenPipe, "scripted read failure");
-
-    let container = container_with_reader(FailingReader::failing_reads())?;
-    let result = container.data_files()?[0].save_as(&saved_path);
-    assert_io_error(&result, ErrorKind::BrokenPipe, "scripted read failure");
-
-    let container = container_with_reader(FailingReader::failing_seeks())?;
-    let result = container.data_files()?[0].file_size();
-    assert_io_error(&result, ErrorKind::Unsupported, "scripted seek failure");
-
+    assert_io_error(&result, expected_kind, expected_message);
     Ok(())
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn never_uses_a_failed_reader_again() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+fn never_uses_failed_reader_twice(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+) -> Result<(), Box<dyn StdError>> {
     let reader = FailingReader::failing_reads();
     let calls = Rc::clone(&reader.calls);
-    let container = container_with_reader(reader)?;
+    let container = container_with_file_from_reader("data.bin", MEDIA_TYPE_OCTET_STREAM, reader);
     let data_file = &container.data_files()?[0];
 
     data_file
@@ -709,51 +571,45 @@ fn never_uses_a_failed_reader_again() -> Result<(), Box<dyn StdError>> {
     Ok(())
 }
 
-#[test]
+#[rstest]
+#[case::calc_digest(|data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(drop))]
+#[case::file_size(|data_file: &DataFile, _: &Path| data_file.file_size().map(drop))]
+#[case::write_to(|data_file: &DataFile, _: &Path| data_file.write_to(Vec::new()))]
+#[case::save_as(|data_file: &DataFile, directory: &Path| data_file.save_as(directory.join("saved.bin")))]
 #[serial]
-fn reader_panic_is_transferred_across_ffi() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let data_directory = TempDir::new()?;
-    let saved_path = data_directory.path().join("saved.bin");
-
-    let container = container_with_reader(PanickingReader::default())?;
+fn transfers_reader_panic(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[case] operation: fn(&DataFile, &Path) -> Result<(), Error>,
+) -> Result<(), Box<dyn StdError>> {
+    let container = container_with_file_from_reader(
+        "data.bin",
+        MEDIA_TYPE_OCTET_STREAM,
+        PanickingReader::default(),
+    );
     let data_file = &container.data_files()?[0];
-    let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
-        data_file.calc_digest(common::URI_SHA256)
-    }));
-    assert_scripted_panic(outcome);
 
-    let container = container_with_reader(PanickingReader::default())?;
-    let data_file = &container.data_files()?[0];
-    let outcome = panic::catch_unwind(AssertUnwindSafe(|| data_file.file_size()));
-    assert_scripted_panic(outcome);
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| operation(data_file, temp_dir.path())));
 
-    let container = container_with_reader(PanickingReader::default())?;
-    let data_file = &container.data_files()?[0];
-    let outcome = panic::catch_unwind(AssertUnwindSafe(|| data_file.write_to(Vec::new())));
-    assert_scripted_panic(outcome);
-
-    let container = container_with_reader(PanickingReader::default())?;
-    let data_file = &container.data_files()?[0];
-    let outcome = panic::catch_unwind(AssertUnwindSafe(|| data_file.save_as(&saved_path)));
-    assert_scripted_panic(outcome);
-
+    let payload = outcome.err().unwrap();
+    assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
     Ok(())
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn never_uses_a_panicked_reader_again() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+fn never_uses_panicked_reader_twice(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+) -> Result<(), Box<dyn StdError>> {
     let reader = PanickingReader::default();
     let calls = Rc::clone(&reader.calls);
-    let container = container_with_reader(reader)?;
+    let container = container_with_file_from_reader("data.bin", MEDIA_TYPE_OCTET_STREAM, reader);
     let data_file = &container.data_files()?[0];
 
     let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
         data_file.calc_digest(common::URI_SHA256)
     }));
-    assert_scripted_panic(outcome);
+    let payload = outcome.err().unwrap();
+    assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
     let calls_after_panic = calls.get();
     let result = data_file.calc_digest(common::URI_SHA256);
 
@@ -766,9 +622,12 @@ fn never_uses_a_panicked_reader_again() -> Result<(), Box<dyn StdError>> {
     Ok(())
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn rejects_a_read_started_from_inside_the_reader() -> Result<(), Box<dyn StdError>> {
+fn rejects_reentrant_reader(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] container: Container,
+) -> Result<(), Box<dyn StdError>> {
     type NestedResult = Result<Vec<u8>, Error>;
 
     struct ReenteringReader {
@@ -783,7 +642,7 @@ fn rejects_a_read_started_from_inside_the_reader() -> Result<(), Box<dyn StdErro
                 let container = self
                     .container
                     .upgrade()
-                    .ok_or_else(|| io::Error::other("the container was dropped"))?;
+                    .ok_or_else(|| io::Error::other("container dropped"))?;
                 let result = container.borrow().data_files().map_err(io::Error::other)?[0]
                     .calc_digest(common::URI_SHA256);
                 *self.nested_result.borrow_mut() = Some(result);
@@ -798,19 +657,16 @@ fn rejects_a_read_started_from_inside_the_reader() -> Result<(), Box<dyn StdErro
         }
     }
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = Rc::new(RefCell::new(Container::create("new.asice")?));
+    let container = Rc::new(RefCell::new(container));
     let nested_result = Rc::new(RefCell::new(None));
     let reader = ReenteringReader {
         bytes: Cursor::new(b"1234\n".to_vec()),
         container: Rc::downgrade(&container),
         nested_result: Rc::clone(&nested_result),
     };
-    container.borrow_mut().add_data_file_from_reader(
-        "test1.txt",
-        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        reader,
-    )?;
+    container
+        .borrow_mut()
+        .add_data_file_from_reader("test1.txt", MEDIA_TYPE_TEXT_PLAIN, reader)?;
 
     let outer_result = container.borrow().data_files()?[0].calc_digest(common::URI_SHA256);
 
@@ -828,9 +684,12 @@ fn rejects_a_read_started_from_inside_the_reader() -> Result<(), Box<dyn StdErro
     Ok(())
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn reader_ownership_is_transferred_to_cpp() -> Result<(), Box<dyn StdError>> {
+fn reader_ownership_is_transferred_to_cpp(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+) -> Result<(), Box<dyn StdError>> {
     struct TrackedBytes {
         _reference_counter: Rc<()>,
     }
@@ -841,7 +700,6 @@ fn reader_ownership_is_transferred_to_cpp() -> Result<(), Box<dyn StdError>> {
         }
     }
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let reference_counter = Rc::new(());
     let tracked_reader = || {
         Cursor::new(TrackedBytes {
@@ -849,63 +707,54 @@ fn reader_ownership_is_transferred_to_cpp() -> Result<(), Box<dyn StdError>> {
         })
     };
 
-    let mut container = Container::create("new.asice")?;
-    container.add_data_file_from_reader(
-        "removed.bin",
-        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        tracked_reader(),
-    )?;
+    container.add_data_file_from_reader("removed.bin", MEDIA_TYPE_TEXT_PLAIN, tracked_reader())?;
     assert_eq!(Rc::strong_count(&reference_counter), 2);
     container.remove_data_file(0)?;
     assert_eq!(Rc::strong_count(&reference_counter), 1);
 
     let result = container.add_data_file_from_reader(
         "folder/rejected.bin",
-        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
+        MEDIA_TYPE_TEXT_PLAIN,
         tracked_reader(),
     );
     assert_general_digidoc_err!(result);
     assert_eq!(Rc::strong_count(&reference_counter), 1);
 
-    container.add_data_file_from_reader(
-        "kept.bin",
-        DataFileExpectation::MEDIA_TYPE_TEXT_PLAIN,
-        tracked_reader(),
-    )?;
+    container.add_data_file_from_reader("kept.bin", MEDIA_TYPE_TEXT_PLAIN, tracked_reader())?;
     drop(container);
     assert_eq!(Rc::strong_count(&reference_counter), 1);
 
     Ok(())
 }
 
-#[test]
+#[rstest]
+#[case::asice("test.asice", b"1234\n")]
+#[case::asics_with_zero_size_contents("test-tera-empty.asics", b"")]
 #[serial]
-fn writes_out_the_exact_contents_of_data_files() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let output_directory = TempDir::new()?;
+fn writes_exact_content_of_data_file(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[case] fixture: &str,
+    #[case] expected: &[u8],
+) -> Result<(), Box<dyn StdError>> {
+    let container = Container::open(common::fixture_path(fixture))?;
+    let data_file = &container.data_files()?[0];
 
-    for (fixture, expected) in [
-        ("test.asice", b"1234\n".as_slice()),
-        ("test-tera-empty.asics", b"".as_slice()),
-    ] {
-        let container = Container::open(common::fixture_path(fixture))?;
-        let data_file = &container.data_files()?[0];
+    let mut written = Vec::new();
+    data_file.write_to(&mut written)?;
+    assert_eq!(written, expected);
 
-        let mut written = Vec::new();
-        data_file.write_to(&mut written)?;
-        assert_eq!(written, expected, "{fixture}");
-
-        let saved_path = output_directory.path().join("saved.bin");
-        data_file.save_as(&saved_path)?;
-        assert_eq!(fs::read(&saved_path)?, expected, "{fixture}");
-    }
+    let saved_path = temp_dir.path().join("saved.bin");
+    data_file.save_as(&saved_path)?;
+    assert_eq!(fs::read(&saved_path)?, expected);
 
     Ok(())
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn reports_writer_failures_as_io_errors() -> Result<(), Box<dyn StdError>> {
+fn reports_writer_failures(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+) -> Result<(), Box<dyn StdError>> {
     struct FailingOnSecondWriteWriter {
         calls: usize,
     }
@@ -924,8 +773,11 @@ fn reports_writer_failures_as_io_errors() -> Result<(), Box<dyn StdError>> {
         }
     }
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = container_with_reader(Cursor::new(vec![0; 200_000]))?;
+    let container = container_with_file_from_reader(
+        "data.bin",
+        MEDIA_TYPE_OCTET_STREAM,
+        Cursor::new(vec![0; 200_000]),
+    );
     let data_file = &container.data_files()?[0];
     let mut writer = FailingOnSecondWriteWriter { calls: 0 };
 
@@ -942,10 +794,12 @@ fn reports_writer_failures_as_io_errors() -> Result<(), Box<dyn StdError>> {
     Ok(())
 }
 
-#[test]
+#[rstest]
 #[serial]
 #[expect(clippy::manual_assert_eq, clippy::manual_assert)]
-fn writer_panic_is_transmitted_across_ffi() -> Result<(), Box<dyn StdError>> {
+fn writer_panic_is_transmitted_across_ffi(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+) -> Result<(), Box<dyn StdError>> {
     struct PanickingWriter {
         calls: usize,
     }
@@ -964,10 +818,13 @@ fn writer_panic_is_transmitted_across_ffi() -> Result<(), Box<dyn StdError>> {
         }
     }
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let mut expected = vec![0; 200_000];
     Pcg64Mcg::seed_from_u64(0).fill_bytes(&mut expected);
-    let container = container_with_reader(Cursor::new(expected.clone()))?;
+    let container = container_with_file_from_reader(
+        "data.bin",
+        MEDIA_TYPE_OCTET_STREAM,
+        Cursor::new(expected.clone()),
+    );
     let data_file = &container.data_files()?[0];
     let mut panicking_writer = PanickingWriter { calls: 0 };
 

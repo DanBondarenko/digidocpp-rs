@@ -17,7 +17,7 @@ publish.workspace = true
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
 cxx = "1.0.177"
-thiserror = "2.0.18"
+thiserror = "2.0.20"
 num_enum = "0.7.6"
 secrecy = "0.10.3"
 
@@ -27,7 +27,8 @@ hex = "0.4.3"
 itertools = "0.15.0"
 memory-stats = "1.2.0"
 rand_pcg = "0.10"
-serial_test = "3.3.1"
+rstest = "0.27.0"
+serial_test = "4.0.1"
 tempfile = "3.27.0"
 x509-parser = "0.18.1"
 

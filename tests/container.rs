@@ -4,178 +4,81 @@
         clippy::unwrap_used,
         clippy::expect_used,
         clippy::panic,
-        clippy::redundant_pub_crate
+        unreachable_pub,
+        clippy::used_underscore_binding,
     )
 )]
 mod common;
 
-use crate::common::{ContainerExpectation, assert_general_digidoc_err};
+use crate::common::{
+    MEDIA_TYPE_ASICE, MEDIA_TYPE_ASICS, MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err,
+    assert_internal_err, create_empty_asice_container, init_with_valid_tsl,
+};
 use libdigidocpp::{Container, Error};
+use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
+use std::path::Path;
+use tempfile::TempDir;
 
-#[test]
+#[rstest]
+#[case::asice_with_expired_certificates("test.asice", MEDIA_TYPE_ASICE)]
+#[case::asics("test.asics", MEDIA_TYPE_ASICS)]
+#[case::asics_with_metadata("test-meta.asics", MEDIA_TYPE_ASICS)]
+#[case::asics_with_invalid_timestamp_token("test-invalidts.asics", MEDIA_TYPE_ASICS)]
+#[case::asics_with_zero_size_contents("test-tera-empty.asics", MEDIA_TYPE_ASICS)]
+#[case::asics_with_large_contents("test-tera.asics", MEDIA_TYPE_ASICS)]
+#[case::asice_with_subfolder_contents("asice-path.asice", MEDIA_TYPE_ASICE)]
+#[case::asice_with_forged_signature("forged_lt.asice", MEDIA_TYPE_ASICE)]
+#[case::asice_for_tsl_validation("tsl.asice", MEDIA_TYPE_ASICE)]
 #[serial]
-fn opens_asice_container_with_expired_certificates() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
-        .build();
+fn opens_containers(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[case] fixture: &str,
+    #[case] media_type: &str,
+) -> Result<(), Box<dyn StdError>> {
+    let container = Container::open(common::fixture_path(fixture))?;
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asics_container() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test.asics"));
-    container_expectation.assert(&container?)
-}
-
-#[test]
-#[serial]
-fn opens_asics_container_with_metadata() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-meta.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asics_container_with_invalid_timestamp_token() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-invalidts.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asics_container_with_zero_size_contents() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-tera-empty.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asics_container_with_large_contents() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICS)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("test-tera.asics"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asice_container_with_subfolder_contents() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = Container::open(common::fixture_path("asice-path.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asice_container_with_forged_signature() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
-        .build();
-
-    let _temp_dir = common::initialize_offline("TSL.xml", &["EE_T.xml"])?;
-    let container = Container::open(common::fixture_path("forged_lt.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn opens_asice_container() -> Result<(), Box<dyn StdError>> {
-    let container_expectation = ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
-        .build();
-
-    let _temp_dir = common::initialize_offline("EE_T.xml", &[])?;
-    let container = Container::open(common::fixture_path("tsl.asice"))?;
-    container_expectation.assert(&container)
-}
-
-#[test]
-#[serial]
-fn fails_opening_invalid_containers() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-
-    for (name, defect) in [
-        ("test-invalid.asics", "invalid mimetype"),
-        ("asics-subfolder.asics", "subfolder"),
-        ("asice-relative.asice", "relative path in contents"),
-        ("dot.asice", "content file with a dot name"),
-        ("pt-empty.asice", "content file with an empty name"),
-    ] {
-        let result = Container::open(common::fixture_path(name));
-        assert_general_digidoc_err!(result, "{name} ({defect})");
-    }
+    assert_eq!(container.media_type()?, media_type);
     Ok(())
 }
 
-#[test]
+#[rstest]
+#[case::invalid_mimetype("test-invalid.asics")]
+#[case::subfolder("asics-subfolder.asics")]
 #[serial]
-fn creates_empty_asice_container() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-    let container = Container::create("new.asice")?;
+fn fails_opening_invalid_containers(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[case] name: &str,
+) {
+    let result = Container::open(common::fixture_path(name));
 
-    ContainerExpectation::builder()
-        .media_type(ContainerExpectation::MEDIA_TYPE_ASICE)
-        .build()
-        .assert(&container)
+    assert_general_digidoc_err!(result);
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn open_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-
-    let result = Container::open(common::non_utf8_path());
-    let Err(Error::Internal(message)) = result else {
-        panic!("Expected internal error, but was {result:?}")
-    };
-    assert!(message.contains("UTF-8"));
-
+fn creates_empty_asice_container(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    assert_eq!(container.media_type()?, MEDIA_TYPE_ASICE);
     Ok(())
 }
 
-#[test]
+#[rstest]
+#[case::open(|path: &Path| Container::open(path).map(drop))]
+#[case::create(|path: &Path| Container::create(path).map(drop))]
+#[case::add_data_file(|path: &Path| {
+    create_empty_asice_container().add_data_file(path, MEDIA_TYPE_TEXT_PLAIN)
+})]
+#[case::save_as(|path: &Path| create_empty_asice_container().save_as(path))]
 #[serial]
-fn create_rejects_non_utf8_path() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
+fn rejects_non_utf8_path(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[case] operation: fn(&Path) -> Result<(), Error>,
+) {
+    let result = operation(&common::non_utf8_path());
 
-    let result = Container::create(common::non_utf8_path());
-    let Err(Error::Internal(message)) = result else {
-        panic!("Expected internal error, but was {result:?}")
-    };
-    assert!(message.contains("UTF-8"));
-
-    Ok(())
+    assert!(assert_internal_err!(result).contains("UTF-8"));
 }

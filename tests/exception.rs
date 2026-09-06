@@ -4,78 +4,77 @@
         clippy::unwrap_used,
         clippy::expect_used,
         clippy::panic,
-        clippy::redundant_pub_crate
+        unreachable_pub,
+        clippy::indexing_slicing,
+        clippy::used_underscore_binding,
     )
 )]
 mod common;
 
-use crate::common::assert_general_digidoc_err;
+use crate::common::{assert_general_digidoc_err, init, init_with_valid_tsl, open_container};
 use libdigidocpp::{Container, DigiDocError, ExceptionCode};
+use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
+use tempfile::TempDir;
 
-#[test]
-#[serial]
-fn open_errors_carry_the_reason_as_a_cause() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-
-    for (name, reason) in [
-        ("dot.asice", "invalid path"),
-        ("asice-relative.asice", "invalid path"),
-        ("pt-empty.asice", "full-path is empty"),
-    ] {
-        let result = Container::open(common::fixture_path(name));
-        let error = assert_general_digidoc_err!(result);
-
-        let expected_start = "digidoc error: General: Failed to parse manifest";
-        let error_message = error.to_string();
-        assert!(
-            error_message.starts_with(expected_start),
-            "{name}: Expected error message to start with \"{expected_start}\", but instead was \"{error_message}\""
-        );
-        let [cause] = error.causes() else {
-            panic!("{name}: expected one DigiDoc cause");
-        };
-        assert!(cause.to_string().contains(reason), "{name}: {cause}");
-        assert!(!cause.cpp_file().is_empty());
-        assert!(cause.cpp_line() > 0);
-    }
-    Ok(())
-}
-
-#[test]
-#[serial]
-fn error_and_source_report_details_separately() -> Result<(), Box<dyn StdError>> {
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
-
-    let result = Container::open(common::fixture_path("dot.asice"));
-    let error = assert_general_digidoc_err!(result);
-
-    assert!(error.message().contains("Failed to parse manifest"));
-    assert!(!error.message().contains("invalid path"));
+#[track_caller]
+fn assert_error(error: &DigiDocError, message: &str, code: ExceptionCode) {
+    assert_eq!(error.message(), message);
+    assert_eq!(error.code(), Some(code));
     assert!(!error.cpp_file().is_empty());
     assert!(error.cpp_line() > 0);
+}
+
+#[rstest]
+#[case::dot_name("dot.asice", "Document file '.' contains invalid path.")]
+#[case::relative_path(
+    "asice-relative.asice",
+    "Document file 'folder/../test1.txt' contains invalid path."
+)]
+#[case::empty_path("pt-empty.asice", "Manifest file entry full-path is empty.")]
+#[serial]
+fn errors_have_cause(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[case] name: &str,
+    #[case] cause_message: &str,
+) {
+    let result = Container::open(common::fixture_path(name));
+    let error = assert_general_digidoc_err!(result);
+
+    assert_error(&error, "Failed to parse manifest", ExceptionCode::General);
+
+    let [cause] = error.causes() else {
+        panic!("expected one digidoc cause");
+    };
+
+    assert_error(cause, cause_message, ExceptionCode::General);
 
     let source = error
         .source()
-        .expect("Expected error to have source")
+        .expect("Expected source")
         .downcast_ref::<DigiDocError>()
-        .expect("Expected digidoc error as source");
-    assert!(source.to_string().contains("invalid path"));
-    assert!(source.source().is_none());
-    assert!(!source.cpp_file().is_empty());
-    assert!(source.cpp_line() > 0);
-    assert_ne!(source.message(), error.message());
+        .expect("Expected digidoc error");
 
-    Ok(())
+    assert_eq!(source.message(), cause.message());
+    assert!(source.source().is_none());
 }
 
-#[test]
+#[rstest]
 #[serial]
-fn validation_errors_carry_a_tree_of_causes_with_cpp_locations() -> Result<(), Box<dyn StdError>> {
-    let result = common::validate_tsl_asice_with("EE_T-CA-non-qa.xml")?;
+fn validation_errors_have_cause_tree(
+    #[from(init)]
+    #[with("EE_T-CA-non-qa.xml")]
+    _temp_dir: TempDir,
+    #[from(open_container)]
+    #[with("tsl.asice")]
+    container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    let result = container.signatures()?[0].validate();
 
     let error = assert_general_digidoc_err!(result);
+
+    assert_error(&error, "Signature validation", ExceptionCode::General);
 
     let [
         unverified_signing_certificate,
@@ -85,58 +84,30 @@ fn validation_errors_carry_a_tree_of_causes_with_cpp_locations() -> Result<(), B
     else {
         panic!("expected three causes: {error:?}");
     };
-
-    assert_eq!(error.message(), "Signature validation");
-    assert!(!error.cpp_file().is_empty());
-    assert!(error.cpp_line() > 0);
-
-    assert_eq!(
-        unverified_signing_certificate.message(),
-        "Unable to verify signing certificate"
+    assert_error(
+        unverified_signing_certificate,
+        "Unable to verify signing certificate",
+        ExceptionCode::General,
     );
-    assert_eq!(
-        unverified_signing_certificate.code(),
-        Some(ExceptionCode::General)
+    assert_error(
+        second_issuer_missing,
+        "unable to get local issuer certificate",
+        ExceptionCode::CertificateIssuerMissing,
     );
-    assert!(!unverified_signing_certificate.cpp_file().is_empty());
-    assert!(unverified_signing_certificate.cpp_line() > 0);
-
-    assert_eq!(
-        second_issuer_missing.message(),
-        "unable to get local issuer certificate"
+    assert_error(
+        unknown_certificate_status,
+        "Certificate status: unknown",
+        ExceptionCode::CertificateUnknown,
     );
-    assert_eq!(
-        second_issuer_missing.code(),
-        Some(ExceptionCode::CertificateIssuerMissing)
-    );
-    assert!(!second_issuer_missing.cpp_file().is_empty());
-    assert!(second_issuer_missing.cpp_line() > 0);
-
-    assert_eq!(
-        unknown_certificate_status.message(),
-        "Certificate status: unknown"
-    );
-    assert_eq!(
-        unknown_certificate_status.code(),
-        Some(ExceptionCode::CertificateUnknown)
-    );
-    assert!(!unknown_certificate_status.cpp_file().is_empty());
-    assert!(unknown_certificate_status.cpp_line() > 0);
 
     let [first_issuer_missing] = unverified_signing_certificate.causes() else {
         panic!("expected one cause: {unverified_signing_certificate:?}");
     };
-
-    assert_eq!(
-        first_issuer_missing.message(),
-        "unable to get local issuer certificate"
+    assert_error(
+        first_issuer_missing,
+        "unable to get local issuer certificate",
+        ExceptionCode::CertificateIssuerMissing,
     );
-    assert_eq!(
-        first_issuer_missing.code(),
-        Some(ExceptionCode::CertificateIssuerMissing)
-    );
-    assert!(!first_issuer_missing.cpp_file().is_empty());
-    assert!(first_issuer_missing.cpp_line() > 0);
 
     Ok(())
 }

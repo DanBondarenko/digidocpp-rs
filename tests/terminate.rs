@@ -4,21 +4,30 @@
         clippy::unwrap_used,
         clippy::expect_used,
         clippy::panic,
-        clippy::redundant_pub_crate
+        unreachable_pub,
     )
 )]
 mod common;
 
-use libdigidocpp::{app_info, init_conf, initialize_with_user_agent, terminate, user_agent};
+use crate::common::{conf_for_testing, dir_with_fixtures};
+use libdigidocpp::{Conf, app_info, init_conf, initialize_with_user_agent, terminate, user_agent};
+use rstest::rstest;
+use serial_test::serial;
 use std::error::Error;
 use tempfile::TempDir;
 
 // MUST BE IN SEPARATE FILE: `terminate` breaks `libdigidocpp` for process duration
-#[test]
-fn terminate_clears_library_info() -> Result<(), Box<dyn Error>> {
-    let directory = TempDir::new()?;
-    common::copy_fixtures(directory.path(), &["TSL.xml"])?;
-    let conf = common::offline_conf(directory.path(), "TSL.xml")?;
+#[rstest]
+#[serial]
+fn terminate_clears_library_info(
+    #[from(dir_with_fixtures)]
+    #[allow(unused_variables)]
+    #[with(&["TSL.xml"])]
+    dir: TempDir,
+    #[from(conf_for_testing)]
+    #[with(dir.path(), "TSL.xml")]
+    conf: Conf,
+) -> Result<(), Box<dyn Error>> {
     init_conf(conf)?;
     initialize_with_user_agent("expected app info", "expected user agent")?;
     assert_eq!(app_info()?, "expected app info");

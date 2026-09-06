@@ -4,18 +4,22 @@
         clippy::unwrap_used,
         clippy::expect_used,
         clippy::panic,
-        clippy::redundant_pub_crate,
-        clippy::indexing_slicing
+        unreachable_pub,
+        clippy::indexing_slicing,
+        clippy::used_underscore_binding,
     )
 )]
 mod common;
 
-use crate::common::DataFileExpectation;
+use crate::common::{MEDIA_TYPE_OCTET_STREAM, create_empty_asice_container, init_with_valid_tsl};
 use libdigidocpp::Container;
+use rstest::rstest;
+use serial_test::serial;
 use std::cell::Cell;
 use std::error::Error as StdError;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::rc::Rc;
+use tempfile::TempDir;
 
 // KEEP THIS TEST IN A SEPARATE FILE: memory usage is measured per process
 
@@ -62,8 +66,12 @@ impl Seek for ZerosReader {
     }
 }
 
-#[test]
-fn streams_a_large_data_file_without_holding_it_in_memory() -> Result<(), Box<dyn StdError>> {
+#[rstest]
+#[serial]
+fn streams_large_file_without_holding_in_memory(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+) -> Result<(), Box<dyn StdError>> {
     const MAX_MEMORY_GROWTH: usize = 64 * 1024 * 1024;
 
     struct CountingWriter {
@@ -82,14 +90,12 @@ fn streams_a_large_data_file_without_holding_it_in_memory() -> Result<(), Box<dy
         }
     }
 
-    let _temp_dir = common::initialize_offline("TSL.xml", &[])?;
     let baseline_memory = resident_memory();
     let peak_memory: Rc<Cell<usize>> = Rc::default();
     let memory_growth = || peak_memory.get().saturating_sub(baseline_memory);
-    let mut container = Container::create("new.asice")?;
     container.add_data_file_from_reader(
         "large.bin",
-        DataFileExpectation::MEDIA_TYPE_OCTET_STREAM,
+        MEDIA_TYPE_OCTET_STREAM,
         ZerosReader {
             position: 0,
             peak_memory: Rc::clone(&peak_memory),
