@@ -3,7 +3,7 @@
     reason = "each integration test binary uses a subset of these helpers"
 )]
 
-use libdigidocpp::{Conf, Container, DerBytes};
+use libdigidocpp::{Conf, Container, DerCert};
 use rstest::fixture;
 use std::error::Error as StdError;
 use std::ffi::OsString;
@@ -118,8 +118,8 @@ pub fn required<T>() -> T {
 }
 
 #[fixture]
-pub fn der_cert(#[default(required())] file_name: &str) -> Vec<u8> {
-    fs::read(fixture_path(file_name)).unwrap()
+pub fn der_cert(#[default(required())] file_name: &str) -> DerCert {
+    fs::read(fixture_path(file_name)).unwrap().into()
 }
 
 #[fixture]
@@ -184,8 +184,8 @@ pub fn open_container(#[default(required())] file_name: &str) -> Container {
     Container::open(fixture_path(file_name)).unwrap()
 }
 
-pub fn parse_common_name(der: &DerBytes) -> Result<String, Box<dyn StdError>> {
-    let (_, certificate) = x509_parser::parse_x509_certificate(&der.0)?;
+pub fn parse_common_name(der: &DerCert) -> Result<String, Box<dyn StdError>> {
+    let (_, certificate) = x509_parser::parse_x509_certificate(der.as_ref())?;
     let common_name = certificate
         .subject()
         .iter_common_name()

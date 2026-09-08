@@ -1,5 +1,5 @@
-use crate::Error;
 use crate::util::path_to_str;
+use crate::{DerCert, Error};
 use cxx::UniquePtr;
 use libdigidocpp_sys::conf::ffi;
 pub use secrecy::{ExposeSecret, SecretString};
@@ -176,7 +176,7 @@ impl Conf {
         Ok(PathBuf::from(self.0.tsl_cache()?))
     }
 
-    pub fn tsl_certs(&self) -> Result<Vec<Vec<u8>>, Error> {
+    pub fn tsl_certs(&self) -> Result<Vec<DerCert>, Error> {
         Ok(build_der_vec(self.0.tsl_certs()?))
     }
 
@@ -192,7 +192,7 @@ impl Conf {
         Ok(self.0.ts_url()?)
     }
 
-    pub fn ts_certs(&self) -> Result<Vec<Vec<u8>>, Error> {
+    pub fn ts_certs(&self) -> Result<Vec<DerCert>, Error> {
         Ok(build_der_vec(self.0.ts_certs()?))
     }
 
@@ -236,7 +236,7 @@ impl Conf {
         Ok(self.0.proxy_tunnel_ssl()?)
     }
 
-    pub fn verify_service_certs(&self) -> Result<Vec<Vec<u8>>, Error> {
+    pub fn verify_service_certs(&self) -> Result<Vec<DerCert>, Error> {
         Ok(build_der_vec(self.0.verify_service_certs()?))
     }
 
@@ -262,10 +262,10 @@ pub fn init_conf(conf: Conf) -> Result<(), Error> {
     Ok(ffi::init_conf(conf.0)?)
 }
 
-fn build_der_vec(certificates: Vec<ffi::CertificateDer>) -> Vec<Vec<u8>> {
+fn build_der_vec(certificates: Vec<ffi::DerCert>) -> Vec<DerCert> {
     certificates
         .into_iter()
-        .map(|certificate| certificate.der)
+        .map(|certificate| DerCert(certificate.der))
         .collect()
 }
 

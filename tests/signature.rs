@@ -14,7 +14,7 @@ use crate::common::{create_empty_asice_container, init_with_valid_tsl, parse_com
 use bon::Builder;
 use itertools::Itertools;
 use libdigidocpp::{
-    Container, ExceptionCode, Signature, TSAInfo, ValidatorResult, ValidatorStatus,
+    Container, DerCert, ExceptionCode, Signature, TSAInfo, ValidatorResult, ValidatorStatus,
 };
 use rstest::rstest;
 use serial_test::serial;
@@ -304,11 +304,11 @@ struct SignatureExpectation {
     validate_ok: bool,
     validator_result: ValidatorResultExpectation,
     archive_time_stamps: Vec<TsaInfoExpectation>,
-    signing_certificate: Option<Vec<u8>>,
+    signing_certificate: Option<DerCert>,
     signing_certificate_common_name: Option<String>,
     data_to_sign: Option<Vec<u8>>,
-    ocsp_certificate: Option<Vec<u8>>,
-    time_stamp_certificate: Option<Vec<u8>>,
+    ocsp_certificate: Option<DerCert>,
+    time_stamp_certificate: Option<DerCert>,
     time_stamp_certificate_common_name: Option<String>,
     message_imprint: Option<Vec<u8>>,
 }
@@ -342,29 +342,26 @@ impl SignatureExpectation {
             .zip_eq(archive_time_stamps)
             .for_each(|(expectation, tsa_info)| expectation.assert(tsa_info));
 
-        assert_if_some(
-            &signature.signing_certificate()?.0,
-            self.signing_certificate.as_ref(),
-        );
+        if let Some(expected) = &self.signing_certificate {
+            assert_eq!(signature.signing_certificate()?.as_ref(), Some(expected));
+        }
         assert_if_some(&signature.data_to_sign()?, self.data_to_sign.as_ref());
-        assert_if_some(
-            &signature.ocsp_certificate()?.0,
-            self.ocsp_certificate.as_ref(),
-        );
-        assert_if_some(
-            &signature.time_stamp_certificate()?.0,
-            self.time_stamp_certificate.as_ref(),
-        );
+        if let Some(expected) = &self.ocsp_certificate {
+            assert_eq!(signature.ocsp_certificate()?.as_ref(), Some(expected));
+        }
+        if let Some(expected) = &self.time_stamp_certificate {
+            assert_eq!(signature.time_stamp_certificate()?.as_ref(), Some(expected));
+        }
         assert_if_some(&signature.message_imprint()?, self.message_imprint.as_ref());
         if let Some(expected) = &self.signing_certificate_common_name {
             assert_eq!(
-                &parse_common_name(&signature.signing_certificate()?)?,
+                &parse_common_name(&signature.signing_certificate()?.unwrap())?,
                 expected
             );
         }
         if let Some(expected) = &self.time_stamp_certificate_common_name {
             assert_eq!(
-                &parse_common_name(&signature.time_stamp_certificate()?)?,
+                &parse_common_name(&signature.time_stamp_certificate()?.unwrap())?,
                 expected
             );
         }
@@ -376,14 +373,16 @@ impl SignatureExpectation {
 #[derive(Builder, Debug, Clone)]
 #[builder(on(_, into))]
 struct TsaInfoExpectation {
-    cert: Option<Vec<u8>>,
+    cert: Option<DerCert>,
     time: String,
 }
 
 impl TsaInfoExpectation {
     fn assert(&self, tsa_info: &TSAInfo) {
         assert_eq!(tsa_info.time(), self.time);
-        assert_if_some(tsa_info.cert(), self.cert.as_deref());
+        if let Some(expected) = &self.cert {
+            assert_eq!(tsa_info.cert(), Some(expected));
+        }
     }
 }
 

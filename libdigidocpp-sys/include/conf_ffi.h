@@ -12,7 +12,7 @@
 #include "rust/cxx.h"
 
 namespace digidoc_rs::conf {
-struct CertificateDer;
+struct DerCert;
 struct OcspUrl;
 
 // setter-based mecchanism for config
@@ -86,11 +86,11 @@ class SettableConf final : public digidoc::XmlConfCurrent {
   [[nodiscard]] auto ocsp_tm_profiles() const -> rust::Vec<rust::String>;
   [[nodiscard]] auto ocsp_url(rust::Str issuer) const -> rust::String;
   [[nodiscard]] auto tsl_cache() const -> rust::String;
-  [[nodiscard]] auto tsl_certs() const -> rust::Vec<CertificateDer>;
+  [[nodiscard]] auto tsl_certs() const -> rust::Vec<DerCert>;
   [[nodiscard]] auto tsl_url() const -> rust::String;
   [[nodiscard]] auto xsd_path() const -> rust::String;
   [[nodiscard]] auto ts_url() const -> rust::String;
-  [[nodiscard]] auto ts_certs() const -> rust::Vec<CertificateDer>;
+  [[nodiscard]] auto ts_certs() const -> rust::Vec<DerCert>;
   [[nodiscard]] auto tsl_allow_expired() const -> bool;
   [[nodiscard]] auto tsl_auto_update() const -> bool;
   [[nodiscard]] auto tsl_online_digest() const -> bool;
@@ -101,7 +101,7 @@ class SettableConf final : public digidoc::XmlConfCurrent {
   [[nodiscard]] auto proxy_pass() const -> rust::String;
   [[nodiscard]] auto proxy_force_ssl() const -> bool;
   [[nodiscard]] auto proxy_tunnel_ssl() const -> bool;
-  [[nodiscard]] auto verify_service_certs() const -> rust::Vec<CertificateDer>;
+  [[nodiscard]] auto verify_service_certs() const -> rust::Vec<DerCert>;
   [[nodiscard]] auto verify_service_uri() const -> rust::String;
   [[nodiscard]] auto pkcs11_driver() const -> rust::String;
   [[nodiscard]] auto digest_uri() const -> rust::String;

@@ -36,10 +36,10 @@ auto add_cert(std::optional<std::vector<digidoc::X509Cert>>& certs,
 }
 
 auto to_der_list(const std::vector<digidoc::X509Cert>& certs)
-    -> rust::Vec<CertificateDer> {
-  return util::to_rust_vec<CertificateDer>(
-      certs, [](const digidoc::X509Cert& cert) -> CertificateDer {
-        return CertificateDer{util::to_rust_der(cert)};
+    -> rust::Vec<DerCert> {
+  return util::to_rust_vec<DerCert>(
+      certs, [](const digidoc::X509Cert& cert) -> DerCert {
+        return DerCert{util::to_rust_der(cert)};
       });
 }
 }  // namespace
@@ -163,7 +163,7 @@ auto SettableConf::ocsp_url(const rust::Str issuer) const -> rust::String {
 
 auto SettableConf::tsl_cache() const -> rust::String { return TSLCache(); }
 
-auto SettableConf::tsl_certs() const -> rust::Vec<CertificateDer> {
+auto SettableConf::tsl_certs() const -> rust::Vec<DerCert> {
   return to_der_list(TSLCerts());
 }
 
@@ -173,7 +173,7 @@ auto SettableConf::xsd_path() const -> rust::String { return xsdPath(); }
 
 auto SettableConf::ts_url() const -> rust::String { return TSUrl(); }
 
-auto SettableConf::ts_certs() const -> rust::Vec<CertificateDer> {
+auto SettableConf::ts_certs() const -> rust::Vec<DerCert> {
   return to_der_list(TSCerts());
 }
 
@@ -201,7 +201,7 @@ auto SettableConf::proxy_force_ssl() const -> bool { return proxyForceSSL(); }
 
 auto SettableConf::proxy_tunnel_ssl() const -> bool { return proxyTunnelSSL(); }
 
-auto SettableConf::verify_service_certs() const -> rust::Vec<CertificateDer> {
+auto SettableConf::verify_service_certs() const -> rust::Vec<DerCert> {
   return to_der_list(verifyServiceCerts());
 }
 

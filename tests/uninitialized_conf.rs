@@ -10,7 +10,7 @@
 mod common;
 
 use crate::common::{assert_internal_err, conf_from_fixture, der_cert, dir_with_fixtures};
-use libdigidocpp::{Conf, Error, ExposeSecret};
+use libdigidocpp::{Conf, DerCert, Error, ExposeSecret};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -133,7 +133,7 @@ fn each_setter_overrides_matching_getter(
 fn clearing_and_adding_certificates_sets_each_certificate_list(
     #[from(der_cert)]
     #[with("TSL.der")]
-    cert: Vec<u8>,
+    cert: DerCert,
     #[from(conf_from_fixture)]
     #[with("digidocpp.conf")]
     mut conf: Conf,
@@ -157,7 +157,7 @@ fn clearing_and_adding_certificates_sets_each_certificate_list(
 fn first_certificate_replaces_defaults(
     #[from(der_cert)]
     #[with("TSL.der")]
-    cert: Vec<u8>,
+    cert: DerCert,
     #[from(conf_from_fixture)]
     #[with("digidocpp.conf")]
     mut conf: Conf,
@@ -175,7 +175,7 @@ fn first_certificate_replaces_defaults(
 fn appends_certificates(
     #[from(der_cert)]
     #[with("TSL.der")]
-    cert: Vec<u8>,
+    cert: DerCert,
     #[from(conf_from_fixture)]
     #[with("digidocpp.conf")]
     mut conf: Conf,
@@ -195,7 +195,7 @@ fn appends_certificates(
 fn rejects_adding_bad_certificate(
     #[from(der_cert)]
     #[with("TSL.der")]
-    cert: Vec<u8>,
+    cert: DerCert,
     #[from(conf_from_fixture)]
     #[with("digidocpp.conf")]
     mut conf: Conf,

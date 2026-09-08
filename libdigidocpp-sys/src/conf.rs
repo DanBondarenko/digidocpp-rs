@@ -3,7 +3,7 @@
 pub mod ffi {
     #[namespace = "digidoc_rs::conf"]
     #[derive(Debug, Clone)]
-    struct CertificateDer {
+    struct DerCert {
         der: Vec<u8>,
     }
 
@@ -31,11 +31,11 @@ pub mod ffi {
         fn ocsp_tm_profiles(self: &SettableConf) -> Result<Vec<String>>;
         fn ocsp_url(self: &SettableConf, issuer: &str) -> Result<String>;
         fn tsl_cache(self: &SettableConf) -> Result<String>;
-        fn tsl_certs(self: &SettableConf) -> Result<Vec<CertificateDer>>;
+        fn tsl_certs(self: &SettableConf) -> Result<Vec<DerCert>>;
         fn tsl_url(self: &SettableConf) -> Result<String>;
         fn xsd_path(self: &SettableConf) -> Result<String>;
         fn ts_url(self: &SettableConf) -> Result<String>;
-        fn ts_certs(self: &SettableConf) -> Result<Vec<CertificateDer>>;
+        fn ts_certs(self: &SettableConf) -> Result<Vec<DerCert>>;
         fn tsl_allow_expired(self: &SettableConf) -> Result<bool>;
         fn tsl_auto_update(self: &SettableConf) -> Result<bool>;
         fn tsl_online_digest(self: &SettableConf) -> Result<bool>;
@@ -46,7 +46,7 @@ pub mod ffi {
         fn proxy_pass(self: &SettableConf) -> Result<String>;
         fn proxy_force_ssl(self: &SettableConf) -> Result<bool>;
         fn proxy_tunnel_ssl(self: &SettableConf) -> Result<bool>;
-        fn verify_service_certs(self: &SettableConf) -> Result<Vec<CertificateDer>>;
+        fn verify_service_certs(self: &SettableConf) -> Result<Vec<DerCert>>;
         fn verify_service_uri(self: &SettableConf) -> Result<String>;
         fn pkcs11_driver(self: &SettableConf) -> Result<String>;
         fn digest_uri(self: &SettableConf) -> Result<String>;

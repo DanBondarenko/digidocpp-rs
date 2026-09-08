@@ -3,6 +3,7 @@
 mod conf;
 mod container;
 mod data_file;
+mod der_cert;
 mod exception;
 mod init;
 mod signature;
@@ -12,6 +13,7 @@ mod util;
 pub use conf::*;
 pub use container::*;
 pub use data_file::*;
+pub use der_cert::*;
 pub use exception::*;
 pub use init::*;
 pub use signature::*;

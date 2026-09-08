@@ -1,5 +1,5 @@
 use crate::stream::call_then_deliver_stream_failure;
-use crate::{Error, ExceptionCode};
+use crate::{DerCert, Error, ExceptionCode};
 use libdigidocpp_sys::signature::ffi;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
@@ -28,32 +28,38 @@ impl From<ffi::Status> for ValidatorStatus {
 
 pub struct Signature<'a>(pub(crate) &'a ffi::Signature);
 
-#[derive(Debug, Clone)]
-#[non_exhaustive]
-pub struct DerBytes(pub Vec<u8>);
-
-#[derive(Debug, Clone)]
-pub struct TSAInfo(ffi::TSAInfo);
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TSAInfo {
+    cert: Option<DerCert>,
+    time: String,
+}
 
 impl TSAInfo {
+    pub(crate) fn from_ffi(info: ffi::TSAInfo) -> Self {
+        Self {
+            cert: DerCert::from_ffi(info.cert),
+            time: info.time,
+        }
+    }
+
     #[must_use]
-    pub fn cert(&self) -> &[u8] {
-        &self.0.cert
+    pub const fn cert(&self) -> Option<&DerCert> {
+        self.cert.as_ref()
     }
 
     #[must_use]
     pub fn time(&self) -> &str {
-        &self.0.time
+        &self.time
     }
 
     #[must_use]
-    pub fn into_cert(self) -> Vec<u8> {
-        self.0.cert
+    pub fn into_cert(self) -> Option<DerCert> {
+        self.cert
     }
 
     #[must_use]
     pub fn into_time(self) -> String {
-        self.0.time
+        self.time
     }
 }
 
@@ -107,8 +113,8 @@ impl Signature<'_> {
         Ok(ffi::trusted_signing_time(self.0)?)
     }
 
-    pub fn signing_certificate(&self) -> Result<DerBytes, Error> {
-        Ok(DerBytes(ffi::signing_certificate(self.0)?))
+    pub fn signing_certificate(&self) -> Result<Option<DerCert>, Error> {
+        Ok(DerCert::from_ffi(ffi::signing_certificate(self.0)?))
     }
 
     pub fn signature_method(&self) -> Result<String, Error> {
@@ -167,12 +173,12 @@ impl Signature<'_> {
         Ok(ffi::ocsp_produced_at(self.0)?)
     }
 
-    pub fn ocsp_certificate(&self) -> Result<DerBytes, Error> {
-        Ok(DerBytes(ffi::ocsp_certificate(self.0)?))
+    pub fn ocsp_certificate(&self) -> Result<Option<DerCert>, Error> {
+        Ok(DerCert::from_ffi(ffi::ocsp_certificate(self.0)?))
     }
 
-    pub fn time_stamp_certificate(&self) -> Result<DerBytes, Error> {
-        Ok(DerBytes(ffi::time_stamp_certificate(self.0)?))
+    pub fn time_stamp_certificate(&self) -> Result<Option<DerCert>, Error> {
+        Ok(DerCert::from_ffi(ffi::time_stamp_certificate(self.0)?))
     }
 
     pub fn time_stamp_time(&self) -> Result<String, Error> {
@@ -182,7 +188,7 @@ impl Signature<'_> {
     pub fn archive_time_stamps(&self) -> Result<Vec<TSAInfo>, Error> {
         Ok(ffi::archive_time_stamps(self.0)?
             .into_iter()
-            .map(TSAInfo)
+            .map(TSAInfo::from_ffi)
             .collect())
     }
 
