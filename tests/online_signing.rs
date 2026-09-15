@@ -41,15 +41,15 @@ fn signs_with_two_signers_and_validates_both(
 
     let signatures = container.signatures()?;
     assert_eq!(signatures.len(), 2);
-    
+
     assert_eq!(signatures[0].id()?, "S0");
     assert_eq!(signatures[0].signing_certificate()?, first_signer.cert()?);
     signatures[0].validate()?;
-    
+
     assert_eq!(signatures[1].id()?, "S1");
     assert_eq!(signatures[1].signing_certificate()?, second_signer.cert()?);
     signatures[1].validate()?;
-    
+
     Ok(())
 }
 
@@ -65,21 +65,21 @@ fn adds_signature_and_validates_reopened_container(
     let mut second_signer = common::pkcs12_signer("signer2.p12");
     container.sign(&mut first_signer)?;
     container.save()?;
-    
+
     let mut reopened = Container::open(temp_dir.path().join("signed.asice"))?;
     reopened.sign(&mut second_signer)?;
 
     let signatures = reopened.signatures()?;
     assert_eq!(signatures.len(), 2);
-    
+
     assert_eq!(signatures[0].id()?, "S0");
     assert_eq!(signatures[0].signing_certificate()?, first_signer.cert()?);
     signatures[0].validate()?;
-    
+
     assert_eq!(signatures[1].id()?, "S1");
     assert_eq!(signatures[1].signing_certificate()?, second_signer.cert()?);
     signatures[1].validate()?;
-    
+
     Ok(())
 }
 
@@ -118,7 +118,7 @@ fn signs_and_validates(
 
     let signature = container.sign(&mut signer)?;
     let signature = signature.as_signature();
-    
+
     assert_eq!(signature.id()?, "S0");
     assert_eq!(signature.profile()?, "BES/time-stamp");
     assert_eq!(signature.signature_method()?, expected_method);
@@ -128,7 +128,7 @@ fn signs_and_validates(
     assert_is_recent(&signature.claimed_signing_time()?);
     assert_is_recent(&signature.ocsp_produced_at()?);
     signature.validate()?;
-    
+
     assert_eq!(container.signatures()?.len(), 1);
     Ok(())
 }

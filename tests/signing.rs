@@ -215,10 +215,10 @@ fn keeps_signer_params_after_reopening(
     container.sign(&mut signer)?;
     container.save()?;
     let signed = Container::open(temp_dir.path().join("signed.asice"))?;
-    
+
     let signatures = signed.signatures()?;
     assert_eq!(signatures.len(), 1);
-    
+
     let signature = signatures[0];
     assert_eq!(signature.signer_roles()?, roles);
     assert_eq!(signature.city()?, "Tartu");

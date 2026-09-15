@@ -91,7 +91,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `addDataFile(stream, path, mediaType)`
 - [x] `dataFiles()`
 - [x] `removeDataFile(index)`
-- [ ] `addAdESSignature(bytes)`
+- [x] `addAdESSignature(bytes)`
 - [x] `prepareSignature(signer)`
 - [x] `signatures()`
 - [x] `removeSignature(index)`

@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "digidocpp/Container.h"
 #include "digidocpp/crypto/Signer.h"
@@ -92,6 +93,12 @@ auto add_data_file(digidoc::Container& container, const rust::Str path,
 auto remove_data_file(digidoc::Container& container, const uint32_t index)
     -> void {
   container.removeDataFile(index);
+}
+
+auto add_ades_signature(digidoc::Container& container,
+                        const rust::Slice<const uint8_t> signature) -> void {
+  container.addAdESSignature(
+      std::vector<unsigned char>(signature.begin(), signature.end()));
 }
 
 auto save(digidoc::Container& container, const rust::Str path) -> void {

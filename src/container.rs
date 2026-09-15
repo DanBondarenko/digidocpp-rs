@@ -81,6 +81,10 @@ impl Container {
         call_then_deliver_stream_failure(|| ffi::save(self.0.pin_mut(), path))
     }
 
+    pub fn add_ades_signature(&mut self, signature: &[u8]) -> Result<(), Error> {
+        Ok(ffi::add_ades_signature(self.0.pin_mut(), signature)?)
+    }
+
     pub fn signatures(&self) -> Result<Vec<Signature<'_>>, Error> {
         let count = ffi::signatures_size(&self.0)?;
         let data_files = (0..count)

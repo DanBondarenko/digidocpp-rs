@@ -62,6 +62,7 @@ pub mod ffi {
             media_type: &str,
         ) -> Result<()>;
         fn remove_data_file(container: Pin<&mut Container>, index: u32) -> Result<()>;
+        fn add_ades_signature(container: Pin<&mut Container>, signature: &[u8]) -> Result<()>;
         fn save(container: Pin<&mut Container>, path: &str) -> Result<()>;
         fn add_data_file_from_reader(
             container: Pin<&mut Container>,
