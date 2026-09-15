@@ -42,6 +42,7 @@ pub mod ffi {
         include!("digidocpp/Signature.h");
 
         type Signature;
+        type Signer = crate::signer::ffi::Signer;
         type Status;
         type ExceptionCode = crate::exception::ffi::ExceptionCode;
     }
@@ -63,6 +64,11 @@ pub mod ffi {
         fn validate(signature: &Signature) -> Result<()>;
         fn validate_with_policy(signature: &Signature, policy: &str) -> Result<()>;
         fn data_to_sign(signature: &Signature) -> Result<Vec<u8>>;
+        fn set_signature_value(signature: Pin<&mut Signature>, value: &[u8]) -> Result<()>;
+        fn extend_signature_profile(
+            signature: Pin<&mut Signature>,
+            signer: Pin<&mut Signer>,
+        ) -> Result<()>;
 
         fn policy(signature: &Signature) -> Result<String>;
         fn sp_uri(signature: &Signature) -> Result<String>;

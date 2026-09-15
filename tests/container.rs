@@ -5,6 +5,7 @@
         clippy::expect_used,
         clippy::panic,
         unreachable_pub,
+        clippy::indexing_slicing,
         clippy::used_underscore_binding,
     )
 )]
@@ -12,7 +13,8 @@ mod common;
 
 use crate::common::{
     MEDIA_TYPE_ASICE, MEDIA_TYPE_ASICS, MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err,
-    assert_internal_err, create_empty_asice_container, init_with_valid_tsl,
+    assert_internal_err, create_empty_asice_container, create_unsigned_asice_with_data_file,
+    init_with_valid_tsl,
 };
 use libdigidocpp::{Container, Error};
 use rstest::rstest;
@@ -67,8 +69,8 @@ fn creates_empty_asice_container(
 }
 
 #[rstest]
-#[case::open(|path: &Path| Container::open(path).map(drop))]
-#[case::create(|path: &Path| Container::create(path).map(drop))]
+#[case::open(|path: &Path| Container::open(path).map(|_| ()))]
+#[case::create(|path: &Path| Container::create(path).map(|_| ()))]
 #[case::add_data_file(|path: &Path| {
     create_empty_asice_container().add_data_file(path, MEDIA_TYPE_TEXT_PLAIN)
 })]
@@ -81,4 +83,32 @@ fn rejects_non_utf8_path(
     let result = operation(&common::non_utf8_path());
 
     assert!(assert_internal_err!(result).contains("UTF-8"));
+}
+
+#[rstest]
+#[serial]
+fn rejects_empty_save_path(
+    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(create_empty_asice_container)] mut container: Container,
+) {
+    let result = container.save_as("");
+
+    assert_eq!(assert_internal_err!(result), "path is empty");
+}
+
+#[rstest]
+#[serial]
+fn saves_container_to_given_path(
+    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(create_unsigned_asice_with_data_file)]
+    #[with(temp_dir.path())]
+    mut container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    let new_path = temp_dir.path().join("copy.asice");
+
+    container.save_as(&new_path)?;
+
+    let saved = Container::open(new_path)?;
+    assert_eq!(saved.data_files()?[0].file_name()?, "test1.txt");
+    Ok(())
 }

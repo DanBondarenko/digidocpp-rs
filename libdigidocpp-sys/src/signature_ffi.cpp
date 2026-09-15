@@ -2,8 +2,10 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "digidocpp/Signature.h"
+#include "digidocpp/crypto/Signer.h"
 #include "libdigidocpp-sys/include/ffi_util.h"
 #include "libdigidocpp-sys/src/signature.rs.h"
 #include "rust/cxx.h"
@@ -45,6 +47,17 @@ auto validate_with_policy(const digidoc::Signature& signature,
 }
 auto data_to_sign(const digidoc::Signature& signature) -> rust::Vec<uint8_t> {
   return util::to_rust_vec(signature.dataToSign());
+}
+
+auto set_signature_value(digidoc::Signature& signature,
+                         const rust::Slice<const uint8_t> value) -> void {
+  signature.setSignatureValue(
+      std::vector<unsigned char>(value.begin(), value.end()));
+}
+
+auto extend_signature_profile(digidoc::Signature& signature,
+                              digidoc::Signer& signer) -> void {
+  signature.extendSignatureProfile(&signer);
 }
 
 auto policy(const digidoc::Signature& signature) -> rust::String {

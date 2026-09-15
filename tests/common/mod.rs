@@ -3,7 +3,7 @@
     reason = "each integration test binary uses a subset of these helpers"
 )]
 
-use libdigidocpp::{Conf, Container, DerCert};
+use libdigidocpp::{Conf, Container, DerCert, Pkcs12Signer};
 use rstest::fixture;
 use std::error::Error as StdError;
 use std::ffi::OsString;
@@ -11,6 +11,8 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
+use time::format_description::well_known::Rfc3339;
+use time::{Duration, OffsetDateTime};
 
 #[allow(unused_macros)]
 macro_rules! assert_general_digidoc_err {
@@ -112,6 +114,13 @@ pub fn write_file(directory: &Path, name: &str, contents: &[u8]) -> io::Result<P
     Ok(path)
 }
 
+#[fixture]
+pub fn pkcs12_signer(#[default(required())] file_name: &str) -> Pkcs12Signer {
+    // pass of signer files is file name w/o extension
+    let password = file_name.strip_suffix(".p12").unwrap();
+    Pkcs12Signer::new(fixture_path(file_name), password).unwrap()
+}
+
 #[track_caller]
 pub fn required<T>() -> T {
     panic!()
@@ -180,6 +189,20 @@ pub fn create_empty_asice_container() -> Container {
 }
 
 #[fixture]
+pub fn create_unsigned_asice_with_data_file(
+    #[default(required())] directory: &Path,
+    #[default("default.asice")] container_name: &str,
+) -> Container {
+    let data_file = write_file(directory, "test1.txt", b"1234\n").unwrap();
+    let mut container = Container::create(directory.join(container_name)).unwrap();
+    container
+        .add_data_file(data_file, MEDIA_TYPE_TEXT_PLAIN)
+        .unwrap();
+
+    container
+}
+
+#[fixture]
 pub fn open_container(#[default(required())] file_name: &str) -> Container {
     Container::open(fixture_path(file_name)).unwrap()
 }
@@ -194,6 +217,16 @@ pub fn parse_common_name(der: &DerCert) -> Result<String, Box<dyn StdError>> {
         .as_str()?;
 
     Ok(common_name.to_owned())
+}
+
+#[track_caller]
+pub fn assert_is_recent(timestamp: &str) {
+    const MAX_CLOCK_DIFFERENCE: Duration = Duration::minutes(5);
+
+    let parsed = OffsetDateTime::parse(timestamp, &Rfc3339).unwrap();
+    let difference = (OffsetDateTime::now_utc() - parsed).abs();
+
+    assert!(difference <= MAX_CLOCK_DIFFERENCE);
 }
 
 pub const MEDIA_TYPE_ASICE: &str = "application/vnd.etsi.asic-e+zip";

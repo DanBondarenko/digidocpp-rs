@@ -84,6 +84,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 
 ## `Container`
 - [x] `open(path, ContainerOpenCB *cb)`
+- [x] `extendContainerValidity(doc, signer, extendedCount)`
 - [x] `save(path = "")`
 - [x] `mediaType()`
 - [x] `addDataFile(path, mediaType)`
@@ -91,10 +92,10 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `dataFiles()`
 - [x] `removeDataFile(index)`
 - [ ] `addAdESSignature(bytes)`
-- [ ] `prepareSignature(signer)`
-- [ ] `signatures()`
-- [ ] `removeSignature(index)`
-- [ ] `sign(signer)`
+- [x] `prepareSignature(signer)`
+- [x] `signatures()`
+- [x] `removeSignature(index)`
+- [x] `sign(signer)`
 - [ ] `prepareWebSignature(cert, profile = "", roles = [], city = "", state = "", postalCode = "", country = "")`
 
 ## `ContainerOpenCB`
@@ -120,7 +121,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `validate()`
 - [x] `validate(policy)`
 - [x] `dataToSign()`
-- [ ] `setSignatureValue(bytes)`
+- [x] `setSignatureValue(bytes)`
 - [x] `policy()`
 - [x] `SPUri()`
 - [x] `profile()`
@@ -137,7 +138,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `ArchiveTimeStamps()`
 - [x] `signedBy()`
 - [x] `messageImprint()`
-- [ ] `extendSignatureProfile(signer)`
+- [x] `extendSignatureProfile(signer)`
  
 ## `Signature::Validator`
 - [ ] ~~Constructor~~
@@ -150,28 +151,28 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `time`
 
 ## `Signer`
-- [ ] `cert()`
-- [ ] `sign(method, digest)`
-- [ ] `method()`
-- [ ] `profile()`
-- [ ] `userAgent()`
-- [ ] `usingENProfile()`
-- [ ] `city()`
-- [ ] `streetAddress()`
-- [ ] `stateOrProvince()`
-- [ ] `postalCode()`
-- [ ] `countryName()`
-- [ ] `signerRoles()`
-- [ ] `setMethod(method)`
-- [ ] `setProfile(profile)`
-- [ ] `setUserAgent(userAgent)`
-- [ ] `setENProfile(enable)`
-- [ ] `setSignatureProductionPlace(city, state, postalCode, country)`
-- [ ] `setSignatureProductionPlaceV2(city, streetAddress, state, postalCode, country)`
-- [ ] `setSignerRoles(roles)`
-- [ ] `PKCS12Signer` (subclass)
-- [ ] `PKCS11Signer` (subclass)
-- [ ] `WinSigner` (subclass)
+- [x] `cert()`
+- [x] `sign(method, digest)`
+- [x] `method()`
+- [x] `profile()`
+- [x] `userAgent()`
+- [x] `usingENProfile()`
+- [x] `city()`
+- [x] `streetAddress()`
+- [x] `stateOrProvince()`
+- [x] `postalCode()`
+- [x] `countryName()`
+- [x] `signerRoles()`
+- [x] `setMethod(method)`
+- [x] `setProfile(profile)`
+- [x] `setUserAgent(userAgent)`
+- [x] `setENProfile(enable)`
+- [x] `setSignatureProductionPlace(city, state, postalCode, country)`
+- [x] `setSignatureProductionPlaceV2(city, streetAddress, state, postalCode, country)`
+- [x] `setSignerRoles(roles)`
+- [x] `PKCS12Signer` (subclass)
+- [x] `PKCS11Signer` (subclass)
+- [x] `WinSigner` (subclass)
 
 ## Other ideas
 - [ ] add cxx shared struct for vectors of non-owned data e.g. `Container::dataFiles()` and `Container::signatures()`

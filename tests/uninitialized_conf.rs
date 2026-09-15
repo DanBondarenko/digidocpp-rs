@@ -311,15 +311,15 @@ fn reads_config_file_in_non_ascii_dir(
 }
 
 #[rstest]
-#[case::from_file(|path: &Path| Conf::from_file(path).map(drop))]
+#[case::from_file(|path: &Path| Conf::from_file(path).map(|_| ()))]
 #[case::set_log_file(|path: &Path| conf_from_fixture("empty.conf").set_log_file(path))]
 #[case::from_file_with_bad_config(|path: &Path| {
-    Conf::from_file_with_schema(path, "schema.xsd").map(drop)
+    Conf::from_file_with_schema(path, "schema.xsd").map(|_| ())
 })]
 #[case::from_file_with_bad_schema(|path: &Path| {
-    Conf::from_file_with_schema("digidocpp.conf", path).map(drop)
+    Conf::from_file_with_schema("digidocpp.conf", path).map(|_| ())
 })]
-#[case::with_schema(|path: &Path| Conf::with_schema(path).map(drop))]
+#[case::with_schema(|path: &Path| Conf::with_schema(path).map(|_| ()))]
 #[case::set_tsl_cache(|path: &Path| conf_from_fixture("empty.conf").set_tsl_cache(path))]
 #[case::set_xsd_path(|path: &Path| conf_from_fixture("empty.conf").set_xsd_path(path))]
 #[serial]

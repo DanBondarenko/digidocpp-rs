@@ -279,7 +279,7 @@ fn assert_signatures(
     expected
         .iter()
         .zip_eq(signatures)
-        .try_for_each(|(expectation, signature)| expectation.assert(&signature))
+        .try_for_each(|(expectation, signature)| expectation.assert(signature))
 }
 
 #[derive(Builder, Debug, Clone)]
@@ -314,7 +314,7 @@ struct SignatureExpectation {
 }
 
 impl SignatureExpectation {
-    fn assert(&self, signature: &Signature) -> Result<(), Box<dyn StdError>> {
+    fn assert(&self, signature: Signature<'_>) -> Result<(), Box<dyn StdError>> {
         assert_eq!(signature.signed_by()?, self.signed_by);
         assert_eq!(signature.id()?, self.id);
         assert_eq!(signature.claimed_signing_time()?, self.claimed_signing_time);

@@ -7,6 +7,7 @@ mod der_cert;
 mod exception;
 mod init;
 mod signature;
+mod signer;
 mod stream;
 mod util;
 
@@ -17,3 +18,4 @@ pub use der_cert::*;
 pub use exception::*;
 pub use init::*;
 pub use signature::*;
+pub use signer::*;

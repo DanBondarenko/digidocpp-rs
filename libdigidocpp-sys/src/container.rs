@@ -1,7 +1,15 @@
 use std::fmt::{self, Debug, Formatter};
 
 #[cxx::bridge]
+#[allow(clippy::exhaustive_structs)]
 pub mod ffi {
+    #[namespace = "digidoc_rs::container"]
+    #[derive(Debug)]
+    struct ExtendedValidity {
+        container: UniquePtr<Container>,
+        extended_count: usize,
+    }
+
     #[namespace = "digidoc"]
     unsafe extern "C++" {
         include!("digidocpp/Container.h");
@@ -9,6 +17,7 @@ pub mod ffi {
         type Container;
         type DataFile = crate::data_file::ffi::DataFile;
         type Signature = crate::signature::ffi::Signature;
+        type Signer = crate::signer::ffi::Signer;
     }
 
     #[namespace = "digidoc_rs::stream"]
@@ -30,6 +39,23 @@ pub mod ffi {
         fn data_file_at(container: &Container, index: usize) -> Result<&DataFile>;
         fn signatures_size(container: &Container) -> Result<usize>;
         fn signature_at(container: &Container, index: usize) -> Result<&Signature>;
+        fn signature_at_mut(
+            container: Pin<&mut Container>,
+            index: usize,
+        ) -> Result<Pin<&mut Signature>>;
+        fn remove_signature(container: Pin<&mut Container>, index: u32) -> Result<()>;
+        fn extend_container_validity(
+            doc: Pin<&mut Container>,
+            signer: Pin<&mut Signer>,
+        ) -> Result<ExtendedValidity>;
+        fn sign<'a>(
+            container: Pin<&'a mut Container>,
+            signer: Pin<&mut Signer>,
+        ) -> Result<Pin<&'a mut Signature>>;
+        fn prepare_signature<'a>(
+            container: Pin<&'a mut Container>,
+            signer: Pin<&mut Signer>,
+        ) -> Result<Pin<&'a mut Signature>>;
         fn add_data_file(
             container: Pin<&mut Container>,
             path: &str,

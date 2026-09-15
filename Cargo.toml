@@ -22,7 +22,7 @@ num_enum = "0.7.6"
 secrecy = "0.10.3"
 
 [dev-dependencies]
-bon = "3.9.1"
+bon = "3.10.1"
 hex = "0.4.3"
 itertools = "0.15.0"
 memory-stats = "1.2.0"
@@ -30,7 +30,11 @@ rand_pcg = "0.10"
 rstest = "0.27.0"
 serial_test = "4.0.1"
 tempfile = "3.27.0"
+time = { version = "0.3.55", features = ["parsing"] }
 x509-parser = "0.18.1"
+
+[features]
+online_tests = []
 
 [workspace.lints.rust]
 missing_docs = "allow" # TODO: Turn on before publishing

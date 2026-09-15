@@ -7,6 +7,7 @@ use std::fmt::{Debug, Display, Formatter};
 use std::io::Write;
 use std::path::Path;
 
+#[derive(Clone, Copy)]
 pub struct DataFile<'a>(pub(crate) &'a ffi::DataFile);
 
 impl DataFile<'_> {

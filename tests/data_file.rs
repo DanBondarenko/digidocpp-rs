@@ -503,7 +503,7 @@ impl Seek for PanickingReader {
 
 #[rstest]
 #[case::calc_digest(
-    |data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(drop),
+    |data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(|_| ()),
     FailingReader::failing_reads(),
     ErrorKind::BrokenPipe,
     "scripted read failure"
@@ -521,7 +521,7 @@ impl Seek for PanickingReader {
     "scripted read failure"
 )]
 #[case::file_size(
-    |data_file: &DataFile, _: &Path| data_file.file_size().map(drop),
+    |data_file: &DataFile, _: &Path| data_file.file_size().map(|_| ()),
     FailingReader::failing_seeks(),
     ErrorKind::Unsupported,
     "scripted seek failure"
@@ -572,8 +572,8 @@ fn never_uses_failed_reader_twice(
 }
 
 #[rstest]
-#[case::calc_digest(|data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(drop))]
-#[case::file_size(|data_file: &DataFile, _: &Path| data_file.file_size().map(drop))]
+#[case::calc_digest(|data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(|_| ()))]
+#[case::file_size(|data_file: &DataFile, _: &Path| data_file.file_size().map(|_| ()))]
 #[case::write_to(|data_file: &DataFile, _: &Path| data_file.write_to(Vec::new()))]
 #[case::save_as(|data_file: &DataFile, directory: &Path| data_file.save_as(directory.join("saved.bin")))]
 #[serial]

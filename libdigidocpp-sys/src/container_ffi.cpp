@@ -3,11 +3,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
 #include "digidocpp/Container.h"
+#include "digidocpp/crypto/Signer.h"
 #include "libdigidocpp-sys/include/stream_ffi.h"
+#include "libdigidocpp-sys/src/container.rs.h"
 #include "rust/cxx.h"
 
 namespace digidoc_rs::container {
@@ -39,6 +42,46 @@ auto signatures_size(const digidoc::Container& container) -> size_t {
 auto signature_at(const digidoc::Container& container, const size_t index)
     -> const digidoc::Signature& {
   return *container.signatures().at(index);
+}
+
+// NOLINTNEXTLINE(misc-const-correctness): forced by cxx
+auto signature_at_mut(digidoc::Container& container, const size_t index)
+    -> digidoc::Signature& {
+  return *container.signatures().at(index);
+}
+
+auto remove_signature(digidoc::Container& container, const uint32_t index)
+    -> void {
+  container.removeSignature(index);
+}
+
+auto extend_container_validity(digidoc::Container& doc, digidoc::Signer& signer)
+    -> ExtendedValidity {
+  size_t extended_count = 0;
+  std::unique_ptr<digidoc::Container> nullable_container =
+      digidoc::Container::extendContainerValidity(doc, &signer, extended_count);
+  return ExtendedValidity{
+      .container = std::move(nullable_container),
+      .extended_count = extended_count,
+  };
+}
+
+auto sign(digidoc::Container& container, digidoc::Signer& signer)
+    -> digidoc::Signature& {
+  digidoc::Signature* const signature = container.sign(&signer);
+  if (signature == nullptr) {
+    throw std::runtime_error("signature is null");
+  }
+  return *signature;
+}
+
+auto prepare_signature(digidoc::Container& container, digidoc::Signer& signer)
+    -> digidoc::Signature& {
+  digidoc::Signature* const signature = container.prepareSignature(&signer);
+  if (signature == nullptr) {
+    throw std::runtime_error("signature is null");
+  }
+  return *signature;
 }
 
 auto add_data_file(digidoc::Container& container, const rust::Str path,

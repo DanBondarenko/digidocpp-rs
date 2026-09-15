@@ -2,6 +2,7 @@
 #include <cstdint>
 
 #include "digidocpp/Signature.h"
+#include "digidocpp/crypto/Signer.h"
 #include "rust/cxx.h"
 
 namespace digidoc {
@@ -28,6 +29,10 @@ void validate(const digidoc::Signature& signature);
 void validate_with_policy(const digidoc::Signature& signature,
                           rust::Str policy);
 auto data_to_sign(const digidoc::Signature& signature) -> rust::Vec<uint8_t>;
+auto set_signature_value(digidoc::Signature& signature,
+                         rust::Slice<const uint8_t> value) -> void;
+auto extend_signature_profile(digidoc::Signature& signature,
+                              digidoc::Signer& signer) -> void;
 
 auto policy(const digidoc::Signature& signature) -> rust::String;
 auto sp_uri(const digidoc::Signature& signature) -> rust::String;

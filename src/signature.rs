@@ -1,8 +1,9 @@
 use crate::stream::call_then_deliver_stream_failure;
-use crate::{DerCert, Error, ExceptionCode};
+use crate::{DerCert, Error, ExceptionCode, Signer};
 use libdigidocpp_sys::signature::ffi;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
+use std::pin::Pin;
 
 #[derive(Clone, Debug, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq)]
 #[non_exhaustive]
@@ -26,7 +27,10 @@ impl From<ffi::Status> for ValidatorStatus {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Signature<'a>(pub(crate) &'a ffi::Signature);
+
+pub struct SignatureMut<'a>(pub(crate) Pin<&'a mut ffi::Signature>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TSAInfo {
@@ -205,6 +209,27 @@ impl Signature<'_> {
     }
 }
 
+impl SignatureMut<'_> {
+    #[must_use]
+    pub fn as_signature(&self) -> Signature<'_> {
+        Signature(self.0.as_ref().get_ref())
+    }
+
+    pub fn set_signature_value(&mut self, value: &[u8]) -> Result<(), Error> {
+        Ok(ffi::set_signature_value(self.0.as_mut(), value)?)
+    }
+
+    pub fn extend_signature_profile<S>(&mut self, signer: &mut S) -> Result<(), Error>
+    where
+        S: Signer + ?Sized,
+    {
+        let signature = self.0.as_mut();
+        let signer = signer.ffi_signer_mut();
+
+        call_then_deliver_stream_failure(move || ffi::extend_signature_profile(signature, signer))
+    }
+}
+
 impl Display for Signature<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let id = self.id().unwrap_or_else(|_| String::from("<unknown>"));
@@ -237,5 +262,19 @@ impl Debug for Signature<'_> {
             .field("signature_method()", &self.signature_method())
             .field("trusted_signing_time()", &self.trusted_signing_time())
             .finish_non_exhaustive()
+    }
+}
+
+impl Display for SignatureMut<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.as_signature(), f)
+    }
+}
+
+impl Debug for SignatureMut<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("SignatureMut")
+            .field(&self.as_signature())
+            .finish()
     }
 }
