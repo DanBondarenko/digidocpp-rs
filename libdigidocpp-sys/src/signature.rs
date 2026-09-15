@@ -1,3 +1,5 @@
+use std::fmt::{self, Debug, Formatter};
+
 #[cxx::bridge]
 #[allow(clippy::exhaustive_structs)]
 #[allow(clippy::exhaustive_enums)]
@@ -35,7 +37,6 @@ pub mod ffi {
     impl Vec<ExceptionCode> {}
 
     #[namespace = "digidoc"]
-    #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/signature_ffi.h");
         include!("digidocpp/Signature.h");
@@ -83,5 +84,11 @@ pub mod ffi {
         fn message_imprint(signature: &Signature) -> Result<Vec<u8>>;
 
         fn validator(signature: &Signature) -> Result<ValidatorResult>;
+    }
+}
+
+impl Debug for ffi::Signature {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Signature").finish_non_exhaustive()
     }
 }

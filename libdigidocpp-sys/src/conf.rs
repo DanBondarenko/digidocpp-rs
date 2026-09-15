@@ -1,3 +1,5 @@
+use std::fmt::{self, Debug, Formatter};
+
 #[cxx::bridge]
 #[allow(clippy::exhaustive_structs)]
 pub mod ffi {
@@ -15,7 +17,6 @@ pub mod ffi {
     }
 
     #[namespace = "digidoc_rs::conf"]
-    #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/exception_ffi.h");
         include!("libdigidocpp-sys/include/conf_ffi.h");
@@ -77,5 +78,11 @@ pub mod ffi {
         fn clear_verify_service_certs(self: Pin<&mut SettableConf>);
         fn add_verify_service_cert(self: Pin<&mut SettableConf>, der: &[u8]) -> Result<()>;
         fn set_verify_service_uri(self: Pin<&mut SettableConf>, url: &str) -> Result<()>;
+    }
+}
+
+impl Debug for ffi::SettableConf {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("SettableConf").finish_non_exhaustive()
     }
 }

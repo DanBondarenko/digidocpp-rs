@@ -1,7 +1,8 @@
+use std::fmt::{self, Debug, Formatter};
+
 #[cxx::bridge]
 pub mod ffi {
     #[namespace = "digidoc"]
-    #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
         include!("digidocpp/Container.h");
 
@@ -42,5 +43,11 @@ pub mod ffi {
             media_type: &str,
             reader: Box<Source>,
         ) -> Result<()>;
+    }
+}
+
+impl Debug for ffi::Container {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Container").finish_non_exhaustive()
     }
 }

@@ -1,9 +1,10 @@
+use std::fmt::{self, Debug, Formatter};
+
 #[cxx::bridge]
 #[allow(clippy::exhaustive_structs)]
 #[allow(clippy::exhaustive_enums)]
 pub mod ffi {
     #[namespace = "digidoc"]
-    #[allow(missing_debug_implementations)]
     unsafe extern "C++" {
         include!("digidocpp/DataFile.h");
         type DataFile;
@@ -28,5 +29,11 @@ pub mod ffi {
         fn calc_digest(data_file: &DataFile, method: &str) -> Result<Vec<u8>>;
         fn save_as(data_file: &DataFile, path: &str) -> Result<()>;
         fn write_to(data_file: &DataFile, sink: &mut Sink<'_>) -> Result<()>;
+    }
+}
+
+impl Debug for ffi::DataFile {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DataFile").finish_non_exhaustive()
     }
 }
