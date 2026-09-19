@@ -54,6 +54,14 @@ pub mod ffi {
         #[must_use]
         fn pkcs12_as_signer_mut(signer: Pin<&mut PKCS12Signer>) -> Pin<&mut Signer>;
 
+        type ExternalPartialSigner;
+
+        fn make_external_partial_signer(der: &[u8]) -> Result<UniquePtr<ExternalPartialSigner>>;
+        #[must_use]
+        fn external_as_signer(signer: &ExternalPartialSigner) -> &Signer;
+        #[must_use]
+        fn external_as_signer_mut(signer: Pin<&mut ExternalPartialSigner>) -> Pin<&mut Signer>;
+
         fn cert(signer: &Signer) -> Result<Vec<u8>>;
         fn sign(signer: &Signer, method: &str, digest: &[u8]) -> Result<Vec<u8>>;
         fn method(signer: &Signer) -> Result<String>;
@@ -105,6 +113,13 @@ impl Debug for ffi::PKCS11Signer {
 impl Debug for ffi::PKCS12Signer {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("PKCS12Signer").finish_non_exhaustive()
+    }
+}
+
+impl Debug for ffi::ExternalPartialSigner {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExternalPartialSigner")
+            .finish_non_exhaustive()
     }
 }
 

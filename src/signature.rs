@@ -1,5 +1,5 @@
 use crate::stream::call_then_deliver_stream_failure;
-use crate::{DerCert, Error, ExceptionCode, Signer};
+use crate::{DerCert, Error, ExceptionCode, PartialSigner};
 use libdigidocpp_sys::signature::ffi;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
@@ -221,7 +221,7 @@ impl SignatureMut<'_> {
 
     pub fn extend_signature_profile<S>(&mut self, signer: &mut S) -> Result<(), Error>
     where
-        S: Signer + ?Sized,
+        S: PartialSigner + ?Sized,
     {
         let signature = self.0.as_mut();
         let signer = signer.ffi_signer_mut();

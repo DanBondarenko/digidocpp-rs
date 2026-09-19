@@ -2,7 +2,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "digidocpp/crypto/PKCS11Signer.h"
@@ -12,6 +14,17 @@
 #include "rust/cxx.h"
 
 namespace digidoc_rs::signer {
+ExternalPartialSigner::ExternalPartialSigner(digidoc::X509Cert cert)
+    : cert_(std::move(cert)) {}
+
+auto ExternalPartialSigner::cert() const -> digidoc::X509Cert { return cert_; }
+
+auto ExternalPartialSigner::sign(const std::string& /*method*/,
+                                 const std::vector<unsigned char>& /*digest*/)
+    const -> std::vector<unsigned char> {
+  throw std::runtime_error("external partial signer cannot sign");
+}
+
 #ifdef _WIN32
 auto make_win_signer() -> std::unique_ptr<digidoc::WinSigner> {
   return std::make_unique<digidoc::WinSigner>();
@@ -75,6 +88,22 @@ auto pkcs12_as_signer(const digidoc::PKCS12Signer& signer) noexcept
 }
 
 auto pkcs12_as_signer_mut(digidoc::PKCS12Signer& signer) noexcept
+    -> digidoc::Signer& {
+  return signer;
+}
+
+auto make_external_partial_signer(const rust::Slice<const uint8_t> der)
+    -> std::unique_ptr<ExternalPartialSigner> {
+  return std::make_unique<ExternalPartialSigner>(
+      digidoc::X509Cert(der.data(), der.size(), digidoc::X509Cert::Der));
+}
+
+auto external_as_signer(const ExternalPartialSigner& signer) noexcept
+    -> const digidoc::Signer& {
+  return signer;
+}
+
+auto external_as_signer_mut(ExternalPartialSigner& signer) noexcept
     -> digidoc::Signer& {
   return signer;
 }

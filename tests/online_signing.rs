@@ -17,7 +17,7 @@ use crate::common::{
     MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err, assert_is_recent,
     create_unsigned_asice_with_data_file, init_with_valid_tsl,
 };
-use libdigidocpp::{Container, Signer, ValidityExtension};
+use libdigidocpp::{Container, PartialSigner, Signer, ValidityExtension};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

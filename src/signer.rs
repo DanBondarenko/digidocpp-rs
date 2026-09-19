@@ -17,13 +17,9 @@ mod sealed {
     }
 }
 
-pub trait Signer: sealed::Sealed {
+pub trait PartialSigner: sealed::Sealed {
     fn cert(&self) -> Result<Option<DerCert>, Error> {
         Ok(DerCert::from_ffi(ffi::cert(self.ffi_signer())?))
-    }
-
-    fn sign(&self, method: &str, digest: &[u8]) -> Result<Vec<u8>, Error> {
-        Ok(ffi::sign(self.ffi_signer(), method, digest)?)
     }
 
     fn method(&self) -> Result<String, Error> {
@@ -124,6 +120,41 @@ pub trait Signer: sealed::Sealed {
     }
 }
 
+pub trait Signer: PartialSigner {
+    fn sign(&self, method: &str, digest: &[u8]) -> Result<Vec<u8>, Error> {
+        Ok(ffi::sign(self.ffi_signer(), method, digest)?)
+    }
+}
+
+pub struct ExternalPartialSigner(UniquePtr<ffi::ExternalPartialSigner>);
+
+impl ExternalPartialSigner {
+    pub fn new(cert: impl Into<DerCert>) -> Result<Self, Error> {
+        let cert: DerCert = cert.into();
+
+        Ok(Self(ffi::make_external_partial_signer(cert.as_ref())?))
+    }
+}
+
+impl sealed::Sealed for ExternalPartialSigner {
+    fn ffi_signer(&self) -> &ffi::Signer {
+        ffi::external_as_signer(&self.0)
+    }
+
+    fn ffi_signer_mut(&mut self) -> Pin<&mut ffi::Signer> {
+        ffi::external_as_signer_mut(self.0.pin_mut())
+    }
+}
+
+impl PartialSigner for ExternalPartialSigner {}
+
+impl Debug for ExternalPartialSigner {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExternalPartialSigner")
+            .finish_non_exhaustive()
+    }
+}
+
 pub struct Pkcs11Signer(UniquePtr<ffi::PKCS11Signer>);
 
 impl Pkcs11Signer {
@@ -155,6 +186,8 @@ impl sealed::Sealed for Pkcs11Signer {
         ffi::pkcs11_as_signer_mut(self.0.pin_mut())
     }
 }
+
+impl PartialSigner for Pkcs11Signer {}
 
 impl Signer for Pkcs11Signer {}
 
@@ -200,6 +233,9 @@ impl sealed::Sealed for WinSigner {
 }
 
 #[cfg(windows)]
+impl PartialSigner for WinSigner {}
+
+#[cfg(windows)]
 impl Signer for WinSigner {}
 
 #[cfg(windows)]
@@ -229,6 +265,8 @@ impl sealed::Sealed for Pkcs12Signer {
         ffi::pkcs12_as_signer_mut(self.0.pin_mut())
     }
 }
+
+impl PartialSigner for Pkcs12Signer {}
 
 impl Signer for Pkcs12Signer {}
 

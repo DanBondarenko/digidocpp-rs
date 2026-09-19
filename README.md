@@ -96,7 +96,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `signatures()`
 - [x] `removeSignature(index)`
 - [x] `sign(signer)`
-- [ ] `prepareWebSignature(cert, profile = "", roles = [], city = "", state = "", postalCode = "", country = "")`
+- [ ] ~~`prepareWebSignature(cert, profile = "", roles = [], city = "", state = "", postalCode = "", country = "")`~~
 
 ## `ContainerOpenCB`
 - [ ] `validateOnline()`
@@ -173,6 +173,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `PKCS12Signer` (subclass)
 - [x] `PKCS11Signer` (subclass)
 - [x] `WinSigner` (subclass)
+- [x] `ExternalSigner`
 
 ## Other ideas
 - [ ] add cxx shared struct for vectors of non-owned data e.g. `Container::dataFiles()` and `Container::signatures()`

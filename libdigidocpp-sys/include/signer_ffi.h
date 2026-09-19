@@ -1,10 +1,13 @@
 #pragma once
 #include <cstdint>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "digidocpp/crypto/PKCS11Signer.h"
 #include "digidocpp/crypto/PKCS12Signer.h"
 #include "digidocpp/crypto/Signer.h"
+#include "digidocpp/crypto/X509Cert.h"
 #include "rust/cxx.h"
 
 #ifdef _WIN32
@@ -12,6 +15,19 @@
 #endif
 
 namespace digidoc_rs::signer {
+class ExternalPartialSigner final : public digidoc::Signer {
+ public:
+  explicit ExternalPartialSigner(digidoc::X509Cert cert);
+
+  [[nodiscard]] auto cert() const -> digidoc::X509Cert override;
+  [[nodiscard]] auto sign(const std::string& method,
+                          const std::vector<unsigned char>& digest) const
+      -> std::vector<unsigned char> override;
+
+ private:
+  digidoc::X509Cert cert_;
+};
+
 #ifdef _WIN32
 auto make_win_signer() -> std::unique_ptr<digidoc::WinSigner>;
 auto win_set_pin(digidoc::WinSigner& signer, rust::Str pin) -> void;
@@ -37,6 +53,13 @@ auto make_pkcs12_signer(rust::Str path, rust::Str pass)
 auto pkcs12_as_signer(const digidoc::PKCS12Signer& signer) noexcept
     -> const digidoc::Signer&;
 auto pkcs12_as_signer_mut(digidoc::PKCS12Signer& signer) noexcept
+    -> digidoc::Signer&;
+
+auto make_external_partial_signer(rust::Slice<const uint8_t> der)
+    -> std::unique_ptr<ExternalPartialSigner>;
+auto external_as_signer(const ExternalPartialSigner& signer) noexcept
+    -> const digidoc::Signer&;
+auto external_as_signer_mut(ExternalPartialSigner& signer) noexcept
     -> digidoc::Signer&;
 
 auto cert(const digidoc::Signer& signer) -> rust::Vec<uint8_t>;
