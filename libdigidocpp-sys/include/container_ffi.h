@@ -13,8 +13,11 @@ struct Source;
 
 namespace digidoc_rs::container {
 struct ExtendedValidity;
+struct ContainerOpenCallback;
 
 auto open(rust::Str path) -> std::unique_ptr<digidoc::Container>;
+auto open_with_callback(rust::Str path, ContainerOpenCallback& callback)
+    -> std::unique_ptr<digidoc::Container>;
 auto create(rust::Str path) -> std::unique_ptr<digidoc::Container>;
 auto media_type(const digidoc::Container& container) -> rust::String;
 auto data_files_size(const digidoc::Container& container) -> size_t;
@@ -26,7 +29,7 @@ auto signature_at(const digidoc::Container& container, size_t index)
 auto signature_at_mut(digidoc::Container& container, size_t index)
     -> digidoc::Signature&;
 auto remove_signature(digidoc::Container& container, uint32_t index) -> void;
-auto extend_container_validity(digidoc::Container& doc, digidoc::Signer& signer)
+auto extend_container_validity(digidoc::Container& container, digidoc::Signer& signer)
     -> ExtendedValidity;
 auto sign(digidoc::Container& container, digidoc::Signer& signer)
     -> digidoc::Signature&;

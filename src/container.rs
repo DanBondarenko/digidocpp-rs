@@ -2,7 +2,7 @@ use crate::signature::{Signature, SignatureMut};
 use crate::stream::call_then_deliver_stream_failure;
 use crate::util::path_to_str;
 use crate::{DataFile, Error, PartialSigner, Signer};
-use libdigidocpp_sys::container::ffi;
+use libdigidocpp_sys::container::{self, ffi};
 use libdigidocpp_sys::stream::Source;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Read, Seek};
@@ -21,6 +21,18 @@ impl Container {
     pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
         Ok(Self(ffi::open(path)?))
+    }
+
+    // asks consent for online access via callback
+    pub fn open_requiring_online_validation_consent(
+        path: impl AsRef<Path>,
+        mut consent: impl FnMut() -> bool,
+    ) -> Result<Self, Error> {
+        let path = path_to_str(path.as_ref())?;
+        Ok(Self(container::open_with_callback_resuming_panic(
+            path,
+            &mut consent,
+        )?))
     }
 
     pub fn create(path: impl AsRef<Path>) -> Result<Self, Error> {
@@ -118,17 +130,18 @@ impl Container {
     }
 
     pub fn extend_container_validity<S>(
-        doc: &mut Self,
+        container: &mut Self,
         signer: &mut S,
     ) -> Result<ValidityExtension, Error>
     where
         S: PartialSigner + ?Sized,
     {
-        let doc = doc.0.pin_mut();
+        let container = container.0.pin_mut();
         let signer = signer.ffi_signer_mut();
 
-        let extended =
-            call_then_deliver_stream_failure(move || ffi::extend_container_validity(doc, signer))?;
+        let extended = call_then_deliver_stream_failure(move || {
+            ffi::extend_container_validity(container, signer)
+        })?;
 
         Ok(if extended.container.is_null() {
             ValidityExtension::InPlace {

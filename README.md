@@ -11,8 +11,10 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `initializeLib(appName, userAgent, path)`
 - [x] `initializeLib(appName, userAgent)`
  
-## `Conf`
+## `Conf`/`XmlConf`/`DigiDocConf`
 - [x] `init()`
+- [x] XmlConf Constructor `(path = "", schema = "")`
+- [x] DigiDocConf Constructor `(cache = "")`
 - [ ] `instance()`
 - [x] `logLevel()`
 - [x] `logFile()`
@@ -35,28 +37,6 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `TSLOnlineDigest()`
 - [x] `TSLTimeOut()`
 - [x] `TSLUrl()`
- 
-## `XmlConf`
-- [x] Constructor `(path = "", schema = "")`
-- [ ] `instance()`
-- [x] `logLevel()`
-- [x] `logFile()`
-- [x] `PKCS11Driver()`
-- [x] `proxyHost()`
-- [x] `proxyPort()`
-- [x] `proxyUser()`
-- [x] `proxyPass()`
-- [x] `proxyForceSSL()`
-- [x] `proxyTunnelSSL()`
-- [x] `digestUri()`
-- [x] `signatureDigestUri()`
-- [x] `ocsp(issuer)`
-- [x] `TSUrl()`
-- [x] `verifyServiceUri()`
-- [x] `TSLAutoUpdate()`
-- [x] `TSLCache()`
-- [x] `TSLOnlineDigest()`
-- [x] `TSLTimeOut()`
 - [x] `setProxyHost(host)`
 - [x] `setProxyPort(port)`
 - [x] `setProxyUser(user)`
@@ -66,10 +46,6 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [x] `setTSLTimeOut(timeOut)`
 - [x] `setTSUrl(url)`
 - [x] `setVerifyServiceUri(url)`
-
-## `DigiDocConf`
-- [ ] ~~Constructor `(cache = "")`~~
-- [ ] `instance()`
 - [x] `setLogLevel(level)`
 - [x] `setLogFile(file)`
 - [x] `setTSCert(cert)`
@@ -99,7 +75,7 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [ ] ~~`prepareWebSignature(cert, profile = "", roles = [], city = "", state = "", postalCode = "", country = "")`~~
 
 ## `ContainerOpenCB`
-- [ ] `validateOnline()`
+- [x] `validateOnline()`
 
 ## `DataFile`
 - [x] `id()`

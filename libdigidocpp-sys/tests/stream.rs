@@ -10,8 +10,8 @@
 )]
 
 use libdigidocpp_sys::stream::{Sink, Source, call_then_deliver_stream_failure, ffi};
-use rand_pcg::Pcg64Mcg;
-use rand_pcg::rand_core::{Rng, SeedableRng};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use std::io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
 
 const BUFFER_SIZE: usize = 64 * 1024;
@@ -26,7 +26,7 @@ const BOUNDARY_SIZES: [usize; 6] = [
 
 fn random_bytes(size: usize) -> Vec<u8> {
     let mut bytes = vec![0; size];
-    Pcg64Mcg::seed_from_u64(0).fill_bytes(&mut bytes);
+    StdRng::seed_from_u64(0).fill_bytes(&mut bytes);
     bytes
 }
 

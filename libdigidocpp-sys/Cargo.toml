@@ -19,7 +19,7 @@ test_util = []
 
 [dev-dependencies]
 libdigidocpp-sys = { path = ".", features = ["test_util"] }
-rand_pcg = "0.10"
+rand = "0.10.3"
 
 [lints]
 workspace = true

@@ -15,8 +15,36 @@
 #include "rust/cxx.h"
 
 namespace digidoc_rs::container {
+namespace {
+
+class RustContainerOpenCb final : public digidoc::ContainerOpenCB {
+ public:
+  explicit RustContainerOpenCb(ContainerOpenCallback& callback)
+      : callback_(callback) {}
+  RustContainerOpenCb(const RustContainerOpenCb&) = delete;
+  RustContainerOpenCb(RustContainerOpenCb&&) = delete;
+  auto operator=(const RustContainerOpenCb&) -> RustContainerOpenCb& = delete;
+  auto operator=(RustContainerOpenCb&&) -> RustContainerOpenCb& = delete;
+  ~RustContainerOpenCb() override = default;
+
+  [[nodiscard]] auto validateOnline() const -> bool override {
+    return callback_.validate_online();
+  }
+
+ private:
+  ContainerOpenCallback& callback_;
+};
+
+}  // namespace
+
 auto open(const rust::Str path) -> std::unique_ptr<digidoc::Container> {
   return digidoc::Container::openPtr(std::string(path));
+}
+
+auto open_with_callback(const rust::Str path, ContainerOpenCallback& callback)
+    -> std::unique_ptr<digidoc::Container> {
+  RustContainerOpenCb adapter(callback);
+  return digidoc::Container::openPtr(std::string(path), &adapter);
 }
 
 auto create(const rust::Str path) -> std::unique_ptr<digidoc::Container> {
@@ -56,11 +84,11 @@ auto remove_signature(digidoc::Container& container, const uint32_t index)
   container.removeSignature(index);
 }
 
-auto extend_container_validity(digidoc::Container& doc, digidoc::Signer& signer)
+auto extend_container_validity(digidoc::Container& container, digidoc::Signer& signer)
     -> ExtendedValidity {
   size_t extended_count = 0;
   std::unique_ptr<digidoc::Container> nullable_container =
-      digidoc::Container::extendContainerValidity(doc, &signer, extended_count);
+      digidoc::Container::extendContainerValidity(container, &signer, extended_count);
   return ExtendedValidity{
       .container = std::move(nullable_container),
       .extended_count = extended_count,

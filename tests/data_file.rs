@@ -18,8 +18,8 @@ use crate::common::{
 };
 use itertools::Itertools;
 use libdigidocpp::{Container, DataFile, Error};
-use rand_pcg::Pcg64Mcg;
-use rand_pcg::rand_core::{Rng, SeedableRng};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use rstest::{fixture, rstest};
 use serial_test::serial;
 use std::cell::{Cell, RefCell};
@@ -819,7 +819,7 @@ fn writer_panic_is_transmitted_across_ffi(
     }
 
     let mut expected = vec![0; 200_000];
-    Pcg64Mcg::seed_from_u64(0).fill_bytes(&mut expected);
+    StdRng::seed_from_u64(0).fill_bytes(&mut expected);
     let container = container_with_file_from_reader(
         "data.bin",
         MEDIA_TYPE_OCTET_STREAM,
