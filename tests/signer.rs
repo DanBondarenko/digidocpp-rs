@@ -13,7 +13,10 @@ mod common;
 use crate::common::{
     assert_general_digidoc_err, assert_internal_err, init_with_valid_tsl, pkcs12_signer,
 };
-use libdigidocpp::{Error, PartialSigner, Pkcs11Signer, Pkcs12Signer, Signer};
+use libdigidocpp::{
+    Algorithm, AlgorithmSetting, DigestAlgorithm, Error, PartialSigner, Pkcs11Signer, Pkcs12Signer,
+    Signer, SigningProfile,
+};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -80,7 +83,7 @@ fn signs_digest(
     const EXPECTED_SIGNATURE: &str = "5f3ee2c043933007969d7e1ecfcf2da32fde3a048b33d3202fea94668799b35777eced4860e334ded77c3bcb3819bbe8b8d40b25d78454675fd8cd050b921cf2fbee362d88f0ce760c7677f02db0b26400ef05a6da2c7c64be6b874e15a66d8bb282aa7cb1727e1135ee1805ceef13e2f6f3ccd18d38d533fb955978ccbd937e65bdbf71176b6075f8d00d2bfaf4acb6b9f8aef10732d76d77f2421110612e5c4f3d3adde70a25b13122c4929dfa47f6e815edf8ec14d4bcb226b895af39f561d45e27ec878d867bb8b309f7c0c931bfa12224ad08c9cbf1595f832026eb81e2f1f935d8e2a7bf10e532db7ffe1423e1389c2f729c5644f285a0f43d12614d00";
 
     let signature = signer.sign(
-        common::URI_SHA256,
+        Algorithm::from(DigestAlgorithm::Sha256),
         &hex::decode(SHA256_OF_SIGNATURE_AND_NUL)?,
     )?;
 
@@ -140,41 +143,23 @@ fn street_address_activates_en_profile(
 }
 
 #[rstest]
-#[case::time_stamp_archive("TSA", "time-stamp-archive")]
-#[case::bes("BES", "BES")]
-#[case::time_stamp_token("time-stamp-token", "TimeStampToken")]
+#[case::time_stamp_archive("TSA", SigningProfile::TimeStampArchive)]
+#[case::bes("BES", SigningProfile::Bes)]
+#[case::time_stamp_token("time-stamp-token", SigningProfile::TimeStampToken)]
 #[serial]
 fn sets_profile(
     #[from(init_with_valid_tsl)] _temp_dir: TempDir,
     #[from(pkcs12_signer)]
     #[with("signer1.p12")]
     mut signer: Pkcs12Signer,
-    #[case] name: &str,
-    #[case] expected: &str,
+    #[case] alias: &str,
+    #[case] expected: SigningProfile,
 ) -> Result<(), Box<dyn StdError>> {
-    assert_eq!(signer.profile()?, "time-stamp");
+    assert_eq!(signer.profile()?, SigningProfile::TimeStamp);
 
-    signer.set_profile(name)?;
+    signer.set_profile(alias.parse()?)?;
 
     assert_eq!(signer.profile()?, expected);
-    Ok(())
-}
-
-#[rstest]
-#[serial]
-fn rejects_unknown_profile(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(pkcs12_signer)]
-    #[with("signer1.p12")]
-    mut signer: Pkcs12Signer,
-) -> Result<(), Box<dyn StdError>> {
-    assert_eq!(signer.profile()?, "time-stamp");
-
-    let result = signer.set_profile("unknown");
-
-    let error = assert_general_digidoc_err!(result);
-    assert_eq!(error.message(), "Unsupported profile: unknown");
-    assert_eq!(signer.profile()?, "time-stamp");
     Ok(())
 }
 
@@ -202,19 +187,13 @@ fn defaults_to_sha384_for_ec_key(
     #[with("signerEC.p12")]
     mut signer: Pkcs12Signer,
 ) -> Result<(), Box<dyn StdError>> {
-    assert_eq!(
-        signer.method()?,
-        "http://www.w3.org/2001/04/xmldsig-more#sha384"
-    );
+    assert_eq!(signer.method()?, Algorithm::from(DigestAlgorithm::Sha384));
 
-    signer.set_method(common::URI_SHA256)?;
-    assert_eq!(signer.method()?, common::URI_SHA256);
+    signer.set_method(DigestAlgorithm::Sha256.into())?;
+    assert_eq!(signer.method()?, Algorithm::from(DigestAlgorithm::Sha256));
 
-    signer.set_method("")?;
-    assert_eq!(
-        signer.method()?,
-        "http://www.w3.org/2001/04/xmldsig-more#sha384"
-    );
+    signer.set_method(AlgorithmSetting::Default)?;
+    assert_eq!(signer.method()?, Algorithm::from(DigestAlgorithm::Sha384));
     Ok(())
 }
 

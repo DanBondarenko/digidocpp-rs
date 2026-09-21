@@ -12,10 +12,6 @@
 
 namespace digidoc_rs::signature {
 
-auto pol_v1() -> rust::String { return digidoc::Signature::POLv1; }
-
-auto pol_v2() -> rust::String { return digidoc::Signature::POLv2; }
-
 auto id(const digidoc::Signature& signature) -> rust::String {
   return signature.id();
 }

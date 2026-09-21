@@ -52,9 +52,6 @@ pub mod ffi {
         include!("libdigidocpp-sys/include/signature_ffi.h");
         include!("libdigidocpp-sys/include/exception_ffi.h");
 
-        fn pol_v1() -> Result<String>;
-        fn pol_v2() -> Result<String>;
-
         fn id(signature: &Signature) -> Result<String>;
         fn claimed_signing_time(signature: &Signature) -> Result<String>;
         fn trusted_signing_time(signature: &Signature) -> Result<String>;

@@ -12,13 +12,16 @@
 mod common;
 
 use crate::common::{
-    MEDIA_TYPE_ASICE, MEDIA_TYPE_ASICS, MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err,
-    assert_internal_err, conf_for_testing, create_empty_asice_container,
-    create_unsigned_asice_with_data_file, dir_with_fixtures, init_with_valid_tsl,
+    MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err, assert_internal_err, conf_for_testing,
+    create_empty_asice_container, create_unsigned_asice_with_data_file, dir_with_fixtures,
+    init_with_valid_tsl,
 };
 use httpmock::{Mock, MockServer, Then};
-use libdigidocpp::{Container, Error, init_conf, initialize};
+use libdigidocpp::{
+    Container, ContainerType, Error, SignatureAlgorithm, SignatureProfile, init_conf, initialize,
+};
 use rstest::{fixture, rstest};
+use serde_json::json;
 use serial_test::serial;
 use std::error::Error as StdError;
 use std::panic::{self, AssertUnwindSafe};
@@ -26,24 +29,24 @@ use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
 #[rstest]
-#[case::asice_with_expired_certificates("test.asice", MEDIA_TYPE_ASICE)]
-#[case::asics("test.asics", MEDIA_TYPE_ASICS)]
-#[case::asics_with_metadata("test-meta.asics", MEDIA_TYPE_ASICS)]
-#[case::asics_with_invalid_timestamp_token("test-invalidts.asics", MEDIA_TYPE_ASICS)]
-#[case::asics_with_zero_size_contents("test-tera-empty.asics", MEDIA_TYPE_ASICS)]
-#[case::asics_with_large_contents("test-tera.asics", MEDIA_TYPE_ASICS)]
-#[case::asice_with_subfolder_contents("asice-path.asice", MEDIA_TYPE_ASICE)]
-#[case::asice_with_forged_signature("forged_lt.asice", MEDIA_TYPE_ASICE)]
-#[case::asice_for_tsl_validation("tsl.asice", MEDIA_TYPE_ASICE)]
+#[case::asice_with_expired_certificates("test.asice", ContainerType::AsicE)]
+#[case::asics("test.asics", ContainerType::AsicS)]
+#[case::asics_with_metadata("test-meta.asics", ContainerType::AsicS)]
+#[case::asics_with_invalid_timestamp_token("test-invalidts.asics", ContainerType::AsicS)]
+#[case::asics_with_zero_size_contents("test-tera-empty.asics", ContainerType::AsicS)]
+#[case::asics_with_large_contents("test-tera.asics", ContainerType::AsicS)]
+#[case::asice_with_subfolder_contents("asice-path.asice", ContainerType::AsicE)]
+#[case::asice_with_forged_signature("forged_lt.asice", ContainerType::AsicE)]
+#[case::asice_for_tsl_validation("tsl.asice", ContainerType::AsicE)]
 #[serial]
 fn opens_containers(
     #[from(init_with_valid_tsl)] _temp_dir: TempDir,
     #[case] fixture: &str,
-    #[case] media_type: &str,
+    #[case] container_type: ContainerType,
 ) -> Result<(), Box<dyn StdError>> {
     let container = Container::open(common::fixture_path(fixture))?;
 
-    assert_eq!(container.media_type()?, media_type);
+    assert_eq!(container.media_type()?, container_type);
     Ok(())
 }
 
@@ -66,7 +69,7 @@ fn creates_empty_asice_container(
     #[from(init_with_valid_tsl)] _temp_dir: TempDir,
     #[from(create_empty_asice_container)] container: Container,
 ) -> Result<(), Box<dyn StdError>> {
-    assert_eq!(container.media_type()?, MEDIA_TYPE_ASICE);
+    assert_eq!(container.media_type()?, ContainerType::AsicE);
     Ok(())
 }
 
@@ -142,7 +145,7 @@ impl ValidationServiceEnv {
     }
 
     fn with_valid_response(&self, callback: impl FnOnce(&Path)) -> Mock<'_> {
-        const VALID_VALIDATION_RESPONSE: &str = r#"{
+        let valid_validation_response = json!({
             "validationReport": {
                 "validationConclusion": {
                     "signatures": [{
@@ -151,14 +154,14 @@ impl ValidationServiceEnv {
                         "signatureFormat": "DIGIDOC_XML_1.3",
                         "indication": "TOTAL-PASSED",
                         "signedBy": "SIGNER,TEST",
-                        "signatureMethod": "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
+                        "signatureMethod": SignatureAlgorithm::RsaSha256.as_ref()
                     }]
                 }
             }
-        }"#;
+        });
 
         self.with_mock(
-            |then| then.status(200).body(VALID_VALIDATION_RESPONSE),
+            |then| then.status(200).json_body(valid_validation_response),
             callback,
         )
     }
@@ -239,7 +242,7 @@ fn granted_or_omitted_consent_opens_container_validated_by_service(
         assert_eq!(consent_calls, expected_consent_calls);
 
         let container = result.unwrap();
-        assert_eq!(container.media_type().unwrap(), "application/x-ddoc");
+        assert_eq!(container.media_type().unwrap(), ContainerType::Ddoc);
 
         let data_files = container.data_files().unwrap();
         assert_eq!(data_files.len(), 1);
@@ -248,7 +251,10 @@ fn granted_or_omitted_consent_opens_container_validated_by_service(
         let signatures = container.signatures().unwrap();
         assert_eq!(signatures.len(), 1);
         assert_eq!(signatures[0].id().unwrap(), "S0");
-        assert_eq!(signatures[0].profile().unwrap(), "DIGIDOC_XML_1.3");
+        assert_eq!(
+            signatures[0].profile().unwrap(),
+            SignatureProfile::Other(String::from("DIGIDOC_XML_1.3"))
+        );
         signatures[0].validate().unwrap();
     });
 

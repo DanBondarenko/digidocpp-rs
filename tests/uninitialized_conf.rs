@@ -10,7 +10,7 @@
 mod common;
 
 use crate::common::{assert_internal_err, conf_from_fixture, der_cert, dir_with_fixtures};
-use libdigidocpp::{Conf, DerCert, Error, ExposeSecret};
+use libdigidocpp::{Algorithm, Conf, DerCert, DigestAlgorithm, Error, ExposeSecret};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -19,7 +19,6 @@ use std::path::Path;
 use tempfile::TempDir;
 
 // MUST BE IN SEPARATE FILE: no test here may initialize the library
-const SHA512_URI: &str = "http://www.w3.org/2001/04/xmlenc#sha512";
 const DEFAULT_OCSP_TM_PROFILE: &str = "1.3.6.1.4.1.10015.4.1.2";
 
 #[rstest]
@@ -33,7 +32,7 @@ fn gets_values_from_config_file(
 
     assert_eq!(conf.log_level()?, 2);
     assert_eq!(conf.log_file()?, Path::new("digidocpp-test.log"));
-    assert_eq!(conf.digest_uri()?, SHA512_URI);
+    assert_eq!(conf.digest_uri()?, Algorithm::from(DigestAlgorithm::Sha512));
     assert_eq!(conf.pkcs11_driver()?, "opensc-pkcs11");
     assert_eq!(conf.proxy_host()?, "host");
     assert_eq!(conf.proxy_port()?, "port");
@@ -68,7 +67,7 @@ fn gets_unset_values_from_config_file(
     assert_eq!(conf.proxy_port()?, "port");
     assert_eq!(conf.proxy_user()?, "user");
     assert_eq!(conf.log_level()?, 2);
-    assert_eq!(conf.digest_uri()?, SHA512_URI);
+    assert_eq!(conf.digest_uri()?, Algorithm::from(DigestAlgorithm::Sha512));
     assert_eq!(conf.ocsp_url("ISSUER NAME")?, "http://ocsp.issuer.com");
     Ok(())
 }
@@ -257,7 +256,7 @@ fn ocsp_tm_profiles_replace_defaults(
 fn assert_no_settings_loaded(conf: &Conf) -> Result<(), Box<dyn StdError>> {
     assert_eq!(conf.proxy_host()?, "");
     assert_eq!(conf.log_file()?, Path::new(""));
-    assert_ne!(conf.digest_uri()?, SHA512_URI);
+    assert_ne!(conf.digest_uri()?, Algorithm::from(DigestAlgorithm::Sha512));
     Ok(())
 }
 

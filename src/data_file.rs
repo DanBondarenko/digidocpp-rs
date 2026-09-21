@@ -1,6 +1,6 @@
-use crate::Error;
 use crate::stream::call_then_deliver_stream_failure;
 use crate::util::path_to_str;
+use crate::{DigestSetting, Error};
 use libdigidocpp_sys::data_file::ffi;
 use libdigidocpp_sys::stream::Sink;
 use std::fmt::{Debug, Display, Formatter};
@@ -27,8 +27,10 @@ impl DataFile<'_> {
         call_then_deliver_stream_failure(|| ffi::file_size(self.0))
     }
 
-    pub fn calc_digest(&self, method: &str) -> Result<Vec<u8>, Error> {
-        call_then_deliver_stream_failure(|| ffi::calc_digest(self.0, method))
+    pub fn calc_digest(&self, method: impl Into<DigestSetting>) -> Result<Vec<u8>, Error> {
+        let method = method.into();
+
+        call_then_deliver_stream_failure(|| ffi::calc_digest(self.0, method.as_ref()))
     }
 
     pub fn save_as(&self, path: impl AsRef<Path>) -> Result<(), Error> {

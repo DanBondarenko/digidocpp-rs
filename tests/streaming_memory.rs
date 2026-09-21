@@ -12,7 +12,7 @@
 mod common;
 
 use crate::common::{MEDIA_TYPE_OCTET_STREAM, create_empty_asice_container, init_with_valid_tsl};
-use libdigidocpp::Container;
+use libdigidocpp::{Container, DigestAlgorithm};
 use rstest::rstest;
 use serial_test::serial;
 use std::cell::Cell;
@@ -113,7 +113,7 @@ fn streams_large_file_without_holding_in_memory(
         memory_growth()
     );
 
-    let digest = hex::encode(data_file.calc_digest(common::URI_SHA256)?);
+    let digest = hex::encode(data_file.calc_digest(DigestAlgorithm::Sha256)?);
 
     assert_eq!(digest, ZerosReader::SHA256);
     assert!(

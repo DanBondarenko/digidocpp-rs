@@ -7,6 +7,24 @@ use libdigidocpp_sys::stream::Source;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Read, Seek};
 use std::path::Path;
+use strum::{AsRefStr, Display as StrumDisplay, EnumString};
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq, AsRefStr, StrumDisplay, EnumString)]
+#[non_exhaustive]
+pub enum ContainerType {
+    #[strum(serialize = "application/vnd.etsi.asic-e+zip")]
+    AsicE,
+    #[strum(serialize = "application/vnd.etsi.asic-s+zip")]
+    AsicS,
+    #[strum(serialize = "application/vnd.lt.archyvai.adoc-2008")]
+    Adoc,
+    #[strum(serialize = "application/x-ddoc")]
+    Ddoc,
+    #[strum(serialize = "application/pdf")]
+    Pdf,
+    #[strum(default, transparent)]
+    Other(String),
+}
 
 pub struct Container(cxx::UniquePtr<ffi::Container>);
 
@@ -40,8 +58,8 @@ impl Container {
         Ok(Self(ffi::create(path)?))
     }
 
-    pub fn media_type(&self) -> Result<String, Error> {
-        Ok(ffi::media_type(&self.0)?)
+    pub fn media_type(&self) -> Result<ContainerType, Error> {
+        Ok(ContainerType::from(ffi::media_type(&self.0)?.as_str()))
     }
 
     pub fn data_files(&self) -> Result<Vec<DataFile<'_>>, Error> {
@@ -171,9 +189,10 @@ fn index_as_u32(index: usize, kind: &str) -> Result<u32, Error> {
 
 impl Display for Container {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let media_type = self
-            .media_type()
-            .unwrap_or_else(|_| String::from("<unknown>"));
+        let media_type = self.media_type().map_or_else(
+            |_| String::from("<unknown>"),
+            |media_type| media_type.to_string(),
+        );
         let data_files_count = self.data_files().map_or_else(
             |_| String::from("<unknown>"),
             |files| files.len().to_string(),

@@ -1,5 +1,5 @@
 use crate::util::path_to_str;
-use crate::{DerCert, Error};
+use crate::{Algorithm, DerCert, Error};
 use cxx::UniquePtr;
 use libdigidocpp_sys::conf::ffi;
 pub use secrecy::{ExposeSecret, SecretString};
@@ -248,12 +248,12 @@ impl Conf {
         Ok(self.0.pkcs11_driver()?)
     }
 
-    pub fn digest_uri(&self) -> Result<String, Error> {
-        Ok(self.0.digest_uri()?)
+    pub fn digest_uri(&self) -> Result<Algorithm, Error> {
+        Ok(Algorithm::from(self.0.digest_uri()?.as_str()))
     }
 
-    pub fn signature_digest_uri(&self) -> Result<String, Error> {
-        Ok(self.0.signature_digest_uri()?)
+    pub fn signature_digest_uri(&self) -> Result<Algorithm, Error> {
+        Ok(Algorithm::from(self.0.signature_digest_uri()?.as_str()))
     }
 }
 

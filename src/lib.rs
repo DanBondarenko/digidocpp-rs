@@ -1,5 +1,6 @@
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+mod algorithm;
 mod conf;
 mod container;
 mod data_file;
@@ -11,6 +12,7 @@ mod signer;
 mod stream;
 mod util;
 
+pub use algorithm::*;
 pub use conf::*;
 pub use container::*;
 pub use data_file::*;

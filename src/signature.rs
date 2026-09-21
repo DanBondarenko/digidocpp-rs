@@ -1,9 +1,19 @@
 use crate::stream::call_then_deliver_stream_failure;
-use crate::{DerCert, Error, ExceptionCode, PartialSigner};
+use crate::{Algorithm, DerCert, Error, ExceptionCode, PartialSigner, SignatureProfile};
 use libdigidocpp_sys::signature::ffi;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
 use std::pin::Pin;
+use strum::{AsRefStr, Display as StrumDisplay, EnumString};
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, AsRefStr, StrumDisplay, EnumString)]
+#[non_exhaustive]
+pub enum ValidationPolicy {
+    #[strum(serialize = "POLv1")]
+    PolV1,
+    #[strum(serialize = "POLv2")]
+    PolV2,
+}
 
 #[derive(Clone, Debug, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq)]
 #[non_exhaustive]
@@ -97,14 +107,6 @@ impl ValidatorResult {
 }
 
 impl Signature<'_> {
-    pub fn pol_v1() -> Result<String, Error> {
-        Ok(ffi::pol_v1()?)
-    }
-
-    pub fn pol_v2() -> Result<String, Error> {
-        Ok(ffi::pol_v2()?)
-    }
-
     pub fn id(&self) -> Result<String, Error> {
         Ok(ffi::id(self.0)?)
     }
@@ -121,16 +123,16 @@ impl Signature<'_> {
         Ok(DerCert::from_ffi(ffi::signing_certificate(self.0)?))
     }
 
-    pub fn signature_method(&self) -> Result<String, Error> {
-        Ok(ffi::signature_method(self.0)?)
+    pub fn signature_method(&self) -> Result<Algorithm, Error> {
+        Ok(Algorithm::from(ffi::signature_method(self.0)?.as_str()))
     }
 
     pub fn validate(&self) -> Result<(), Error> {
         call_then_deliver_stream_failure(|| ffi::validate(self.0))
     }
 
-    pub fn validate_with_policy(&self, policy: &str) -> Result<(), Error> {
-        call_then_deliver_stream_failure(|| ffi::validate_with_policy(self.0, policy))
+    pub fn validate_with_policy(&self, policy: ValidationPolicy) -> Result<(), Error> {
+        call_then_deliver_stream_failure(|| ffi::validate_with_policy(self.0, policy.as_ref()))
     }
 
     pub fn data_to_sign(&self) -> Result<Vec<u8>, Error> {
@@ -145,8 +147,8 @@ impl Signature<'_> {
         Ok(ffi::sp_uri(self.0)?)
     }
 
-    pub fn profile(&self) -> Result<String, Error> {
-        Ok(ffi::profile(self.0)?)
+    pub fn profile(&self) -> Result<SignatureProfile, Error> {
+        Ok(SignatureProfile::from(ffi::profile(self.0)?.as_str()))
     }
 
     pub fn city(&self) -> Result<String, Error> {
@@ -238,11 +240,13 @@ impl Display for Signature<'_> {
             .unwrap_or_else(|_| String::from("<unknown>"));
         let method = self
             .signature_method()
-            .unwrap_or_else(|_| String::from("<unknown>"));
+            .map_or_else(|_| String::from("<unknown>"), |method| method.to_string());
         let date = self
             .trusted_signing_time()
             .unwrap_or_else(|_| String::from("<unknown>"));
-        let profile = self.profile().unwrap_or_else(|_| String::from("<unknown>"));
+        let profile = self
+            .profile()
+            .map_or_else(|_| String::from("<unknown>"), |profile| profile.to_string());
         write!(
             f,
             "Signature {id} signed by {signed_by} with method {method} and profile {profile} at {date}"

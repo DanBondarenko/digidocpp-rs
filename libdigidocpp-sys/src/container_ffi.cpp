@@ -84,11 +84,12 @@ auto remove_signature(digidoc::Container& container, const uint32_t index)
   container.removeSignature(index);
 }
 
-auto extend_container_validity(digidoc::Container& container, digidoc::Signer& signer)
-    -> ExtendedValidity {
+auto extend_container_validity(digidoc::Container& container,
+                               digidoc::Signer& signer) -> ExtendedValidity {
   size_t extended_count = 0;
   std::unique_ptr<digidoc::Container> nullable_container =
-      digidoc::Container::extendContainerValidity(container, &signer, extended_count);
+      digidoc::Container::extendContainerValidity(container, &signer,
+                                                  extended_count);
   return ExtendedValidity{
       .container = std::move(nullable_container),
       .extended_count = extended_count,

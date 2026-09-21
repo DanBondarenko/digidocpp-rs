@@ -1,5 +1,8 @@
 use crate::util::path_to_str;
-use crate::{DerCert, Error, ExposeSecret, SecretString};
+use crate::{
+    Algorithm, AlgorithmSetting, DerCert, Error, ExposeSecret, ProfileSetting, SecretString,
+    SigningProfile,
+};
 use cxx::UniquePtr;
 use libdigidocpp_sys::signer::ffi;
 use std::fmt::{Debug, Formatter};
@@ -22,12 +25,14 @@ pub trait PartialSigner: sealed::Sealed {
         Ok(DerCert::from_ffi(ffi::cert(self.ffi_signer())?))
     }
 
-    fn method(&self) -> Result<String, Error> {
-        Ok(ffi::method(self.ffi_signer())?)
+    fn method(&self) -> Result<Algorithm, Error> {
+        Ok(Algorithm::from(ffi::method(self.ffi_signer())?.as_str()))
     }
 
-    fn profile(&self) -> Result<String, Error> {
-        Ok(ffi::profile(self.ffi_signer())?)
+    fn profile(&self) -> Result<SigningProfile, Error> {
+        Ok(SigningProfile::from(
+            ffi::profile(self.ffi_signer())?.as_str(),
+        ))
     }
 
     fn user_agent(&self) -> Result<String, Error> {
@@ -62,12 +67,12 @@ pub trait PartialSigner: sealed::Sealed {
         Ok(ffi::signer_roles(self.ffi_signer())?)
     }
 
-    fn set_method(&mut self, method: &str) -> Result<(), Error> {
-        Ok(ffi::set_method(self.ffi_signer_mut(), method)?)
+    fn set_method(&mut self, method: AlgorithmSetting) -> Result<(), Error> {
+        Ok(ffi::set_method(self.ffi_signer_mut(), method.as_ref())?)
     }
 
-    fn set_profile(&mut self, profile: &str) -> Result<(), Error> {
-        Ok(ffi::set_profile(self.ffi_signer_mut(), profile)?)
+    fn set_profile(&mut self, profile: ProfileSetting) -> Result<(), Error> {
+        Ok(ffi::set_profile(self.ffi_signer_mut(), profile.as_ref())?)
     }
 
     fn set_user_agent(&mut self, user_agent: &str) -> Result<(), Error> {
@@ -121,8 +126,8 @@ pub trait PartialSigner: sealed::Sealed {
 }
 
 pub trait Signer: PartialSigner {
-    fn sign(&self, method: &str, digest: &[u8]) -> Result<Vec<u8>, Error> {
-        Ok(ffi::sign(self.ffi_signer(), method, digest)?)
+    fn sign(&self, method: Algorithm, digest: &[u8]) -> Result<Vec<u8>, Error> {
+        Ok(ffi::sign(self.ffi_signer(), method.as_ref(), digest)?)
     }
 }
 

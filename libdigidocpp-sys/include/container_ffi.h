@@ -29,8 +29,8 @@ auto signature_at(const digidoc::Container& container, size_t index)
 auto signature_at_mut(digidoc::Container& container, size_t index)
     -> digidoc::Signature&;
 auto remove_signature(digidoc::Container& container, uint32_t index) -> void;
-auto extend_container_validity(digidoc::Container& container, digidoc::Signer& signer)
-    -> ExtendedValidity;
+auto extend_container_validity(digidoc::Container& container,
+                               digidoc::Signer& signer) -> ExtendedValidity;
 auto sign(digidoc::Container& container, digidoc::Signer& signer)
     -> digidoc::Signature&;
 auto prepare_signature(digidoc::Container& container, digidoc::Signer& signer)

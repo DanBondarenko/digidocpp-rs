@@ -17,7 +17,10 @@ use crate::common::{
     MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err, assert_is_recent,
     create_unsigned_asice_with_data_file, init_with_valid_tsl,
 };
-use libdigidocpp::{Container, PartialSigner, Signer, ValidityExtension};
+use libdigidocpp::{
+    Algorithm, AlgorithmSetting, Container, ContainerType, PartialSigner, ProfileSetting,
+    SignatureAlgorithm, SignatureProfile, Signer, ValidityExtension,
+};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -84,20 +87,12 @@ fn adds_signature_and_validates_reopened_container(
 }
 
 #[rstest]
-#[case::rsa(
-    "signer1.p12",
-    None,
-    "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
-)]
-#[case::ec(
-    "signerEC.p12",
-    None,
-    "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384"
-)]
+#[case::rsa("signer1.p12", None, SignatureAlgorithm::RsaSha256)]
+#[case::ec("signerEC.p12", None, SignatureAlgorithm::EcdsaSha384)]
 #[case::rsa_pss(
     "signer1.p12",
-    Some("http://www.w3.org/2007/05/xmldsig-more#sha256-rsa-MGF1"),
-    "http://www.w3.org/2007/05/xmldsig-more#sha256-rsa-MGF1"
+    Some(SignatureAlgorithm::RsaPssSha256.into()),
+    SignatureAlgorithm::RsaPssSha256
 )]
 #[serial]
 fn signs_and_validates(
@@ -108,8 +103,8 @@ fn signs_and_validates(
     #[with(temp_dir.path())]
     mut container: Container,
     #[case] signer_file: &str,
-    #[case] method_to_set: Option<&str>,
-    #[case] expected_method: &str,
+    #[case] method_to_set: Option<AlgorithmSetting>,
+    #[case] expected_method: SignatureAlgorithm,
 ) -> Result<(), Box<dyn StdError>> {
     let mut signer = common::pkcs12_signer(signer_file);
     if let Some(method) = method_to_set {
@@ -120,8 +115,11 @@ fn signs_and_validates(
     let signature = signature.as_signature();
 
     assert_eq!(signature.id()?, "S0");
-    assert_eq!(signature.profile()?, "BES/time-stamp");
-    assert_eq!(signature.signature_method()?, expected_method);
+    assert_eq!(signature.profile()?, SignatureProfile::BesTimeStamp);
+    assert_eq!(
+        signature.signature_method()?,
+        Algorithm::Signature(expected_method)
+    );
     assert_eq!(signature.signing_certificate()?, signer.cert()?);
     let ocsp_common_name = common::parse_common_name(&signature.ocsp_certificate()?.unwrap())?;
     assert!(ocsp_common_name.contains("OCSP RESPONDER"));
@@ -144,7 +142,7 @@ fn extending_archive_signature_adds_time_stamp(
     mut container: Container,
 ) -> Result<(), Box<dyn StdError>> {
     let mut signer = common::pkcs12_signer("signer2.p12");
-    signer.set_profile("time-stamp-archive")?;
+    signer.set_profile(ProfileSetting::TimeStampArchive)?;
 
     let mut signature = container.sign(&mut signer)?;
     signature.as_signature().validate()?;
@@ -169,8 +167,7 @@ fn signs_prepared_container_after_reopening(
 
     let signature = container.prepare_signature(&mut signer)?;
     let signature = signature.as_signature();
-    let signature_value =
-        signer.sign(&signature.signature_method()?, &signature.data_to_sign()?)?;
+    let signature_value = signer.sign(signature.signature_method()?, &signature.data_to_sign()?)?;
 
     container.save()?;
 
@@ -281,10 +278,7 @@ fn wraps_container_with_expired_signature(
     let ValidityExtension::Wrapped(wrapping_container) = &outcome else {
         panic!("expected wrapped, got {outcome:?}");
     };
-    assert_eq!(
-        wrapping_container.media_type()?,
-        "application/vnd.etsi.asic-s+zip"
-    );
+    assert_eq!(wrapping_container.media_type()?, ContainerType::AsicS);
     let data_files = wrapping_container.data_files()?;
     assert_eq!(data_files.len(), 1);
     assert_eq!(data_files[0].file_name()?, "test.asice");

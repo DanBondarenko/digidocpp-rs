@@ -76,8 +76,6 @@ macro_rules! assert_internal_err {
 #[allow(unused_imports)]
 pub(crate) use assert_internal_err;
 
-pub const URI_SHA256: &str = "http://www.w3.org/2001/04/xmlenc#sha256";
-
 #[expect(clippy::unnecessary_debug_formatting)]
 pub fn fixture_path(name: &str) -> String {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -229,8 +227,6 @@ pub fn assert_is_recent(timestamp: &str) {
     assert!(difference <= MAX_CLOCK_DIFFERENCE);
 }
 
-pub const MEDIA_TYPE_ASICE: &str = "application/vnd.etsi.asic-e+zip";
-pub const MEDIA_TYPE_ASICS: &str = "application/vnd.etsi.asic-s+zip";
 pub const MEDIA_TYPE_OCTET_STREAM: &str = "application/octet-stream";
 pub const MEDIA_TYPE_TEXT_PLAIN: &str = "text/plain";
 

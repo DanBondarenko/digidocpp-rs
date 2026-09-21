@@ -17,7 +17,7 @@ use crate::common::{
     required,
 };
 use itertools::Itertools;
-use libdigidocpp::{Container, DataFile, Error};
+use libdigidocpp::{Container, DataFile, DigestAlgorithm, Error};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rstest::{fixture, rstest};
@@ -122,40 +122,37 @@ fn newly_crated_asice_container_has_no_data_files(
 }
 
 #[rstest]
-#[case::sha1(
-    "http://www.w3.org/2000/09/xmldsig#sha1",
-    "1be168ff837f043bde17c0314341c84271047b31"
-)]
+#[case::sha1(DigestAlgorithm::Sha1, "1be168ff837f043bde17c0314341c84271047b31")]
 #[case::sha224(
-    "http://www.w3.org/2001/04/xmldsig-more#sha224",
+    DigestAlgorithm::Sha224,
     "d76041112e343b2bdc14d43934e5aed7abf90192c6543bdf2ae4f81b"
 )]
 #[case::sha256(
-    common::URI_SHA256,
+    DigestAlgorithm::Sha256,
     "a883dafc480d466ee04e0d6da986bd78eb1fdd2178d04693723da3a8f95d42f4"
 )]
 #[case::sha384(
-    "http://www.w3.org/2001/04/xmldsig-more#sha384",
+    DigestAlgorithm::Sha384,
     "637e2edd555570eda966d99d4e77d9fbb3aab84a498ff55ac21b963c1e05c2addfb5c15cd2071e7edd47359d787941d3"
 )]
 #[case::sha512(
-    "http://www.w3.org/2001/04/xmlenc#sha512",
+    DigestAlgorithm::Sha512,
     "7985558370f0de86a864e0050afdf45d7029b8798bcd72cddbf781329f99380e3f3b1afdca6765d89fc388b213df8f6a193cfc56d4ff2ef6e0a99bd883a6d98c"
 )]
 #[case::sha3_224(
-    "http://www.w3.org/2007/05/xmldsig-more#sha3-224",
+    DigestAlgorithm::Sha3_224,
     "8a020a4c681207362dea91d59f660a47a183e1e3d488328ddd64a7e4"
 )]
 #[case::sha3_256(
-    "http://www.w3.org/2007/05/xmldsig-more#sha3-256",
+    DigestAlgorithm::Sha3_256,
     "859a7a7603028deeb3b66234cffa5191466d1a0538e449a19812273b0d98dc1c"
 )]
 #[case::sha3_384(
-    "http://www.w3.org/2007/05/xmldsig-more#sha3-384",
+    DigestAlgorithm::Sha3_384,
     "81ec6a885d9f59160b931855f3422e37072cda8059dae063eb64716fe4c4e9c0e701e3e6471315ba446bad4031811e5d"
 )]
 #[case::sha3_512(
-    "http://www.w3.org/2007/05/xmldsig-more#sha3-512",
+    DigestAlgorithm::Sha3_512,
     "0505da4c583d0bfa95692bf9845abf2a40f32e34caef5acc57bd3015aefa54777847cda68d017acfed634f07957a5ce601b23b1cc040a9dec5443a6c9f56c948"
 )]
 #[serial]
@@ -170,7 +167,7 @@ fn calculates_data_file_digests(
         )
     )]
     container: Container,
-    #[case] method: &str,
+    #[case] method: DigestAlgorithm,
     #[case] expected: &str,
 ) -> Result<(), Box<dyn StdError>> {
     let digest = hex::encode(container.data_files()?[0].calc_digest(method)?);
@@ -503,7 +500,7 @@ impl Seek for PanickingReader {
 
 #[rstest]
 #[case::calc_digest(
-    |data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(|_| ()),
+    |data_file: &DataFile, _: &Path| data_file.calc_digest(DigestAlgorithm::Sha256).map(|_| ()),
     FailingReader::failing_reads(),
     ErrorKind::BrokenPipe,
     "scripted read failure"
@@ -553,10 +550,10 @@ fn never_uses_failed_reader_twice(
     let data_file = &container.data_files()?[0];
 
     data_file
-        .calc_digest(common::URI_SHA256)
+        .calc_digest(DigestAlgorithm::Sha256)
         .expect_err("the first call should fail");
     let calls_after_failure = calls.get();
-    let result = data_file.calc_digest(common::URI_SHA256);
+    let result = data_file.calc_digest(DigestAlgorithm::Sha256);
 
     assert!(
         matches!(result, Err(Error::Io(_))),
@@ -572,7 +569,7 @@ fn never_uses_failed_reader_twice(
 }
 
 #[rstest]
-#[case::calc_digest(|data_file: &DataFile, _: &Path| data_file.calc_digest(common::URI_SHA256).map(|_| ()))]
+#[case::calc_digest(|data_file: &DataFile, _: &Path| data_file.calc_digest(DigestAlgorithm::Sha256).map(|_| ()))]
 #[case::file_size(|data_file: &DataFile, _: &Path| data_file.file_size().map(|_| ()))]
 #[case::write_to(|data_file: &DataFile, _: &Path| data_file.write_to(Vec::new()))]
 #[case::save_as(|data_file: &DataFile, directory: &Path| data_file.save_as(directory.join("saved.bin")))]
@@ -606,12 +603,12 @@ fn never_uses_panicked_reader_twice(
     let data_file = &container.data_files()?[0];
 
     let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
-        data_file.calc_digest(common::URI_SHA256)
+        data_file.calc_digest(DigestAlgorithm::Sha256)
     }));
     let payload = outcome.err().unwrap();
     assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
     let calls_after_panic = calls.get();
-    let result = data_file.calc_digest(common::URI_SHA256);
+    let result = data_file.calc_digest(DigestAlgorithm::Sha256);
 
     assert!(
         matches!(result, Err(Error::Io(_))),
@@ -644,7 +641,7 @@ fn rejects_reentrant_reader(
                     .upgrade()
                     .ok_or_else(|| io::Error::other("container dropped"))?;
                 let result = container.borrow().data_files().map_err(io::Error::other)?[0]
-                    .calc_digest(common::URI_SHA256);
+                    .calc_digest(DigestAlgorithm::Sha256);
                 *self.nested_result.borrow_mut() = Some(result);
             }
             self.bytes.read(buffer)
@@ -668,7 +665,7 @@ fn rejects_reentrant_reader(
         .borrow_mut()
         .add_data_file_from_reader("test1.txt", MEDIA_TYPE_TEXT_PLAIN, reader)?;
 
-    let outer_result = container.borrow().data_files()?[0].calc_digest(common::URI_SHA256);
+    let outer_result = container.borrow().data_files()?[0].calc_digest(DigestAlgorithm::Sha256);
 
     let nested_result = nested_result.take().expect("reader didnt make nested call");
     assert_io_error(

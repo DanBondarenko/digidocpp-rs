@@ -15,9 +15,6 @@ struct ValidatorResult;
 }  // namespace digidoc_rs::signature
 
 namespace digidoc_rs::signature {
-auto pol_v1() -> rust::String;
-auto pol_v2() -> rust::String;
-
 auto id(const digidoc::Signature& signature) -> rust::String;
 auto claimed_signing_time(const digidoc::Signature& signature) -> rust::String;
 auto trusted_signing_time(const digidoc::Signature& signature) -> rust::String;

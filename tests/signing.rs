@@ -15,7 +15,10 @@ use crate::common::{
     MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err, assert_is_recent,
     create_empty_asice_container, create_unsigned_asice_with_data_file, init_with_valid_tsl,
 };
-use libdigidocpp::{Container, Error, PartialSigner, Pkcs12Signer, Signer};
+use libdigidocpp::{
+    Algorithm, AlgorithmSetting, Container, Error, PartialSigner, Pkcs12Signer, ProfileSetting,
+    SignatureAlgorithm, SignatureProfile, Signer,
+};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -23,7 +26,7 @@ use tempfile::TempDir;
 
 fn bes_signer(file_name: &str) -> Pkcs12Signer {
     let mut signer = common::pkcs12_signer(file_name);
-    signer.set_profile("BES").unwrap();
+    signer.set_profile(ProfileSetting::Bes).unwrap();
     signer
 }
 
@@ -75,20 +78,12 @@ fn rejects_signature_ops_on_unsigned_container(
 }
 
 #[rstest]
-#[case::rsa(
-    "signer1.p12",
-    None,
-    "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
-)]
-#[case::ec(
-    "signerEC.p12",
-    None,
-    "http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384"
-)]
+#[case::rsa("signer1.p12", None, SignatureAlgorithm::RsaSha256)]
+#[case::ec("signerEC.p12", None, SignatureAlgorithm::EcdsaSha384)]
 #[case::rsa_pss(
     "signer1.p12",
-    Some("http://www.w3.org/2007/05/xmldsig-more#sha256-rsa-MGF1"),
-    "http://www.w3.org/2007/05/xmldsig-more#sha256-rsa-MGF1"
+    Some(SignatureAlgorithm::RsaPssSha256.into()),
+    SignatureAlgorithm::RsaPssSha256
 )]
 #[serial]
 fn signs_container(
@@ -99,8 +94,8 @@ fn signs_container(
     #[with(temp_dir.path())]
     mut container: Container,
     #[case] signer_file: &str,
-    #[case] method: Option<&str>,
-    #[case] expected_method: &str,
+    #[case] method: Option<AlgorithmSetting>,
+    #[case] expected_method: SignatureAlgorithm,
 ) -> Result<(), Box<dyn StdError>> {
     let mut signer = bes_signer(signer_file);
     if let Some(method) = method {
@@ -111,8 +106,11 @@ fn signs_container(
 
     let signature = signature.as_signature();
     assert_eq!(signature.id()?, "S0");
-    assert_eq!(signature.profile()?, "BES");
-    assert_eq!(signature.signature_method()?, expected_method);
+    assert_eq!(signature.profile()?, SignatureProfile::Bes);
+    assert_eq!(
+        signature.signature_method()?,
+        Algorithm::Signature(expected_method)
+    );
     assert_eq!(signature.signing_certificate()?, signer.cert()?);
     assert_is_recent(&signature.claimed_signing_time()?);
     assert_eq!(container.signatures()?.len(), 1);
@@ -264,8 +262,7 @@ fn adds_signature_value_to_prepared_signature(
 
     let signature = container.prepare_signature(&mut signer)?;
     let signature = signature.as_signature();
-    let signature_value =
-        signer.sign(&signature.signature_method()?, &signature.data_to_sign()?)?;
+    let signature_value = signer.sign(signature.signature_method()?, &signature.data_to_sign()?)?;
     container.save()?;
 
     let mut reloaded = Container::open(&signed_path)?;

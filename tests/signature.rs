@@ -14,7 +14,8 @@ use crate::common::{create_empty_asice_container, init_with_valid_tsl, parse_com
 use bon::Builder;
 use itertools::Itertools;
 use libdigidocpp::{
-    Container, DerCert, ExceptionCode, Signature, TSAInfo, ValidatorResult, ValidatorStatus,
+    Algorithm, Container, DerCert, DigestAlgorithm, ExceptionCode, Signature, SignatureAlgorithm,
+    SignatureProfile, TSAInfo, ValidatorResult, ValidatorStatus,
 };
 use rstest::rstest;
 use serial_test::serial;
@@ -55,8 +56,6 @@ fn empty_asice_container_has_no_signatures(
     assert_signatures(&container, &[])
 }
 
-const PROFILE_BES_TIME_STAMP: &str = "BES/time-stamp";
-const PROFILE_TIME_STAMP_TOKEN: &str = "TimeStampToken";
 const SIGNED_BY_DEMO: &str = "DEMO of SK TSA 2014";
 
 fn valid_signature_a() -> SignatureExpectation {
@@ -66,10 +65,10 @@ fn valid_signature_a() -> SignatureExpectation {
         .time_stamp_certificate_common_name(SIGNED_BY_DEMO)
         .claimed_signing_time("2016-11-02T11:07:45Z")
         .trusted_signing_time("2016-11-02T11:07:45Z")
-        .signature_method(common::URI_SHA256)
+        .signature_method(DigestAlgorithm::Sha256)
         .policy("")
         .sp_uri("")
-        .profile(PROFILE_TIME_STAMP_TOKEN)
+        .profile(SignatureProfile::TimeStampToken)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -94,10 +93,10 @@ fn valid_signature_b() -> SignatureExpectation {
         .id("5641640388766379252")
         .claimed_signing_time("2017-04-10T06:27:29Z")
         .trusted_signing_time("2017-04-10T06:27:29Z")
-        .signature_method(common::URI_SHA256)
+        .signature_method(DigestAlgorithm::Sha256)
         .policy("")
         .sp_uri("")
-        .profile(PROFILE_TIME_STAMP_TOKEN)
+        .profile(SignatureProfile::TimeStampToken)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -123,10 +122,10 @@ fn valid_signature_c() -> SignatureExpectation {
         .time_stamp_certificate_common_name(SIGNED_BY_DEMO)
         .claimed_signing_time("2017-04-10T06:27:28Z")
         .trusted_signing_time("2017-04-10T06:27:28Z")
-        .signature_method(common::URI_SHA256)
+        .signature_method(DigestAlgorithm::Sha256)
         .policy("")
         .sp_uri("")
-        .profile(PROFILE_TIME_STAMP_TOKEN)
+        .profile(SignatureProfile::TimeStampToken)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -151,10 +150,10 @@ fn valid_signature_d() -> SignatureExpectation {
         .id("S0")
         .claimed_signing_time("2016-11-28T13:46:41Z")
         .trusted_signing_time("2016-11-28T13:46:43Z")
-        .signature_method("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
+        .signature_method(SignatureAlgorithm::RsaSha256)
         .policy("")
         .sp_uri("")
-        .profile(PROFILE_BES_TIME_STAMP)
+        .profile(SignatureProfile::BesTimeStamp)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -180,10 +179,10 @@ fn signature_with_invalid_timestamp() -> SignatureExpectation {
         .time_stamp_certificate_common_name(SIGNED_BY_DEMO)
         .claimed_signing_time("2016-11-02T11:07:45Z")
         .trusted_signing_time("2016-11-02T11:07:45Z")
-        .signature_method(common::URI_SHA256)
+        .signature_method(DigestAlgorithm::Sha256)
         .policy("")
         .sp_uri("")
-        .profile(PROFILE_TIME_STAMP_TOKEN)
+        .profile(SignatureProfile::TimeStampToken)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -209,10 +208,10 @@ fn forged_signature() -> SignatureExpectation {
         .id("S0")
         .claimed_signing_time("2026-05-28T07:26:06Z")
         .trusted_signing_time("2026-05-28T07:26:07Z")
-        .signature_method("http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256")
+        .signature_method(SignatureAlgorithm::EcdsaSha256)
         .policy("")
         .sp_uri("")
-        .profile(PROFILE_BES_TIME_STAMP)
+        .profile(SignatureProfile::BesTimeStamp)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -237,10 +236,10 @@ fn expired_signature() -> SignatureExpectation {
         .id("S0")
         .claimed_signing_time("2013-04-06T13:42:47Z")
         .trusted_signing_time("2013-04-06T13:42:48Z")
-        .signature_method("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")
+        .signature_method(SignatureAlgorithm::RsaSha256)
         .policy("urn:oid:1.3.6.1.4.1.10015.1000.3.1.1")
         .sp_uri("https://www.sk.ee/repository/bdoc-spec.pdf")
-        .profile("EPES/time-mark")
+        .profile(SignatureProfile::EpesTimeMark)
         .city("")
         .state_or_province("")
         .postal_code("")
@@ -289,10 +288,10 @@ struct SignatureExpectation {
     id: String,
     claimed_signing_time: String,
     trusted_signing_time: String,
-    signature_method: String,
+    signature_method: Algorithm,
     policy: String,
     sp_uri: String,
-    profile: String,
+    profile: SignatureProfile,
     city: String,
     state_or_province: String,
     postal_code: String,
