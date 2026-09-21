@@ -18,7 +18,6 @@ publish.workspace = true
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
 cxx = "1.0.177"
 thiserror = "2.0.20"
-num_enum = "0.7.6"
 secrecy = "0.10.3"
 strum = { version = "0.28.0", features = ["derive"] }
 derive_more = { version = "2.1.1", features = ["from"] }

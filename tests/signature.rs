@@ -395,13 +395,14 @@ struct ValidatorResultExpectation {
 
 impl ValidatorResultExpectation {
     fn assert(&self, validator_result: &ValidatorResult) {
-        assert_eq!(validator_result.status(), self.status);
+        assert_eq!(validator_result.status(), Some(self.status));
         assert_if_some(validator_result.diagnostics(), self.diagnostics.as_deref());
+        #[expect(clippy::as_conversions)]
         let expected_warnings = self
             .warnings
             .iter()
             .copied()
-            .map(|code| (Some(code), i32::from(code)))
+            .map(|code| (Some(code), code as i32))
             .collect::<Vec<_>>();
         assert_eq!(validator_result.warnings(), expected_warnings);
     }

@@ -1,7 +1,9 @@
+#![allow(deprecated, reason = "strum")]
+
 use cxx::Exception;
 use libdigidocpp_sys::exception::ffi;
-use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
+use strum::FromRepr;
 use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
@@ -65,8 +67,8 @@ impl DigiDocError {
     }
 
     #[must_use]
-    pub fn code(&self) -> Option<ExceptionCode> {
-        self.raw_code.try_into().ok()
+    pub const fn code(&self) -> Option<ExceptionCode> {
+        ExceptionCode::from_repr(self.raw_code)
     }
 
     #[must_use]
@@ -156,7 +158,7 @@ impl std::error::Error for DigiDocError {
     }
 }
 
-#[derive(Clone, Debug, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq)]
+#[derive(Clone, Debug, Copy, FromRepr, Eq, PartialEq)]
 #[non_exhaustive]
 #[repr(i32)]
 pub enum ExceptionCode {

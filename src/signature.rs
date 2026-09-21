@@ -1,10 +1,11 @@
+#![allow(deprecated, reason = "strum")]
+
 use crate::stream::call_then_deliver_stream_failure;
 use crate::{Algorithm, DerCert, Error, ExceptionCode, PartialSigner, SignatureProfile};
 use libdigidocpp_sys::signature::ffi;
-use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::{Debug, Display, Formatter};
 use std::pin::Pin;
-use strum::{AsRefStr, Display as StrumDisplay, EnumString};
+use strum::{AsRefStr, Display as StrumDisplay, EnumString, FromRepr};
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, AsRefStr, StrumDisplay, EnumString)]
 #[non_exhaustive]
@@ -15,7 +16,7 @@ pub enum ValidationPolicy {
     PolV2,
 }
 
-#[derive(Clone, Debug, Copy, IntoPrimitive, TryFromPrimitive, Eq, PartialEq)]
+#[derive(Clone, Debug, Copy, FromRepr, Eq, PartialEq)]
 #[non_exhaustive]
 #[repr(i32)]
 pub enum ValidatorStatus {
@@ -26,15 +27,6 @@ pub enum ValidatorStatus {
     Test = 3, //DIGIDOCPP_DEPRECATED
     Invalid = 4,
     Unknown = 5,
-}
-
-impl From<ffi::Status> for ValidatorStatus {
-    fn from(value: ffi::Status) -> Self {
-        Self::try_from(value.repr).unwrap_or({
-            // TODO: Log?
-            Self::Unknown
-        })
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -82,8 +74,13 @@ pub struct ValidatorResult(ffi::ValidatorResult);
 
 impl ValidatorResult {
     #[must_use]
-    pub fn status(&self) -> ValidatorStatus {
-        self.0.status.into()
+    pub const fn status(&self) -> Option<ValidatorStatus> {
+        ValidatorStatus::from_repr(self.0.status.repr)
+    }
+
+    #[must_use]
+    pub const fn raw_status(&self) -> i32 {
+        self.0.status.repr
     }
 
     #[must_use]
@@ -101,7 +98,7 @@ impl ValidatorResult {
         self.0
             .warnings
             .iter()
-            .map(|code| (code.repr.try_into().ok(), code.repr))
+            .map(|code| (ExceptionCode::from_repr(code.repr), code.repr))
             .collect()
     }
 }
