@@ -1,7 +1,4 @@
-#![allow(
-    dead_code,
-    reason = "each integration test binary uses a subset of these helpers"
-)]
+#![allow(dead_code, reason = "integration test helpers")]
 
 use libdigidocpp::{Conf, Container, DerCert, Pkcs12Signer};
 use rstest::fixture;

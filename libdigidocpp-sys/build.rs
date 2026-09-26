@@ -1,69 +1,97 @@
 use std::env;
+use std::error::Error;
+use std::fmt::Display;
 
-fn main() {
-    let mut build = cxx_build::bridges([
-        "src/init.rs",
-        "src/conf.rs",
-        "src/exception.rs",
-        "src/container.rs",
-        "src/data_file.rs",
-        "src/signature.rs",
-        "src/signer.rs",
-        "src/stream.rs",
-    ]);
+use libdigidocpp_build::{Install, Kind, path_to_str};
+
+const BRIDGES: [&str; 8] = [
+    "src/init.rs",
+    "src/conf.rs",
+    "src/exception.rs",
+    "src/container.rs",
+    "src/data_file.rs",
+    "src/signature.rs",
+    "src/signer.rs",
+    "src/stream.rs",
+];
+
+const SOURCES: [&str; 8] = [
+    "src/init_ffi.cpp",
+    "src/conf_ffi.cpp",
+    "src/exception_ffi.cpp",
+    "src/container_ffi.cpp",
+    "src/data_file_ffi.cpp",
+    "src/signature_ffi.cpp",
+    "src/signer_ffi.cpp",
+    "src/stream_ffi.cpp",
+];
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let install = Install::discover()?;
+
+    compile_bridge(&install)?;
+    emit_link_directives(&install)?;
+    install.emit_rpath()?;
+    emit_rerun_directives();
+
+    Ok(())
+}
+
+fn compile_bridge(install: &Install) -> Result<(), Box<dyn Error>> {
+    let mut build = cxx_build::bridges(BRIDGES);
     build
         .std("c++20")
-        .file("src/init_ffi.cpp")
-        .file("src/conf_ffi.cpp")
-        .file("src/exception_ffi.cpp")
-        .file("src/container_ffi.cpp")
-        .file("src/data_file_ffi.cpp")
-        .file("src/signature_ffi.cpp")
-        .file("src/signer_ffi.cpp")
-        .file("src/stream_ffi.cpp");
+        .files(SOURCES)
+        .includes(install.include_dirs());
 
-    let test_util_feature = env::var_os("CARGO_FEATURE_TEST_UTIL").is_some();
-
-    if test_util_feature {
+    if env::var_os("CARGO_FEATURE_TEST_UTIL").is_some() {
         build.file("src/test_util.cpp");
     }
 
-    println!("cargo:rerun-if-env-changed=DIGIDOCPP_FRAMEWORK_DIR");
-
-    #[expect(
-        clippy::expect_used,
-        reason = "Specifying ligdigidocpp location is required for dynamic linking"
-    )]
-    let framework_dir = env::var("DIGIDOCPP_FRAMEWORK_DIR")
-        .expect("set DIGIDOCPP_FRAMEWORK_DIR to the folder holding digidocpp.framework");
-
-    build.flag(format!("-F{framework_dir}"));
-    build.compile("libdigidocpp-sys");
-
-    println!("cargo:rustc-link-search=framework={framework_dir}");
-    println!("cargo:rustc-link-lib=framework=digidocpp");
-    println!("cargo:rustc-link-arg=-Wl,-rpath,{framework_dir}");
-
-    println!("cargo:rerun-if-changed=include/ffi_util.h");
-    println!("cargo:rerun-if-changed=src/init_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/init_ffi.h");
-    println!("cargo:rerun-if-changed=src/conf_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/conf_ffi.h");
-    println!("cargo:rerun-if-changed=src/exception_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/exception_ffi.h");
-    println!("cargo:rerun-if-changed=src/container_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/container_ffi.h");
-    println!("cargo:rerun-if-changed=src/data_file_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/data_file_ffi.h");
-    println!("cargo:rerun-if-changed=src/signature_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/signature_ffi.h");
-    println!("cargo:rerun-if-changed=src/signer_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/signer_ffi.h");
-    println!("cargo:rerun-if-changed=src/stream_ffi.cpp");
-    println!("cargo:rerun-if-changed=include/stream_ffi.h");
-
-    if test_util_feature {
-        println!("cargo:rerun-if-changed=src/test_util.cpp");
-        println!("cargo:rerun-if-changed=include/test_util.h");
+    for framework_dir in install.framework_dirs() {
+        build.flag(format!("-F{}", path_to_str(framework_dir)?));
     }
+
+    if is_windows_msvc_target() {
+        // libdigidocpp checks WIN32
+        build.define("WIN32", None).flag("/EHsc");
+    }
+
+    build.compile("libdigidocpp-sys");
+    Ok(())
+}
+
+fn is_windows_msvc_target() -> bool {
+    env::var("CARGO_CFG_TARGET_OS").is_ok_and(|target_os| target_os == "windows")
+        && env::var("CARGO_CFG_TARGET_ENV").is_ok_and(|target_env| target_env == "msvc")
+}
+
+fn emit_link_directives(install: &Install) -> Result<(), Box<dyn Error>> {
+    for framework_dir in install.framework_dirs() {
+        emit(format_args!(
+            "cargo:rustc-link-search=framework={}",
+            path_to_str(framework_dir)?
+        ));
+    }
+    for lib_dir in install.lib_dirs() {
+        emit(format_args!(
+            "cargo:rustc-link-search=native={}",
+            path_to_str(lib_dir)?
+        ));
+    }
+
+    match install.kind() {
+        Kind::Framework => emit("cargo:rustc-link-lib=framework=digidocpp"),
+        _ => emit("cargo:rustc-link-lib=dylib=digidocpp"),
+    }
+    Ok(())
+}
+
+fn emit_rerun_directives() {
+    emit("cargo:rerun-if-changed=src");
+    emit("cargo:rerun-if-changed=include");
+}
+
+fn emit(directive: impl Display) {
+    println!("{directive}");
 }
