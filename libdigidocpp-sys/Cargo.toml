@@ -16,10 +16,10 @@ cxx-build = "1.0.177"
 libdigidocpp-build = { path = "../libdigidocpp-build" }
 
 [features]
-test_util = []
+_test_util = []
 
 [dev-dependencies]
-libdigidocpp-sys = { path = ".", features = ["test_util"] }
+libdigidocpp-sys = { path = ".", features = ["_test_util"] }
 rand = "0.10.3"
 
 [lints]

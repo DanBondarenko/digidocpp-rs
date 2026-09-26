@@ -44,7 +44,7 @@ fn compile_bridge(install: &Install) -> Result<(), Box<dyn Error>> {
         .files(SOURCES)
         .includes(install.include_dirs());
 
-    if env::var_os("CARGO_FEATURE_TEST_UTIL").is_some() {
+    if env::var_os("CARGO_FEATURE__TEST_UTIL").is_some() {
         build.file("src/test_util.cpp");
     }
 

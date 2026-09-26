@@ -40,8 +40,8 @@ time = { version = "0.3.55", features = ["parsing"] }
 x509-parser = "0.18.1"
 
 [features]
-online_tests = []
-rsa_pss_validation_tests = []
+_online_tests = []
+_rsa_pss_validation_tests = []
 
 [workspace.lints.rust]
 missing_docs = "allow" # TODO: Turn on before publishing

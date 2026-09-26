@@ -1,5 +1,5 @@
 // TODO: find a way to deduplicate (vs signing.rs) while keeping conditional compilation
-#![cfg(feature = "online_tests")]
+#![cfg(feature = "_online_tests")]
 #![cfg_attr(
     test,
     allow(
@@ -91,7 +91,7 @@ fn adds_signature_and_validates_reopened_container(
 #[case::ec("signerEC.p12", None, SignatureAlgorithm::EcdsaSha384)]
 // needs xmlsec1 >= 1.3
 #[cfg_attr(
-    feature = "rsa_pss_validation_tests",
+    feature = "_rsa_pss_validation_tests",
     case::rsa_pss(
         "signer1.p12",
         Some(SignatureAlgorithm::RsaPssSha256.into()),

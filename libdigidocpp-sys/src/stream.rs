@@ -28,7 +28,7 @@ pub mod ffi {
 
     impl Box<Source> {}
 
-    #[cfg(feature = "test_util")]
+    #[cfg(feature = "_test_util")]
     #[namespace = "digidoc_rs::stream"]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/test_util.h");

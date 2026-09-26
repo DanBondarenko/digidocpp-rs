@@ -82,7 +82,7 @@ pub mod ffi {
         type ExceptionCode;
     }
 
-    #[cfg(feature = "test_util")]
+    #[cfg(feature = "_test_util")]
     #[namespace = "digidoc_rs::exception"]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/test_util.h");
