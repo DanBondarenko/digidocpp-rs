@@ -35,6 +35,20 @@ impl Error {
             Self::Library(LibraryError::Unknown(data.message))
         }
     }
+
+    #[must_use]
+    pub const fn as_digidoc(&self) -> Option<&DigiDocError> {
+        match self {
+            Self::Library(LibraryError::DigiDoc(error)) => Some(error),
+            _ => None,
+        }
+    }
+
+    /// Searches causes tree for exception code
+    #[must_use]
+    pub fn has_code(&self, code: ExceptionCode) -> bool {
+        self.as_digidoc().is_some_and(|error| error.has_code(code))
+    }
 }
 
 #[derive(ThisError, Debug, Clone)]
@@ -99,6 +113,24 @@ impl DigiDocError {
     #[must_use]
     pub fn causes(&self) -> &[Self] {
         &self.causes
+    }
+
+    /// Iterates causes tree including this error (DFS)
+    pub fn iter(&self) -> impl Iterator<Item = &Self> {
+        let mut stack = vec![self];
+
+        std::iter::from_fn(move || {
+            let error = stack.pop()?;
+            stack.extend(error.causes.iter().rev());
+
+            Some(error)
+        })
+    }
+
+    /// Searches causes tree for exception code
+    #[must_use]
+    pub fn has_code(&self, code: ExceptionCode) -> bool {
+        self.iter().any(|error| error.code() == Some(code))
     }
 
     fn from_cause(cause: &ffi::ExceptionCause, subcauses: Vec<Self>) -> Self {
@@ -203,7 +235,9 @@ impl From<Exception> for Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ffi::ExceptionCode as FfiCode;
     use itertools::Itertools;
+    use rstest::rstest;
 
     struct Expectation {
         message: String,
@@ -226,11 +260,7 @@ mod tests {
         }
 
         fn assert(&self, error: &Error) {
-            let Error::Library(LibraryError::DigiDoc(digidoc_error)) = error else {
-                panic!("Expected error of type DigiDoc")
-            };
-
-            self.assert_digidoc(digidoc_error);
+            self.assert_digidoc(error.as_digidoc().expect("Expected error of type DigiDoc"));
         }
 
         fn assert_digidoc(&self, error: &DigiDocError) {
@@ -374,5 +404,82 @@ mod tests {
         );
 
         expectation.assert(&error);
+    }
+
+    fn exception_with_codes(
+        code: FfiCode,
+        causes: impl IntoIterator<Item = (FfiCode, u32)>,
+    ) -> Error {
+        Error::from_exception_data(ffi::ExceptionData {
+            code,
+            causes: causes
+                .into_iter()
+                .map(|(code, depth)| ffi::ExceptionCause {
+                    code,
+                    depth,
+                    message: String::from("cause"),
+                    file: String::new(),
+                    line: 0,
+                })
+                .collect(),
+            ..mock_exception_data("top", [])
+        })
+    }
+
+    #[rstest]
+    #[case::no_causes(&[], &["a"])]
+    #[case::chain(&[("b", 0), ("c", 1), ("d", 2)], &["a", "b", "c", "d"])]
+    #[case::siblings(&[("b", 0), ("c", 0)], &["a", "b", "c"])]
+    #[case::mixed(
+        &[("b", 0), ("c", 1), ("d", 1), ("e", 2), ("f", 0)],
+        &["a", "b", "c", "d", "e", "f"]
+    )]
+    fn iterates_in_expected_order(#[case] causes: &[(&str, u32)], #[case] expected: &[&str]) {
+        let error = Error::from_exception_data(mock_exception_data("a", causes.iter().copied()));
+
+        let messages: Vec<_> = error
+            .as_digidoc()
+            .unwrap()
+            .iter()
+            .map(DigiDocError::message)
+            .collect();
+
+        assert_eq!(messages, expected);
+    }
+
+    #[rstest]
+    #[case::pos_cause(
+        exception_with_codes(FfiCode::General, [(FfiCode::General, 0), (FfiCode::PINIncorrect, 1)]),
+        ExceptionCode::PINIncorrect,
+        true
+    )]
+    #[case::neg_cause(
+        exception_with_codes(FfiCode::General, [(FfiCode::General, 0), (FfiCode::PINIncorrect, 1)]),
+        ExceptionCode::PINLocked,
+        false
+    )]
+    #[case::pos_self(
+        exception_with_codes(FfiCode::PINLocked, []),
+        ExceptionCode::PINLocked,
+        true
+    )]
+    #[case::neg_self(
+        exception_with_codes(FfiCode::PINLocked, []),
+        ExceptionCode::PINIncorrect,
+        false
+    )]
+    #[case::not_digidoc(Error::Internal(String::from("a")), ExceptionCode::PINIncorrect, false)]
+    fn has_code_searches_error_and_causes(
+        #[case] error: Error,
+        #[case] code: ExceptionCode,
+        #[case] expected: bool,
+    ) {
+        assert_eq!(error.has_code(code), expected);
+    }
+
+    #[test]
+    fn has_no_digidoc_error_when_error_is_not_from_digidoc() {
+        let error = Error::Internal(String::from("a"));
+        assert!(error.as_digidoc().is_none(), "{error:?}");
     }
 }

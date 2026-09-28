@@ -12,37 +12,55 @@
 mod common;
 
 use crate::common::{assert_general_digidoc_err, init, open_container};
-use libdigidocpp::Container;
+use libdigidocpp::{Container, ExceptionCode};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
 use tempfile::TempDir;
 
 #[rstest]
+#[case::ca_non_qa("EE_T-CA-non-qa.xml", ExceptionCode::CertificateIssuerMissing)]
+#[case::no_qc_statement("EE_T-no_QCStatement.xml", ExceptionCode::CertificateIssuerMissing)]
+#[case::no_qcsd("EE_T-no_QCSD.xml", ExceptionCode::CertificateIssuerMissing)]
+#[case::ca_invalid_type("EE_T-CA-invalid-type.xml", ExceptionCode::CertificateIssuerMissing)]
+#[case::ca_withdrawn("EE_T-CA-withdrawn.xml", ExceptionCode::CertificateIssuerMissing)]
+#[case::ca_granted_later("EE_T-CA-granted-later.xml", ExceptionCode::CertificateIssuerMissing)]
+#[case::ca_withdrawn_granted_later(
+    "EE_T-CA-withdrawn-granted-later.xml",
+    ExceptionCode::CertificateIssuerMissing
+)]
+#[case::ca_noqscd_granted_later(
+    "EE_T-CA-noqscd-granted-later.xml",
+    ExceptionCode::CertificateIssuerMissing
+)]
+#[case::ocsp_invalid_type("EE_T-OCSP-invalid-type.xml", ExceptionCode::CertificateUnknown)]
+#[case::ocsp_withdrawn("EE_T-OCSP-withdrawn.xml", ExceptionCode::CertificateUnknown)]
+#[case::ocsp_granted_later("EE_T-OCSP-granted-later.xml", ExceptionCode::CertificateUnknown)]
+#[case::ocsp_withdrawn_granted_later(
+    "EE_T-OCSP-withdrawn-granted-later.xml",
+    ExceptionCode::CertificateUnknown
+)]
+#[case::ocsp_noqscd_granted_later(
+    "EE_T-OCSP-noqscd-granted-later.xml",
+    ExceptionCode::CertificateUnknown
+)]
+#[case::tsa_invalid_type("EE_T-TSA-invalid-type.xml", ExceptionCode::CertificateUnknown)]
+#[case::tsa_withdrawn("EE_T-TSA-withdrawn.xml", ExceptionCode::CertificateUnknown)]
+#[case::tsa_granted_later("EE_T-TSA-granted-later.xml", ExceptionCode::CertificateUnknown)]
+#[case::tsa_withdrawn_granted_later(
+    "EE_T-TSA-withdrawn-granted-later.xml",
+    ExceptionCode::CertificateUnknown
+)]
+#[case::tsa_noqscd_granted_later(
+    "EE_T-TSA-noqscd-granted-later.xml",
+    ExceptionCode::CertificateUnknown
+)]
 #[serial]
 fn rejects_signature_unless_tsl_grants_trust(
     #[allow(unused_variables)]
-    #[values(
-        "EE_T-CA-non-qa.xml",
-        "EE_T-no_QCStatement.xml",
-        "EE_T-no_QCSD.xml",
-        "EE_T-CA-invalid-type.xml",
-        "EE_T-CA-withdrawn.xml",
-        "EE_T-CA-granted-later.xml",
-        "EE_T-CA-withdrawn-granted-later.xml",
-        "EE_T-CA-noqscd-granted-later.xml",
-        "EE_T-OCSP-invalid-type.xml",
-        "EE_T-OCSP-withdrawn.xml",
-        "EE_T-OCSP-granted-later.xml",
-        "EE_T-OCSP-withdrawn-granted-later.xml",
-        "EE_T-OCSP-noqscd-granted-later.xml",
-        "EE_T-TSA-invalid-type.xml",
-        "EE_T-TSA-withdrawn.xml",
-        "EE_T-TSA-granted-later.xml",
-        "EE_T-TSA-withdrawn-granted-later.xml",
-        "EE_T-TSA-noqscd-granted-later.xml"
-    )]
+    #[case]
     tsl_name: &str,
+    #[case] expected_code: ExceptionCode,
     #[from(init)]
     #[with(tsl_name)]
     _temp_dir: TempDir,
@@ -52,7 +70,8 @@ fn rejects_signature_unless_tsl_grants_trust(
 ) -> Result<(), Box<dyn StdError>> {
     let result = container.signatures()?[0].validate();
 
-    assert_general_digidoc_err!(result);
+    let error = assert_general_digidoc_err!(result);
+    assert!(error.has_code(expected_code), "{error:?}");
     Ok(())
 }
 

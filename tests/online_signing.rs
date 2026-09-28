@@ -18,8 +18,8 @@ use crate::common::{
     create_unsigned_asice_with_data_file, init_with_valid_tsl,
 };
 use libdigidocpp::{
-    Algorithm, AlgorithmSetting, Container, ContainerType, PartialSigner, ProfileSetting,
-    SignatureAlgorithm, SignatureProfile, Signer, ValidityExtension,
+    Algorithm, AlgorithmSetting, Container, ContainerType, ExceptionCode, PartialSigner,
+    ProfileSetting, SignatureAlgorithm, SignatureProfile, Signer, ValidityExtension,
 };
 use rstest::rstest;
 use serial_test::serial;
@@ -237,6 +237,10 @@ fn rejects_unknown_signer(
         panic!("expected one cause: {error:?}");
     };
     assert_eq!(cause.message(), "Certificate status: unknown");
+    assert!(
+        error.has_code(ExceptionCode::CertificateUnknown),
+        "{error:?}"
+    );
 }
 
 #[rstest]
