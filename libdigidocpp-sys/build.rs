@@ -27,6 +27,11 @@ const SOURCES: [&str; 8] = [
 ];
 
 fn main() -> Result<(), Box<dyn Error>> {
+    emit("cargo:rerun-if-env-changed=DOCS_RS");
+    if env::var_os("DOCS_RS").is_some() {
+        return Ok(());
+    }
+
     let install = Install::discover()?;
 
     compile_bridge(&install)?;
