@@ -1,5 +1,9 @@
 [workspace]
-members = ["libdigidocpp-sys", "libdigidocpp-build"]
+members = [
+    "libdigidocpp-sys",
+    "libdigidocpp-build",
+    "examples/cli",
+]
 
 [workspace.package]
 version = "0.1.0"

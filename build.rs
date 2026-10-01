@@ -9,6 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Ok(());
     }
 
+    // Emit rpath in case `libdigidocpp` library is installed to a custom location
     Install::discover()?.emit_rpath()?;
     Ok(())
 }
