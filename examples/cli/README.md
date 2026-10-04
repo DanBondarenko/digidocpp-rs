@@ -13,6 +13,7 @@ Commands:
   - Example: `cargo run -p digidocpp-example-cli -- sign document.txt --output document.asice`
   - Requires PIN2, asked interactively. Can also be given via `PIN2` env var. 
   - Warning: three consecutive wrong PINs locks your ID card.
+  - `--pkcs11-driver`: path to PKCS#11 driver
 
 Settings:
 - Defaults point at SK test environment.
@@ -20,6 +21,7 @@ Settings:
 - `--tsl-url`/`TSL_URL`: TSL URL or file
 - `--tsl-cert`/`TSL_CERT`: DER certificate that signed the TSL
 - `--time-stamp-url`/`TIME_STAMP_URL`: timestamp service URL
+- `--production`: use library production defaults instead of SK test environment
 
 If libdigidocpp C++ has been installed to a custom location, use these env vars when building: 
 - `DIGIDOCPP_FRAMEWORK_DIR` 

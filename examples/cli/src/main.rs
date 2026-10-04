@@ -24,6 +24,9 @@ struct LibraryOptions {
     /// libdigidocpp config file, by default searches system directories
     #[arg(long, env = "CONF")]
     conf: Option<PathBuf>,
+    /// use library production defaults instead of SK test environment
+    #[arg(long, conflicts_with_all = ["tsl_url", "tsl_cert", "time_stamp_url"])]
+    production: bool,
     /// TSL url or file
     #[arg(
         long,
@@ -63,6 +66,9 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         output: PathBuf,
+        /// PKCS#11 driver of ID-card
+        #[arg(long)]
+        pkcs11_driver: Option<PathBuf>,
     },
     /// show information about container
     Info { file: PathBuf },
@@ -90,10 +96,12 @@ fn configure_library(options: &LibraryOptions) -> Result<()> {
         .as_deref()
         .map_or_else(Conf::new, Conf::from_file)?;
 
-    conf.set_tsl_url(&options.tsl_url)?;
-    conf.clear_tsl_certs();
-    conf.add_tsl_cert(fs::read(&options.tsl_cert)?)?;
-    conf.set_ts_url(&options.time_stamp_url)?;
+    if !options.production {
+        conf.set_tsl_url(&options.tsl_url)?;
+        conf.clear_tsl_certs();
+        conf.add_tsl_cert(fs::read(&options.tsl_cert)?)?;
+        conf.set_ts_url(&options.time_stamp_url)?;
+    }
 
     Ok(libdigidocpp::init_conf(conf)?)
 }
@@ -105,8 +113,12 @@ fn run(command: &Command) -> Result<ExitCode> {
             extend(file, output)?;
             Ok(ExitCode::SUCCESS)
         }
-        Command::Sign { file, output } => {
-            sign(file, output)?;
+        Command::Sign {
+            file,
+            output,
+            pkcs11_driver,
+        } => {
+            sign(file, output, pkcs11_driver.as_deref())?;
             Ok(ExitCode::SUCCESS)
         }
         Command::Info { file } => {
@@ -184,7 +196,7 @@ fn extend(path: &Path, output: &Path) -> Result<()> {
     Ok(())
 }
 
-fn sign(file_path: &Path, output: &Path) -> Result<()> {
+fn sign(file_path: &Path, output: &Path, pkcs11_driver: Option<&Path>) -> Result<()> {
     ensure!(
         is_extension_valid(output, ContainerType::AsicE),
         "invalid extension"
@@ -194,7 +206,7 @@ fn sign(file_path: &Path, output: &Path) -> Result<()> {
     let mime = mime_guess::from_path(file_path).first_or_octet_stream();
     container.add_data_file(file_path, mime.essence_str())?;
 
-    let mut signer = Pkcs11Signer::new()?;
+    let mut signer = pkcs11_driver.map_or_else(Pkcs11Signer::new, Pkcs11Signer::with_driver)?;
     let certificate = signer.cert()?.context("no cert")?;
     let (_, parsed) = x509_parser::parse_x509_certificate(certificate.as_ref())?;
     println!("Signing as {}", parsed.subject());
