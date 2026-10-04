@@ -3,6 +3,7 @@ members = [
     "libdigidocpp-sys",
     "libdigidocpp-build",
     "examples/cli",
+    "examples/server",
 ]
 
 [workspace.package]
