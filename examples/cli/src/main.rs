@@ -1,9 +1,13 @@
 use anyhow::{Context, Result, anyhow, ensure};
 use bytesize::ByteSize;
 use clap::{Args, Parser, Subcommand};
+#[cfg(not(windows))]
+use libdigidocpp::Pkcs11Signer;
+#[cfg(windows)]
+use libdigidocpp::WinSigner;
 use libdigidocpp::{
     Conf, Container, ContainerType, ExceptionCode, ExternalPartialSigner, PartialSigner,
-    Pkcs11Signer, ValidityExtension,
+    ValidityExtension,
 };
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -196,6 +200,19 @@ fn extend(path: &Path, output: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(windows)]
+fn signer(_: Option<&Path>) -> Result<WinSigner> {
+    let mut signer = WinSigner::new()?;
+    signer.set_select_first(true)?;
+    Ok(signer)
+}
+
+#[cfg(not(windows))]
+fn signer(pkcs11_driver: Option<&Path>) -> Result<Pkcs11Signer> {
+    let signer = pkcs11_driver.map_or_else(Pkcs11Signer::new, Pkcs11Signer::with_driver)?;
+    Ok(signer)
+}
+
 fn sign(file_path: &Path, output: &Path, pkcs11_driver: Option<&Path>) -> Result<()> {
     ensure!(
         is_extension_valid(output, ContainerType::AsicE),
@@ -206,7 +223,7 @@ fn sign(file_path: &Path, output: &Path, pkcs11_driver: Option<&Path>) -> Result
     let mime = mime_guess::from_path(file_path).first_or_octet_stream();
     container.add_data_file(file_path, mime.essence_str())?;
 
-    let mut signer = pkcs11_driver.map_or_else(Pkcs11Signer::new, Pkcs11Signer::with_driver)?;
+    let mut signer = signer(pkcs11_driver)?;
     let certificate = signer.cert()?.context("no cert")?;
     let (_, parsed) = x509_parser::parse_x509_certificate(certificate.as_ref())?;
     println!("Signing as {}", parsed.subject());

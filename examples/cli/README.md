@@ -13,7 +13,7 @@ Commands:
   - Example: `cargo run -p digidocpp-example-cli -- sign document.txt --output document.asice`
   - Requires PIN2, asked interactively. Can also be given via `PIN2` env var. 
   - Warning: three consecutive wrong PINs locks your ID card.
-  - `--pkcs11-driver`: path to PKCS#11 driver
+  - `--pkcs11-driver`: path to PKCS#11 driver (not used on Windows)
 
 Settings:
 - Defaults point at SK test environment.
