@@ -1,0 +1,6 @@
+* text=auto eol=lf
+
+*.asice binary
+*.asics binary
+*.p12   binary
+*.der   binary
