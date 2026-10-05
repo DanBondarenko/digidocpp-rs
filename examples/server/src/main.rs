@@ -71,7 +71,8 @@ struct ContainerRequest {
 async fn validate(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<Json<ValidateResponse>, AppError> {
-    let container = Container::open(request.file.path())?;
+    let path = request.file.into_temp_path();
+    let container = Container::open(&path)?;
     let signatures = container.signatures()?;
 
     let is_valid = signatures
@@ -111,7 +112,8 @@ struct InfoResponse {
 async fn info(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<Json<InfoResponse>, AppError> {
-    let container = Container::open(request.file.path())?;
+    let path = request.file.into_temp_path();
+    let container = Container::open(&path)?;
 
     let data_files = container
         .data_files()?
@@ -146,7 +148,8 @@ async fn info(
 async fn store_files(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<(), AppError> {
-    let container = Container::open(request.file.path())?;
+    let path = request.file.into_temp_path();
+    let container = Container::open(&path)?;
 
     fn store_file(file: &DataFile) -> Result<(), AppError> {
         // this fn body is placeholder, replace this with your use case
@@ -164,7 +167,8 @@ async fn store_files(
 async fn extend(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<Vec<u8>, AppError> {
-    let mut container = Container::open(request.file.path())?;
+    let path = request.file.into_temp_path();
+    let mut container = Container::open(&path)?;
     let mut signer = ExternalPartialSigner::new(Vec::new())?;
 
     let mut extended_container =
@@ -172,10 +176,10 @@ async fn extend(
             ValidityExtension::InPlace { .. } => container,
             ValidityExtension::Wrapped(wrapper) => wrapper,
         };
-    let extended_file = NamedTempFile::new()?;
-    extended_container.save_as(extended_file.path())?;
+    let extended_path = NamedTempFile::new()?.into_temp_path();
+    extended_container.save_as(&extended_path)?;
 
-    Ok(fs::read(extended_file.path())?)
+    Ok(fs::read(&extended_path)?)
 }
 
 #[derive(TryFromMultipart)]
@@ -187,8 +191,8 @@ async fn sign_with_p12(
     TypedMultipart(request): TypedMultipart<SignRequest>,
 ) -> Result<Vec<u8>, AppError> {
     let FieldData { metadata, contents } = request.file;
-    let container_file = NamedTempFile::with_suffix(".asice")?;
-    let mut container = Container::create(container_file.path())?;
+    let path = NamedTempFile::with_suffix(".asice")?.into_temp_path();
+    let mut container = Container::create(&path)?;
 
     container.add_data_file_from_reader(
         &metadata.file_name.context("no file name")?,
@@ -200,15 +204,15 @@ async fn sign_with_p12(
     container.sign(&mut signer)?;
     container.save()?;
 
-    Ok(fs::read(container_file.path())?)
+    Ok(fs::read(&path)?)
 }
 
 async fn sign_with_external_service(
     TypedMultipart(request): TypedMultipart<SignRequest>,
 ) -> Result<Vec<u8>, AppError> {
     let FieldData { metadata, contents } = request.file;
-    let container_file = NamedTempFile::with_suffix(".asice")?;
-    let mut container = Container::create(container_file.path())?;
+    let path = NamedTempFile::with_suffix(".asice")?.into_temp_path();
+    let mut container = Container::create(&path)?;
     container.add_data_file_from_reader(
         &metadata.file_name.context("no file name")?,
         &metadata.content_type.context("no media type")?,
@@ -244,7 +248,7 @@ async fn sign_with_external_service(
     signature.extend_signature_profile(&mut signer)?;
     container.save()?;
 
-    Ok(fs::read(container_file.path())?)
+    Ok(fs::read(&path)?)
 }
 
 struct AppError(anyhow::Error);

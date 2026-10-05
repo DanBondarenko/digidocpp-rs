@@ -8,7 +8,7 @@ use std::net::{Ipv4Addr, SocketAddr, TcpListener, TcpStream};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use ureq::unversioned::multipart::{Form, Part};
 
 struct TestServer {
@@ -28,15 +28,21 @@ impl TestServer {
             .spawn()?;
 
         let address = SocketAddr::from((Ipv4Addr::LOCALHOST, port));
+        let server = Self { process, address };
+        let deadline = Instant::now() + Duration::from_secs(30);
         while TcpStream::connect(address).is_err() {
+            assert!(Instant::now() < deadline);
             sleep(Duration::from_millis(100));
         }
 
-        Ok(Self { process, address })
+        Ok(server)
     }
 
     fn post_form(&self, path: &str, form: Form) -> Result<Vec<u8>, ureq::Error> {
         ureq::post(format!("http://{}{path}", self.address))
+            .config()
+            .timeout_global(Some(Duration::from_secs(60)))
+            .build()
             .send(form)?
             .body_mut()
             .read_to_vec()

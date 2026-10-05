@@ -97,10 +97,19 @@ class ReaderBuf final : public std::streambuf {
     if (gptr() < egptr()) {
       return traits_type::to_int_type(*gptr());
     }
+    if (failed_) {
+      // stop endless loop on msvc
+      return traits_type::eof();
+    }
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     auto* bytes = reinterpret_cast<std::uint8_t*>(buffer_.data());
-    const std::size_t count =
-        reader_->read(rust::Slice<std::uint8_t>(bytes, buffer_.size()));
+    std::size_t count = 0;
+    try {
+      count = reader_->read(rust::Slice<std::uint8_t>(bytes, buffer_.size()));
+    } catch (...) {
+      failed_ = true;
+      throw;
+    }
     if (count == 0) {
       return traits_type::eof();
     }
@@ -138,6 +147,7 @@ class ReaderBuf final : public std::streambuf {
  private:
   rust::Box<Source> reader_;
   std::vector<char> buffer_;
+  bool failed_ = false;
 };
 
 class OwnedIStream final : public std::istream {
