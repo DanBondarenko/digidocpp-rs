@@ -34,5 +34,3 @@ If libdigidocpp C++ has been installed to a custom location, use these env vars 
 - `DIGIDOCPP_FRAMEWORK_DIR` 
 - `DIGIDOCPP_INCLUDE_DIR` and `DIGIDOCPP_LIB_DIR`
 - `DIGIDOCPP_DIR` (Windows)
- 
-Tests require network and use real APIs (SK test TSL and demo time-stamp service).

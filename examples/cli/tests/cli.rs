@@ -1,20 +1,50 @@
-// these tests use real APIs over network
-use anyhow::Result;
+use anyhow::{Context, Result};
 use predicate::str;
 use predicates::prelude::*;
 use rstest::rstest;
 use serial_test::serial;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::TempDir;
 
-fn cli() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_digidocpp-example-cli"))
+enum Network {
+    Offline,
+    #[cfg(feature = "_online_tests")]
+    Online,
+}
+
+fn fixture_path(name: &str) -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(name)
+}
+
+fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
+    let is_online = !matches!(network, Network::Offline);
+    let cache_path = temp_dir.to_str().context("invalid path")?;
+    let conf_path = temp_dir.join("test.conf");
+    let conf_content = format!(
+        r#"<configuration>
+            <param name="tsl.autoupdate">{is_online}</param>
+            <param name="tsl.onlineDigest">{is_online}</param>
+            <param name="tsl.cache">{cache_path}</param>
+        </configuration>"#,
+    );
+
+    fs::write(&conf_path, conf_content)?;
+    if !is_online {
+        fs::copy(fixture_path("EE_T.xml"), temp_dir.join("EE_T.xml"))?;
+    }
+
+    let mut command = Command::new(env!("CARGO_BIN_EXE_digidocpp-example-cli"));
+    command.arg("--conf").arg(conf_path);
+    Ok(command)
 }
 
 #[rstest]
 #[case::signed_by_person(
+    Network::Offline,
     "tsl.asice",
     0,
     "All signatures are valid.",
@@ -23,6 +53,7 @@ fn cli() -> Command {
     "2016-11-28T13:46:43Z"
 )]
 #[case::time_stamp(
+    Network::Offline,
     "test.asics",
     0,
     "All signatures are valid.",
@@ -31,6 +62,7 @@ fn cli() -> Command {
     "2016-11-02T11:07:45Z"
 )]
 #[case::invalid_time_stamp(
+    Network::Offline,
     "test-invalidts.asics",
     1,
     "Invalid signatures detected.",
@@ -38,20 +70,34 @@ fn cli() -> Command {
     "DEMO of SK TSA 2014",
     "2016-11-02T11:07:45Z"
 )]
+#[cfg_attr(
+    feature = "_online_tests",
+    case::signed_by_person_online(
+        Network::Online,
+        "tsl.asice",
+        0,
+        "All signatures are valid.",
+        "signature is valid",
+        "MÄNNIK,MARI-LIIS,47101010033",
+        "2016-11-28T13:46:43Z"
+    )
+)]
 #[serial]
 fn validates(
-    #[case] fixture: &str,
+    #[case] network: Network,
+    #[case] fixture_file: &str,
     #[case] exit_code: i32,
     #[case] summary: &str,
     #[case] validity: &str,
     #[case] signed_by: &str,
     #[case] signed_at: &str,
 ) -> Result<()> {
-    let container = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(fixture);
+    let directory = TempDir::new()?;
 
-    let output = cli().arg("validate").arg(container).output()?;
+    let output = cli(&network, directory.path())?
+        .arg("validate")
+        .arg(fixture_path(fixture_file))
+        .output()?;
     let stdout = String::from_utf8(output.stdout)?;
     assert_eq!(output.status.code(), Some(exit_code));
 
@@ -73,35 +119,50 @@ fn validates(
 
 #[rstest]
 #[case::signed_by_person(
+    Network::Offline,
     "tsl.asice",
     "type: AsicE",
     "file: test.txt (4B)",
     "signature: MÄNNIK,MARI-LIIS,47101010033 at 2016-11-28T13:46:43Z (valid)"
 )]
 #[case::time_stamp(
+    Network::Offline,
     "test.asics",
     "type: AsicS",
     "file: test1.txt (5B)",
     "signature: DEMO of SK TSA 2014 at 2016-11-02T11:07:45Z (valid)"
 )]
 #[case::invalid_time_stamp(
+    Network::Offline,
     "test-invalidts.asics",
     "type: AsicS",
     "file: test2.txt (10B)",
     "signature: DEMO of SK TSA 2014 at 2016-11-02T11:07:45Z (invalid)"
 )]
+#[cfg_attr(
+    feature = "_online_tests",
+    case::signed_by_person_online(
+        Network::Online,
+        "tsl.asice",
+        "type: AsicE",
+        "file: test.txt (4B)",
+        "signature: MÄNNIK,MARI-LIIS,47101010033 at 2016-11-28T13:46:43Z (valid)"
+    )
+)]
 #[serial]
 fn shows_info(
-    #[case] fixture: &str,
+    #[case] network: Network,
+    #[case] fixture_file: &str,
     #[case] container_type: &str,
     #[case] data_file: &str,
     #[case] signature: &str,
 ) -> Result<()> {
-    let container = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(fixture);
+    let directory = TempDir::new()?;
 
-    let output = cli().arg("info").arg(container).output()?;
+    let output = cli(&network, directory.path())?
+        .arg("info")
+        .arg(fixture_path(fixture_file))
+        .output()?;
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout)?;
 
@@ -114,24 +175,26 @@ fn shows_info(
 }
 
 #[rstest]
-#[case::signed_by_person("tsl.asice", "test.txt", "123\n")]
-#[case::time_stamp("test.asics", "test1.txt", "1234\n")]
-#[case::invalid_time_stamp("test-invalidts.asics", "test2.txt", "1234\n1234\n")]
+#[case::signed_by_person(Network::Offline, "tsl.asice", "test.txt", "123\n")]
+#[case::time_stamp(Network::Offline, "test.asics", "test1.txt", "1234\n")]
+#[case::invalid_time_stamp(Network::Offline, "test-invalidts.asics", "test2.txt", "1234\n1234\n")]
+#[cfg_attr(
+    feature = "_online_tests",
+    case::signed_by_person_online(Network::Online, "tsl.asice", "test.txt", "123\n")
+)]
 #[serial]
 fn extracts_data_files(
-    #[case] fixture: &str,
+    #[case] network: Network,
+    #[case] fixture_file: &str,
     #[case] file_name: &str,
     #[case] contents: &str,
 ) -> Result<()> {
-    let container = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures")
-        .join(fixture);
     let directory = TempDir::new()?;
     let extracted = directory.path().join("extracted");
 
-    let output = cli()
+    let output = cli(&network, directory.path())?
         .arg("extract")
-        .arg(container)
+        .arg(fixture_path(fixture_file))
         .arg("--output")
         .arg(&extracted)
         .output()?;
@@ -142,18 +205,16 @@ fn extracts_data_files(
     Ok(())
 }
 
+#[cfg(feature = "_online_tests")]
 #[test]
 #[serial]
 fn wraps_container_with_expired_signature() -> Result<()> {
     let directory = TempDir::new()?;
     let container = directory.path().join("test.asice");
-    fs::copy(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/test.asice"),
-        &container,
-    )?;
+    fs::copy(fixture_path("test.asice"), &container)?;
 
     let new = directory.path().join("test.asics");
-    let output = cli()
+    let output = cli(&Network::Online, directory.path())?
         .arg("extend")
         .arg(&container)
         .arg("--output")
