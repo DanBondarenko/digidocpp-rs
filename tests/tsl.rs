@@ -12,7 +12,7 @@
 mod common;
 
 use crate::common::{assert_general_digidoc_err, init, open_container};
-use libdigidocpp::{Container, ExceptionCode};
+use libdigidocpp::{Container, ExceptionCode, ValidatorStatus};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -72,6 +72,32 @@ fn rejects_signature_unless_tsl_grants_trust(
 
     let error = assert_general_digidoc_err!(result);
     assert!(error.has_code(expected_code), "{error:?}");
+    Ok(())
+}
+
+#[rstest]
+#[case::no_qc_statement("EE_T-no_QCStatement.xml")]
+#[case::no_qcsd("EE_T-no_QCSD.xml")]
+#[serial]
+fn reports_unqualified_signature(
+    #[allow(unused_variables)]
+    #[case]
+    tsl_name: &str,
+    #[from(init)]
+    #[with(tsl_name)]
+    _temp_dir: TempDir,
+    #[from(open_container)]
+    #[with("tsl.asice")]
+    container: Container,
+) -> Result<(), Box<dyn StdError>> {
+    let signatures = container.signatures()?;
+
+    let result = signatures[0].validator_result()?;
+    let validation = signatures[0].validate();
+
+    assert_eq!(result.status(), Some(ValidatorStatus::NonQSCD));
+    assert!(result.warnings().is_empty(), "{result:?}");
+    assert!(validation.is_err(), "{validation:?}");
     Ok(())
 }
 

@@ -125,9 +125,10 @@ auto remove_data_file(digidoc::Container& container, const uint32_t index)
 }
 
 auto add_ades_signature(digidoc::Container& container,
-                        const rust::Slice<const uint8_t> signature) -> void {
-  container.addAdESSignature(
-      std::vector<unsigned char>(signature.begin(), signature.end()));
+                        const rust::Slice<const uint8_t> xades_signatures)
+    -> void {
+  container.addAdESSignature(std::vector<unsigned char>(
+      xades_signatures.begin(), xades_signatures.end()));
 }
 
 auto save(digidoc::Container& container, const rust::Str path) -> void {

@@ -16,6 +16,7 @@ use serial_test::serial;
 use std::error::Error as StdError;
 use std::fs;
 use std::path::Path;
+use std::time::Duration;
 use tempfile::TempDir;
 
 // MUST BE IN SEPARATE FILE: no test here may initialize the library
@@ -93,7 +94,7 @@ fn each_setter_overrides_matching_getter(
     conf.set_ts_url("https://ts.example/tsa")?;
     conf.set_tsl_cache(directory.path().join("tsl-cache"))?;
     conf.set_xsd_path(directory.path().join("schemas"))?;
-    conf.set_tsl_timeout(17);
+    conf.set_tsl_timeout(Duration::from_secs(17))?;
     conf.set_proxy_host("set-host")?;
     conf.set_proxy_port("8080")?;
     conf.set_proxy_user("set-user")?;

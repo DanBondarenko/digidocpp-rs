@@ -8,10 +8,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use tempfile::TempDir;
 
-enum Network {
-    Offline,
+#[derive(Clone, Copy)]
+enum TslSource {
+    Fixture(&'static str),
     #[cfg(feature = "_online_tests")]
-    Online,
+    Download,
 }
 
 fn fixture_path(name: &str) -> PathBuf {
@@ -20,8 +21,13 @@ fn fixture_path(name: &str) -> PathBuf {
         .join(name)
 }
 
-fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
-    let is_online = !matches!(network, Network::Offline);
+fn cli(tsl_source: TslSource, temp_dir: &Path) -> Result<Command> {
+    let tsl_fixture = match tsl_source {
+        TslSource::Fixture(name) => Some(name),
+        #[cfg(feature = "_online_tests")]
+        TslSource::Download => None,
+    };
+    let is_online = tsl_fixture.is_none();
     let cache_path = temp_dir.to_str().context("invalid path")?;
     let conf_path = temp_dir.join("test.conf");
     let conf_content = format!(
@@ -33,8 +39,8 @@ fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
     );
 
     fs::write(&conf_path, conf_content)?;
-    if !is_online {
-        fs::copy(fixture_path("EE_T.xml"), temp_dir.join("EE_T.xml"))?;
+    if let Some(name) = tsl_fixture {
+        fs::copy(fixture_path(name), temp_dir.join("EE_T.xml"))?;
     }
 
     let mut command = Command::new(env!("CARGO_BIN_EXE_digidocpp-example-cli"));
@@ -44,7 +50,7 @@ fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
 
 #[rstest]
 #[case::signed_by_person(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "tsl.asice",
     0,
     "All signatures are valid.",
@@ -52,8 +58,17 @@ fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
     "MÄNNIK,MARI-LIIS,47101010033",
     "2016-11-28T13:46:43Z"
 )]
+#[case::signed_by_person_without_qualification(
+    TslSource::Fixture("EE_T-no_QCSD.xml"),
+    "tsl.asice",
+    0,
+    "All signatures are valid, but some have warnings or are not qualified.",
+    "signature is valid, but not qualified",
+    "MÄNNIK,MARI-LIIS,47101010033",
+    "2016-11-28T13:46:43Z"
+)]
 #[case::time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test.asics",
     0,
     "All signatures are valid.",
@@ -62,7 +77,7 @@ fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
     "2016-11-02T11:07:45Z"
 )]
 #[case::invalid_time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test-invalidts.asics",
     1,
     "Invalid signatures detected.",
@@ -73,7 +88,7 @@ fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
 #[cfg_attr(
     feature = "_online_tests",
     case::signed_by_person_online(
-        Network::Online,
+        TslSource::Download,
         "tsl.asice",
         0,
         "All signatures are valid.",
@@ -84,7 +99,7 @@ fn cli(network: &Network, temp_dir: &Path) -> Result<Command> {
 )]
 #[serial]
 fn validates(
-    #[case] network: Network,
+    #[case] tsl_source: TslSource,
     #[case] fixture_file: &str,
     #[case] exit_code: i32,
     #[case] summary: &str,
@@ -94,7 +109,7 @@ fn validates(
 ) -> Result<()> {
     let directory = TempDir::new()?;
 
-    let output = cli(&network, directory.path())?
+    let output = cli(tsl_source, directory.path())?
         .arg("validate")
         .arg(fixture_path(fixture_file))
         .output()?;
@@ -119,21 +134,28 @@ fn validates(
 
 #[rstest]
 #[case::signed_by_person(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "tsl.asice",
     "type: AsicE",
     "file: test.txt (4B)",
     "signature: MÄNNIK,MARI-LIIS,47101010033 at 2016-11-28T13:46:43Z (valid)"
 )]
+#[case::signed_by_person_without_qualification(
+    TslSource::Fixture("EE_T-no_QCSD.xml"),
+    "tsl.asice",
+    "type: AsicE",
+    "file: test.txt (4B)",
+    "signature: MÄNNIK,MARI-LIIS,47101010033 at 2016-11-28T13:46:43Z (valid, but unqualified)"
+)]
 #[case::time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test.asics",
     "type: AsicS",
     "file: test1.txt (5B)",
     "signature: DEMO of SK TSA 2014 at 2016-11-02T11:07:45Z (valid)"
 )]
 #[case::invalid_time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test-invalidts.asics",
     "type: AsicS",
     "file: test2.txt (10B)",
@@ -142,7 +164,7 @@ fn validates(
 #[cfg_attr(
     feature = "_online_tests",
     case::signed_by_person_online(
-        Network::Online,
+        TslSource::Download,
         "tsl.asice",
         "type: AsicE",
         "file: test.txt (4B)",
@@ -151,7 +173,7 @@ fn validates(
 )]
 #[serial]
 fn shows_info(
-    #[case] network: Network,
+    #[case] tsl_source: TslSource,
     #[case] fixture_file: &str,
     #[case] container_type: &str,
     #[case] data_file: &str,
@@ -159,7 +181,7 @@ fn shows_info(
 ) -> Result<()> {
     let directory = TempDir::new()?;
 
-    let output = cli(&network, directory.path())?
+    let output = cli(tsl_source, directory.path())?
         .arg("info")
         .arg(fixture_path(fixture_file))
         .output()?;
@@ -175,16 +197,21 @@ fn shows_info(
 }
 
 #[rstest]
-#[case::signed_by_person(Network::Offline, "tsl.asice", "test.txt", "123\n")]
-#[case::time_stamp(Network::Offline, "test.asics", "test1.txt", "1234\n")]
-#[case::invalid_time_stamp(Network::Offline, "test-invalidts.asics", "test2.txt", "1234\n1234\n")]
+#[case::signed_by_person(TslSource::Fixture("EE_T.xml"), "tsl.asice", "test.txt", "123\n")]
+#[case::time_stamp(TslSource::Fixture("EE_T.xml"), "test.asics", "test1.txt", "1234\n")]
+#[case::invalid_time_stamp(
+    TslSource::Fixture("EE_T.xml"),
+    "test-invalidts.asics",
+    "test2.txt",
+    "1234\n1234\n"
+)]
 #[cfg_attr(
     feature = "_online_tests",
-    case::signed_by_person_online(Network::Online, "tsl.asice", "test.txt", "123\n")
+    case::signed_by_person_online(TslSource::Download, "tsl.asice", "test.txt", "123\n")
 )]
 #[serial]
 fn extracts_data_files(
-    #[case] network: Network,
+    #[case] tsl_source: TslSource,
     #[case] fixture_file: &str,
     #[case] file_name: &str,
     #[case] contents: &str,
@@ -192,7 +219,7 @@ fn extracts_data_files(
     let directory = TempDir::new()?;
     let extracted = directory.path().join("extracted");
 
-    let output = cli(&network, directory.path())?
+    let output = cli(tsl_source, directory.path())?
         .arg("extract")
         .arg(fixture_path(fixture_file))
         .arg("--output")
@@ -214,7 +241,7 @@ fn wraps_container_with_expired_signature() -> Result<()> {
     fs::copy(fixture_path("test.asice"), &container)?;
 
     let new = directory.path().join("test.asics");
-    let output = cli(&Network::Online, directory.path())?
+    let output = cli(TslSource::Download, directory.path())?
         .arg("extend")
         .arg(&container)
         .arg("--output")

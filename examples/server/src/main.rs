@@ -6,7 +6,7 @@ use axum::{Json, Router};
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
 use libdigidocpp::{
     Algorithm, Conf, Container, DataFile, DerCert, ExternalPartialSigner, PartialSigner,
-    Pkcs12Signer, Signer, ValidityExtension,
+    Pkcs12Signer, Signature, Signer, ValidatorStatus, ValidityExtension,
 };
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
@@ -53,8 +53,28 @@ fn init_library() -> anyhow::Result<()> {
 #[derive(Debug, PartialEq, Hash, Clone, Serialize, Deserialize)]
 struct SignatureValidity {
     is_valid: bool,
+    status: String,
+    diagnostics: String,
     signed_by: String,
     signed_at: String,
+}
+
+impl SignatureValidity {
+    fn of(signature: &Signature<'_>) -> Result<Self, AppError> {
+        let result = signature.validator_result()?;
+        let status = result.status().unwrap_or(ValidatorStatus::Invalid);
+
+        Ok(Self {
+            is_valid: matches!(
+                status,
+                ValidatorStatus::Valid | ValidatorStatus::Warning | ValidatorStatus::NonQSCD
+            ),
+            status: format!("{status:?}"),
+            diagnostics: result.into_diagnostics(),
+            signed_by: signature.signed_by()?,
+            signed_at: signature.trusted_signing_time()?,
+        })
+    }
 }
 
 #[derive(Debug, PartialEq, Hash, Clone, Serialize, Deserialize)]
@@ -73,22 +93,12 @@ async fn validate(
 ) -> Result<Json<ValidateResponse>, AppError> {
     let path = request.file.into_temp_path();
     let container = Container::open(&path)?;
-    let signatures = container.signatures()?;
-
-    let is_valid = signatures
+    let signatures = container
+        .signatures()?
         .iter()
-        .all(|signature| signature.validate().is_ok());
-
-    let signatures = signatures
-        .iter()
-        .map(|signature| {
-            Ok(SignatureValidity {
-                is_valid: signature.validate().is_ok(),
-                signed_by: signature.signed_by()?,
-                signed_at: signature.trusted_signing_time()?,
-            })
-        })
-        .collect::<Result<Vec<_>, AppError>>()?;
+        .map(SignatureValidity::of)
+        .collect::<Result<Vec<_>, _>>()?;
+    let is_valid = signatures.iter().all(|signature| signature.is_valid);
 
     Ok(Json(ValidateResponse {
         is_valid,
@@ -129,14 +139,8 @@ async fn info(
     let signatures = container
         .signatures()?
         .iter()
-        .map(|signature| {
-            Ok(SignatureValidity {
-                is_valid: signature.validate().is_ok(),
-                signed_by: signature.signed_by()?,
-                signed_at: signature.trusted_signing_time()?,
-            })
-        })
-        .collect::<Result<Vec<_>, AppError>>()?;
+        .map(SignatureValidity::of)
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(Json(InfoResponse {
         container_type: container.media_type()?.to_string(),
@@ -171,11 +175,10 @@ async fn extend(
     let mut container = Container::open(&path)?;
     let mut signer = ExternalPartialSigner::new(Vec::new())?;
 
-    let mut extended_container =
-        match Container::extend_container_validity(&mut container, &mut signer)? {
-            ValidityExtension::InPlace { .. } => container,
-            ValidityExtension::Wrapped(wrapper) => wrapper,
-        };
+    let mut extended_container = match container.extend_container_validity(&mut signer)? {
+        ValidityExtension::InPlace { .. } => container,
+        ValidityExtension::Wrapped(wrapper) => wrapper,
+    };
     let extended_path = NamedTempFile::new()?.into_temp_path();
     extended_container.save_as(&extended_path)?;
 

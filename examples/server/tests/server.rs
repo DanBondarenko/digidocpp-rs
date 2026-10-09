@@ -11,10 +11,11 @@ use std::time::{Duration, Instant};
 use tempfile::TempDir;
 use ureq::unversioned::multipart::{Form, Part};
 
-enum Network {
-    Offline,
+#[derive(Clone, Copy)]
+enum TslSource {
+    Fixture(&'static str),
     #[cfg(feature = "_online_tests")]
-    Online,
+    Download,
 }
 
 fn fixture_path(name: &str) -> PathBuf {
@@ -41,9 +42,14 @@ struct TestServer {
 }
 
 impl TestServer {
-    fn start(network: &Network) -> Result<Self> {
+    fn start(tsl_source: TslSource) -> Result<Self> {
         let directory = TempDir::new()?;
-        let is_online = !matches!(network, Network::Offline);
+        let tsl_fixture = match tsl_source {
+            TslSource::Fixture(name) => Some(name),
+            #[cfg(feature = "_online_tests")]
+            TslSource::Download => None,
+        };
+        let is_online = tsl_fixture.is_none();
         let conf_path = directory.path().join("test.conf");
         let cache_path = directory.path().display();
         let conf_content = format!(
@@ -55,8 +61,8 @@ impl TestServer {
         );
 
         fs::write(&conf_path, conf_content)?;
-        if !is_online {
-            fs::copy(fixture_path("EE_T.xml"), directory.path().join("EE_T.xml"))?;
+        if let Some(name) = tsl_fixture {
+            fs::copy(fixture_path(name), directory.path().join("EE_T.xml"))?;
         }
 
         let port = TcpListener::bind((Ipv4Addr::LOCALHOST, 0))?
@@ -110,7 +116,7 @@ impl Drop for TestServer {
 #[case::external_service("/sign/external")]
 #[serial]
 fn signs_with_key_from_p12_file(#[case] endpoint: &str) -> Result<()> {
-    let server = TestServer::start(&Network::Online)?;
+    let server = TestServer::start(TslSource::Download)?;
     let file = Part::bytes(b"hello")
         .file_name("hello.txt")
         .mime_str("text/plain")?;
@@ -131,7 +137,7 @@ fn signs_with_key_from_p12_file(#[case] endpoint: &str) -> Result<()> {
 #[rstest]
 #[serial]
 fn extends_signature_in_place() -> Result<()> {
-    let server = TestServer::start(&Network::Online)?;
+    let server = TestServer::start(TslSource::Download)?;
     let file = Part::bytes(b"greetings")
         .file_name("greeting.txt")
         .mime_str("text/plain")?;
@@ -150,51 +156,65 @@ fn extends_signature_in_place() -> Result<()> {
 
 #[rstest]
 #[case::signed_by_person(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "tsl.asice",
     true,
+    "Valid",
+    "MÄNNIK,MARI-LIIS,47101010033",
+    "2016-11-28T13:46:43Z"
+)]
+#[case::signed_by_person_without_qualification(
+    TslSource::Fixture("EE_T-no_QCSD.xml"),
+    "tsl.asice",
+    true,
+    "NonQSCD",
     "MÄNNIK,MARI-LIIS,47101010033",
     "2016-11-28T13:46:43Z"
 )]
 #[case::time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test.asics",
     true,
+    "Valid",
     "DEMO of SK TSA 2014",
     "2016-11-02T11:07:45Z"
 )]
 #[case::invalid_time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test-invalidts.asics",
     false,
+    "Invalid",
     "DEMO of SK TSA 2014",
     "2016-11-02T11:07:45Z"
 )]
 #[cfg_attr(
     feature = "_online_tests",
     case::signed_by_person_online(
-        Network::Online,
+        TslSource::Download,
         "tsl.asice",
         true,
+        "Valid",
         "MÄNNIK,MARI-LIIS,47101010033",
         "2016-11-28T13:46:43Z"
     )
 )]
 #[serial]
 fn validates_fixture_container(
-    #[case] network: Network,
+    #[case] tsl_source: TslSource,
     #[case] fixture_name: &str,
     #[case] is_valid: bool,
+    #[case] status: &str,
     #[case] signed_by: &str,
     #[case] signed_at: &str,
 ) -> Result<()> {
-    let server = TestServer::start(&network)?;
+    let server = TestServer::start(tsl_source)?;
     let container = fs::read(fixture_path(fixture_name))?;
 
     let report = server.validate(&container)?;
 
     assert_eq!(report["is_valid"], is_valid);
     assert_eq!(report["signatures"][0]["is_valid"], is_valid);
+    assert_eq!(report["signatures"][0]["status"], status);
     assert_eq!(report["signatures"][0]["signed_by"], signed_by);
     assert_eq!(report["signatures"][0]["signed_at"], signed_at);
     Ok(())
@@ -202,7 +222,7 @@ fn validates_fixture_container(
 
 #[rstest]
 #[case::signed_by_person(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "tsl.asice",
     "application/vnd.etsi.asic-e+zip",
     "test.txt",
@@ -211,7 +231,7 @@ fn validates_fixture_container(
     "MÄNNIK,MARI-LIIS,47101010033"
 )]
 #[case::time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test.asics",
     "application/vnd.etsi.asic-s+zip",
     "test1.txt",
@@ -220,7 +240,7 @@ fn validates_fixture_container(
     "DEMO of SK TSA 2014"
 )]
 #[case::invalid_time_stamp(
-    Network::Offline,
+    TslSource::Fixture("EE_T.xml"),
     "test-invalidts.asics",
     "application/vnd.etsi.asic-s+zip",
     "test2.txt",
@@ -231,7 +251,7 @@ fn validates_fixture_container(
 #[cfg_attr(
     feature = "_online_tests",
     case::signed_by_person_online(
-        Network::Online,
+        TslSource::Download,
         "tsl.asice",
         "application/vnd.etsi.asic-e+zip",
         "test.txt",
@@ -242,7 +262,7 @@ fn validates_fixture_container(
 )]
 #[serial]
 fn shows_container_info(
-    #[case] network: Network,
+    #[case] tsl_source: TslSource,
     #[case] fixture_name: &str,
     #[case] container_type: &str,
     #[case] file_name: &str,
@@ -250,7 +270,7 @@ fn shows_container_info(
     #[case] is_valid: bool,
     #[case] signed_by: &str,
 ) -> Result<()> {
-    let server = TestServer::start(&network)?;
+    let server = TestServer::start(tsl_source)?;
     let container = fs::read(fixture_path(fixture_name))?;
 
     let response = server.post_form("/info", Form::new().part("file", Part::bytes(&container)))?;

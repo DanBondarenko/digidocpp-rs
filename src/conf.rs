@@ -5,6 +5,7 @@ use libdigidocpp_sys::conf::ffi;
 pub use secrecy::{ExposeSecret, SecretString};
 use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 pub struct Conf(UniquePtr<ffi::SettableConf>);
 
@@ -116,8 +117,14 @@ impl Conf {
         self.0.pin_mut().set_tsl_online_digest(enable);
     }
 
-    pub fn set_tsl_timeout(&mut self, seconds: i32) {
+    pub fn set_tsl_timeout(&mut self, duration: impl Into<Duration>) -> Result<(), Error> {
+        let seconds = duration
+            .into()
+            .as_secs()
+            .try_into()
+            .map_err(|err| Error::Internal(format!("{err}")))?;
         self.0.pin_mut().set_tsl_timeout(seconds);
+        Ok(())
     }
 
     pub fn set_proxy_host(&mut self, host: impl AsRef<str>) -> Result<(), Error> {

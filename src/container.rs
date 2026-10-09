@@ -111,8 +111,8 @@ impl Container {
         call_then_deliver_stream_failure(|| ffi::save(self.0.pin_mut(), path))
     }
 
-    pub fn add_ades_signature(&mut self, signature: &[u8]) -> Result<(), Error> {
-        Ok(ffi::add_ades_signature(self.0.pin_mut(), signature)?)
+    pub fn add_ades_signature(&mut self, xades_signatures: &[u8]) -> Result<(), Error> {
+        Ok(ffi::add_ades_signature(self.0.pin_mut(), xades_signatures)?)
     }
 
     pub fn signatures(&self) -> Result<Vec<Signature<'_>>, Error> {
@@ -148,13 +148,13 @@ impl Container {
     }
 
     pub fn extend_container_validity<S>(
-        container: &mut Self,
+        &mut self,
         signer: &mut S,
     ) -> Result<ValidityExtension, Error>
     where
         S: PartialSigner + ?Sized,
     {
-        let container = container.0.pin_mut();
+        let container = self.0.pin_mut();
         let signer = signer.ffi_signer_mut();
 
         let extended = call_then_deliver_stream_failure(move || {

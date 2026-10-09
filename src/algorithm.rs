@@ -206,12 +206,16 @@ pub enum SignatureProfile {
     EpesTimeMarkArchive,
     #[strum(serialize = "TimeStampToken")]
     TimeStampToken,
+    #[strum(serialize = "PAdES_BASELINE_B")]
+    PadesBaselineB,
     #[strum(serialize = "PAdES_BASELINE_BES")]
     PadesBaselineBes,
     #[strum(serialize = "PAdES_BASELINE_T")]
     PadesBaselineT,
     #[strum(serialize = "PAdES_BASELINE_LT")]
     PadesBaselineLt,
+    #[strum(serialize = "PAdES_BASELINE_LTA")]
+    PadesBaselineLta,
     #[strum(default, transparent)]
     Other(String),
 }

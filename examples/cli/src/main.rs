@@ -6,8 +6,8 @@ use libdigidocpp::Pkcs11Signer;
 #[cfg(windows)]
 use libdigidocpp::WinSigner;
 use libdigidocpp::{
-    Conf, Container, ContainerType, ExceptionCode, ExternalPartialSigner, PartialSigner,
-    ValidityExtension,
+    Conf, Container, ContainerType, ExceptionCode, ExternalPartialSigner, PartialSigner, Signature,
+    ValidatorResult, ValidatorStatus, ValidityExtension,
 };
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -139,35 +139,43 @@ fn run(command: &Command) -> Result<ExitCode> {
 fn validate(container_path: &Path) -> Result<ExitCode> {
     let container = Container::open(container_path)?;
     let signatures = container.signatures()?;
-
-    let is_valid = signatures
+    let results = signatures
         .iter()
-        .all(|signature| signature.validate().is_ok());
-    if is_valid {
-        println!("All signatures are valid.")
-    } else {
-        println!("Invalid signatures detected.")
-    }
+        .map(Signature::validator_result)
+        .collect::<Result<Vec<_>, _>>()?;
 
-    for signature in signatures {
+    for (signature, result) in signatures.iter().zip(&results) {
         let id = signature.id()?;
         let signed_by = signature.signed_by()?;
         let signed_at = signature.trusted_signing_time()?;
-        let validity = if signature.validate().is_ok() {
-            "signature is valid"
-        } else {
-            "signature is not valid"
+        let diagnostics = result.diagnostics().trim_end();
+        let validity = match result.status() {
+            Some(ValidatorStatus::Valid) => "signature is valid",
+            Some(ValidatorStatus::Warning) => "signature is valid, but has warnings",
+            Some(ValidatorStatus::NonQSCD) => "signature is valid, but not qualified",
+            _ => "signature is not valid",
         };
 
         println!("Signature {id}");
         println!("  validity:    {validity}");
         println!("  signed by:   {signed_by}");
         println!("  signed at:   {signed_at}");
+        if !diagnostics.is_empty() {
+            println!("  diagnostics: {diagnostics}");
+        }
     }
 
-    if is_valid {
+    if results
+        .iter()
+        .all(|result| result.status() == Some(ValidatorStatus::Valid))
+    {
+        println!("All signatures are valid.");
+        Ok(ExitCode::SUCCESS)
+    } else if results.iter().all(is_considered_valid) {
+        println!("All signatures are valid, but some have warnings or are not qualified.");
         Ok(ExitCode::SUCCESS)
     } else {
+        println!("Invalid signatures detected.");
         Ok(ExitCode::FAILURE)
     }
 }
@@ -176,19 +184,18 @@ fn extend(path: &Path, output: &Path) -> Result<()> {
     let mut container = Container::open(path)?;
     let mut signer = ExternalPartialSigner::new(Vec::new())?;
 
-    let (mut container, message) =
-        match Container::extend_container_validity(&mut container, &mut signer)? {
-            ValidityExtension::InPlace {
-                extended_count: count,
-            } => {
-                let message = format!("Extended {count} signature(s), saved {}", output.display());
-                (container, message)
-            }
-            ValidityExtension::Wrapped(container) => {
-                let message = format!("Wrapped {} into {}", path.display(), output.display());
-                (container, message)
-            }
-        };
+    let (mut container, message) = match container.extend_container_validity(&mut signer)? {
+        ValidityExtension::InPlace {
+            extended_count: count,
+        } => {
+            let message = format!("Extended {count} signature(s), saved {}", output.display());
+            (container, message)
+        }
+        ValidityExtension::Wrapped(container) => {
+            let message = format!("Wrapped {} into {}", path.display(), output.display());
+            (container, message)
+        }
+    };
 
     ensure!(
         is_extension_valid(output, container.media_type()?),
@@ -264,16 +271,24 @@ fn info(container_path: &Path) -> Result<()> {
     for signature in container.signatures()? {
         let signed_by = signature.signed_by()?;
         let signed_at = signature.trusted_signing_time()?;
-        let validity = if signature.validate().is_ok() {
-            "valid"
-        } else {
-            "invalid"
+        let validity = match signature.validator_result()?.status() {
+            Some(ValidatorStatus::Valid) => "valid",
+            Some(ValidatorStatus::Warning) => "valid with warnings",
+            Some(ValidatorStatus::NonQSCD) => "valid, but unqualified",
+            _ => "invalid",
         };
 
         println!("signature: {signed_by} at {signed_at} ({validity})");
     }
 
     Ok(())
+}
+
+fn is_considered_valid(result: &ValidatorResult) -> bool {
+    matches!(
+        result.status(),
+        Some(ValidatorStatus::Valid | ValidatorStatus::Warning | ValidatorStatus::NonQSCD)
+    )
 }
 
 fn extract(container_path: &Path, output: &Path) -> Result<()> {

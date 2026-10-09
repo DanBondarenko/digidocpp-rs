@@ -50,7 +50,7 @@ fn rejects_signing_container_without_data_files(
 #[rstest]
 #[case::extending_validity(
     |container: &mut Container, signer: &mut Pkcs12Signer| {
-        Container::extend_container_validity(container, signer).map(|_| ())
+        container.extend_container_validity(signer).map(|_| ())
     },
     "Failed to extend signature"
 )]

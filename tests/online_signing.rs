@@ -260,7 +260,7 @@ fn extends_signatures_in_place(
     let mut signer = common::pkcs12_signer("signer2.p12");
     assert_eq!(container.signatures()?[0].archive_time_stamps()?.len(), 0);
 
-    let outcome = Container::extend_container_validity(&mut container, &mut signer)?;
+    let outcome = container.extend_container_validity(&mut signer)?;
 
     let ValidityExtension::InPlace { extended_count } = outcome else {
         panic!("expected inplace, got {outcome:?}");
@@ -281,7 +281,7 @@ fn wraps_container_with_expired_signature(
     let mut container = Container::open(common::fixture_path("test.asice"))?;
     let mut signer = common::pkcs12_signer("signer1.p12");
 
-    let outcome = Container::extend_container_validity(&mut container, &mut signer)?;
+    let outcome = container.extend_container_validity(&mut signer)?;
 
     let ValidityExtension::Wrapped(wrapping_container) = &outcome else {
         panic!("expected wrapped, got {outcome:?}");
