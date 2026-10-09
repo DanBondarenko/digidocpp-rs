@@ -157,3 +157,9 @@ Below is an overview of the members of that interface. Deprecated members are ex
 - [ ] use types to prevent invalid container ops
 - [ ] use a lock to ensure `libdigidocpp` can't be called from multiple threads
 - [ ] custom signers
+
+## License
+
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.
+
+Files copied from other projects keep their original licenses. A notice beside them states this.

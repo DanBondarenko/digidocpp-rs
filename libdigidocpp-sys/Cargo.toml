@@ -3,8 +3,10 @@ name = "libdigidocpp-sys"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 links = "digidocpp"
 publish.workspace = true
+exclude = ["tests/"]
 
 [dependencies]
 cxx = "1.0.177"
