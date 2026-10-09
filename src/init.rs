@@ -30,10 +30,12 @@ pub fn initialize_with_user_agent(app_info: &str, user_agent: &str) -> Result<()
     Ok(ffi::initialize_with_user_agent(app_info, user_agent)?)
 }
 
-/// Deletes the installed configuration and shuts the libraries down.
+/// # Safety
 ///
-/// Call it once, when the process stops using libdigidocpp. Afterwards, parsing a certificate
-/// fails, and calling [`initialize`] crashes the process.
-pub fn terminate() -> Result<(), Error> {
-    Ok(ffi::terminate()?)
+/// This may only be called once. Drop every library object before the call. After this call, no
+/// part of the API may be used, nothing may be called. Failure to do say may result in crashing the
+/// process. This is upstream `libdigidocpp` behaviour.
+pub unsafe fn terminate() -> Result<(), Error> {
+    // SAFETY: caller upholds contract of this function
+    Ok(unsafe { ffi::terminate() }?)
 }

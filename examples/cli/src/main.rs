@@ -90,7 +90,8 @@ fn main() -> Result<ExitCode> {
     configure_library(&cli.library)?;
     libdigidocpp::initialize()?;
     let result = run(&cli.command);
-    libdigidocpp::terminate()?;
+    // SAFETY: no library object alive at this point, only this thread uses library.
+    unsafe { libdigidocpp::terminate() }?;
     result
 }
 

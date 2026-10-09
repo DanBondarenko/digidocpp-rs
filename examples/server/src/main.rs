@@ -33,7 +33,8 @@ async fn main() -> anyhow::Result<()> {
         })
         .await?;
 
-    Ok(libdigidocpp::terminate()?)
+    // SAFETY: runtime has one thread and `axum::serve` returned, no handler running
+    Ok(unsafe { libdigidocpp::terminate() }?)
 }
 
 fn init_library() -> anyhow::Result<()> {

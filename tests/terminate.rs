@@ -33,7 +33,8 @@ fn terminate_clears_library_info(
     assert_eq!(app_info()?, "expected app info");
     assert_eq!(user_agent()?, "expected user agent");
 
-    terminate()?;
+    // SAFETY: only this test thread uses library, no library object is alive
+    unsafe { terminate() }?;
 
     assert!(app_info()?.is_empty());
     assert!(user_agent()?.is_empty());
