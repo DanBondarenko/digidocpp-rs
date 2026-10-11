@@ -135,7 +135,7 @@ impl Install {
     }
 }
 
-pub fn path_to_str(path: &Path) -> Result<&str, Box<dyn Error>> {
+fn path_to_str(path: &Path) -> Result<&str, Box<dyn Error>> {
     path.to_str()
         .ok_or_else(|| format!("invalid UTF-8: {}", path.display()).into())
 }

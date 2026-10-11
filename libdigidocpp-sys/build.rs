@@ -1,8 +1,8 @@
+use libdigidocpp_build::{Install, Kind};
 use std::env;
 use std::error::Error;
 use std::fmt::Display;
-
-use libdigidocpp_build::{Install, Kind, path_to_str};
+use std::path::Path;
 
 const BRIDGES: [&str; 9] = [
     "src/init.rs",
@@ -100,4 +100,9 @@ fn emit_rerun_directives() {
 
 fn emit(directive: impl Display) {
     println!("{directive}");
+}
+
+fn path_to_str(path: &Path) -> Result<&str, Box<dyn Error>> {
+    path.to_str()
+        .ok_or_else(|| format!("invalid UTF-8: {}", path.display()).into())
 }
