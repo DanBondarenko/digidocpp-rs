@@ -12,6 +12,7 @@
 #include "digidocpp/crypto/Signer.h"
 #include "libdigidocpp-sys/include/stream_ffi.h"
 #include "libdigidocpp-sys/src/container.rs.h"
+#include "libdigidocpp-sys/src/container_callback.rs.h"
 #include "rust/cxx.h"
 
 namespace digidoc_rs::container {

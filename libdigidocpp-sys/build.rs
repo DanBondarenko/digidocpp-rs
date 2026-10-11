@@ -4,11 +4,12 @@ use std::fmt::Display;
 
 use libdigidocpp_build::{Install, Kind, path_to_str};
 
-const BRIDGES: [&str; 8] = [
+const BRIDGES: [&str; 9] = [
     "src/init.rs",
     "src/conf.rs",
     "src/exception.rs",
     "src/container.rs",
+    "src/container_callback.rs",
     "src/data_file.rs",
     "src/signature.rs",
     "src/signer.rs",
