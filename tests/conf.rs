@@ -12,7 +12,7 @@
 mod common;
 
 use crate::common::{assert_general_digidoc_err, conf_for_testing, dir_with_fixtures};
-use libdigidocpp::{Conf, Container, init_conf, initialize};
+use libdigidocpp::{Conf, Container, LogLevel, init_conf, initialize};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -87,7 +87,7 @@ fn log_level_filters_log_entries(
     #[with(directory.path(), "TSL.xml")]
     mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
-    conf.set_log_level(0);
+    conf.set_log_level(LogLevel::Error);
     init_conf(conf)?;
     initialize()?;
 

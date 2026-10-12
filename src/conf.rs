@@ -6,6 +6,7 @@ pub use secrecy::{ExposeSecret, SecretString};
 use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use strum::FromRepr;
 
 pub struct Conf(UniquePtr<ffi::SettableConf>);
 
@@ -32,11 +33,10 @@ impl Conf {
     fn create(path: &str, schema: &str) -> Result<Self, Error> {
         Ok(Self(ffi::SettableConf::create(path, schema)?))
     }
-}
 
-impl Conf {
-    pub fn set_log_level(&mut self, level: i32) {
-        self.0.pin_mut().set_log_level(level);
+    pub fn set_log_level(&mut self, level: LogLevel) {
+        #[expect(clippy::as_conversions)]
+        self.0.pin_mut().set_log_level(level as i32);
     }
 
     pub fn set_log_file(&mut self, path: impl AsRef<Path>) -> Result<(), Error> {
@@ -160,11 +160,12 @@ impl Conf {
     pub fn set_verify_service_uri(&mut self, url: impl AsRef<str>) -> Result<(), Error> {
         Ok(self.0.pin_mut().set_verify_service_uri(url.as_ref())?)
     }
-}
 
-impl Conf {
-    pub fn log_level(&self) -> Result<i32, Error> {
-        Ok(self.0.log_level()?)
+    pub fn log_level(&self) -> Result<ReportedLogLevel, Error> {
+        let raw = self.0.log_level()?;
+        let level =
+            LogLevel::from_repr(raw).map_or(ReportedLogLevel::Other(raw), ReportedLogLevel::Known);
+        Ok(level)
     }
 
     pub fn log_file(&self) -> Result<PathBuf, Error> {
@@ -316,4 +317,21 @@ impl Debug for Conf {
             .field("signature_digest_uri()", &self.signature_digest_uri())
             .finish_non_exhaustive()
     }
+}
+
+#[derive(Clone, Debug, Copy, FromRepr, Eq, PartialEq)]
+#[non_exhaustive]
+#[repr(i32)]
+pub enum LogLevel {
+    Error = 0,
+    Warn = 1,
+    Info = 2,
+    Debug = 3,
+}
+
+#[derive(Clone, Debug, Copy, Eq, PartialEq)]
+#[non_exhaustive]
+pub enum ReportedLogLevel {
+    Known(LogLevel),
+    Other(i32),
 }

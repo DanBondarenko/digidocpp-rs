@@ -10,7 +10,9 @@
 mod common;
 
 use crate::common::{assert_internal_err, conf_from_fixture, der_cert, dir_with_fixtures};
-use libdigidocpp::{Algorithm, Conf, DerCert, DigestAlgorithm, Error, ExposeSecret};
+use libdigidocpp::{
+    Algorithm, Conf, DerCert, DigestAlgorithm, Error, ExposeSecret, LogLevel, ReportedLogLevel,
+};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
@@ -31,7 +33,7 @@ fn gets_values_from_config_file(
 ) -> Result<(), Box<dyn StdError>> {
     let proxy_pass = conf.proxy_pass()?;
 
-    assert_eq!(conf.log_level()?, 2);
+    assert_eq!(conf.log_level()?, ReportedLogLevel::Known(LogLevel::Info));
     assert_eq!(conf.log_file()?, Path::new("digidocpp-test.log"));
     assert_eq!(conf.digest_uri()?, Algorithm::from(DigestAlgorithm::Sha512));
     assert_eq!(conf.pkcs11_driver()?, "opensc-pkcs11");
@@ -67,7 +69,7 @@ fn gets_unset_values_from_config_file(
 
     assert_eq!(conf.proxy_port()?, "port");
     assert_eq!(conf.proxy_user()?, "user");
-    assert_eq!(conf.log_level()?, 2);
+    assert_eq!(conf.log_level()?, ReportedLogLevel::Known(LogLevel::Info));
     assert_eq!(conf.digest_uri()?, Algorithm::from(DigestAlgorithm::Sha512));
     assert_eq!(conf.ocsp_url("ISSUER NAME")?, "http://ocsp.issuer.com");
     Ok(())
@@ -88,7 +90,7 @@ fn each_setter_overrides_matching_getter(
     let tsl_online_digest = conf.tsl_online_digest()?;
     let proxy_tunnel_ssl = conf.proxy_tunnel_ssl()?;
 
-    conf.set_log_level(1);
+    conf.set_log_level(LogLevel::Warn);
     conf.set_log_file(directory.path().join("set.log"))?;
     conf.set_tsl_url("https://tsl.example/lotl.xml")?;
     conf.set_ts_url("https://ts.example/tsa")?;
@@ -106,7 +108,7 @@ fn each_setter_overrides_matching_getter(
     conf.set_proxy_tunnel_ssl(!proxy_tunnel_ssl);
 
     let proxy_pass = conf.proxy_pass()?;
-    assert_eq!(conf.log_level()?, 1);
+    assert_eq!(conf.log_level()?, ReportedLogLevel::Known(LogLevel::Warn));
     assert_eq!(conf.log_file()?, directory.path().join("set.log"));
     assert_eq!(conf.tsl_url()?, "https://tsl.example/lotl.xml");
     assert_eq!(conf.ts_url()?, "https://ts.example/tsa");
@@ -305,7 +307,7 @@ fn reads_config_file_in_non_ascii_dir(
 
     let conf = Conf::from_file(config_file)?;
 
-    assert_eq!(conf.log_level()?, 2);
+    assert_eq!(conf.log_level()?, ReportedLogLevel::Known(LogLevel::Info));
     assert_eq!(conf.proxy_host()?, "host");
     Ok(())
 }
