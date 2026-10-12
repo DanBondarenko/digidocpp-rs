@@ -1,9 +1,9 @@
 #![expect(clippy::print_stdout)]
 use std::env;
 use std::error::Error;
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 
-const MINIMUM_VERSION: &str = "4.5.0";
 const FRAMEWORK_NAME: &str = "digidocpp.framework";
 const DEFAULT_FRAMEWORK_DIR: &str = "/Library/Frameworks";
 const VARIABLES: [&str; 6] = [
@@ -94,7 +94,7 @@ impl Install {
     fn resolve(
         settings: Settings,
         target: &Target,
-        pkg_config: impl FnOnce() -> Result<Self, Box<dyn Error>>,
+        pkg_config: impl FnOnce() -> Result<Self, pkg_config::Error>,
     ) -> Result<Self, Box<dyn Error>> {
         let family = target.family();
         let Settings {
@@ -105,6 +105,7 @@ impl Install {
             program_files,
             program_files_x86,
             default_framework_dir,
+            cross_compiling,
         } = settings;
 
         match (include_dir, lib_dir, framework_dir) {
@@ -119,7 +120,7 @@ impl Install {
                 }
             }
             (None, None, None) => match family {
-                Family::Unix => pkg_config_install(target, pkg_config),
+                Family::Unix => pkg_config_install(target, cross_compiling, pkg_config),
                 Family::Windows => {
                     windows_install(target, install_dir, program_files, program_files_x86)
                 }
@@ -127,7 +128,7 @@ impl Install {
                     Some(dir) if target.os == "macos" && dir.join(FRAMEWORK_NAME).is_dir() => {
                         framework_install(dir)
                     }
-                    _ => pkg_config_install(target, pkg_config),
+                    _ => pkg_config_install(target, cross_compiling, pkg_config),
                 },
             },
             _ => Err("Invalid combination of vars. Set either DIGIDOCPP_INCLUDE_DIR and DIGIDOCPP_LIB_DIR or DIGIDOCPP_FRAMEWORK_DIR.".into()),
@@ -179,6 +180,31 @@ impl Target {
             Family::Unix
         }
     }
+
+    fn fallback_candidates(&self) -> Vec<(PathBuf, PathBuf)> {
+        let prefixes: &[&str] = match self.family() {
+            Family::Apple => &["/opt/homebrew", "/usr/local"],
+            Family::Unix => &["/usr/local", "/usr"],
+            Family::Windows => &[],
+        };
+        let lib_subdirs: &[&str] = match (self.os.as_str(), self.arch.as_str()) {
+            ("linux", "x86_64") => &["lib/x86_64-linux-gnu", "lib", "lib64"],
+            ("linux", "aarch64") => &["lib/aarch64-linux-gnu", "lib", "lib64"],
+            ("linux", _) => &["lib", "lib64"],
+            _ => &["lib"],
+        };
+        prefixes
+            .iter()
+            .flat_map(|prefix| {
+                lib_subdirs.iter().map(move |subdir| {
+                    (
+                        Path::new(prefix).join("include"),
+                        Path::new(prefix).join(subdir),
+                    )
+                })
+            })
+            .collect()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -190,6 +216,7 @@ struct Settings {
     program_files: Option<PathBuf>,
     program_files_x86: Option<PathBuf>,
     default_framework_dir: Option<PathBuf>,
+    cross_compiling: bool,
 }
 
 impl Settings {
@@ -205,13 +232,13 @@ impl Settings {
             program_files: path("ProgramFiles"),
             program_files_x86: path("ProgramFiles(x86)"),
             default_framework_dir: Some(PathBuf::from(DEFAULT_FRAMEWORK_DIR)),
+            cross_compiling: env::var_os("HOST") != env::var_os("TARGET"),
         }
     }
 }
 
-fn probe_pkg_config() -> Result<Install, Box<dyn Error>> {
+fn probe_pkg_config() -> Result<Install, pkg_config::Error> {
     let library = pkg_config::Config::new()
-        .atleast_version(MINIMUM_VERSION)
         .cargo_metadata(false)
         .probe("libdigidocpp")?;
 
@@ -272,14 +299,28 @@ fn library_install(
 
 fn pkg_config_install(
     target: &Target,
-    pkg_config: impl FnOnce() -> Result<Install, Box<dyn Error>>,
+    cross_compiling: bool,
+    pkg_config: impl FnOnce() -> Result<Install, pkg_config::Error>,
 ) -> Result<Install, Box<dyn Error>> {
-    pkg_config().map_err(|reason| {
-        not_found(
+    match pkg_config() {
+        Ok(install) => Ok(install),
+        Err(reason @ pkg_config::Error::Command { .. }) if cross_compiling => Err(not_found(
             target,
-            &format!("pkg-config libdigidocpp >= {MINIMUM_VERSION}: {reason}"),
-        )
-    })
+            format!("{reason}; fallback search skipped when cross-compiling"),
+        )),
+        Err(reason @ pkg_config::Error::Command { .. }) => fallback_install(target)
+            .ok_or_else(|| not_found(target, format!("{reason}; fallback found nothing"))),
+        Err(reason) => Err(not_found(target, reason)),
+    }
+}
+
+fn fallback_install(target: &Target) -> Option<Install> {
+    target
+        .fallback_candidates()
+        .into_iter()
+        .find_map(|(include_dir, lib_dir)| {
+            library_install(target.family(), include_dir, lib_dir).ok()
+        })
 }
 
 fn windows_install(
@@ -310,7 +351,7 @@ fn windows_install(
         )
 }
 
-fn not_found(target: &Target, reason: &str) -> Box<dyn Error> {
+fn not_found(target: &Target, reason: impl Display) -> Box<dyn Error> {
     let mut hints = vec!["DIGIDOCPP_INCLUDE_DIR and DIGIDOCPP_LIB_DIR"];
     match target.family() {
         Family::Apple => hints.push("DIGIDOCPP_FRAMEWORK_DIR"),
@@ -318,7 +359,7 @@ fn not_found(target: &Target, reason: &str) -> Box<dyn Error> {
         Family::Unix => {}
     }
     format!(
-        "libdigidocpp >= {MINIMUM_VERSION} not found for target {}: {reason}\nSet one of:\n  - {}",
+        "libdigidocpp not found for target {}: {reason}\nSet one of:\n  - {}",
         target.os,
         hints.join("\n  - ")
     )
@@ -326,7 +367,7 @@ fn not_found(target: &Target, reason: &str) -> Box<dyn Error> {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
     use super::*;
     use std::fs;
@@ -387,12 +428,12 @@ mod tests {
             }
         }
 
-        fn error() -> Result<Self, Box<dyn Error>> {
-            Err(Box::from(String::new()))
+        fn probe_failed() -> Result<Self, pkg_config::Error> {
+            Err(pkg_config::Error::EnvNoPkgConfig("probe failed".to_owned()))
         }
 
         #[expect(clippy::unnecessary_wraps)]
-        fn mock_library() -> Result<Self, Box<dyn Error>> {
+        fn mock_library() -> Result<Self, pkg_config::Error> {
             Ok(Self::library(&["/usr/local/lib"]))
         }
     }
@@ -427,6 +468,7 @@ mod tests {
             framework_dir: Some("/fw".into()),
             ..Settings::default()
         },
+        || panic!(),
         "only supported for Apple targets"
     )]
     #[case::lib_only(
@@ -435,6 +477,7 @@ mod tests {
             lib_dir: Some("/lib".into()),
             ..Settings::default()
         },
+        || panic!(),
         "Invalid combination of vars"
     )]
     #[case::include_only(
@@ -443,6 +486,7 @@ mod tests {
             include_dir: Some("/inc".into()),
             ..Settings::default()
         },
+        || panic!(),
         "Invalid combination of vars"
     )]
     #[case::framework_and_include(
@@ -452,6 +496,7 @@ mod tests {
             framework_dir: Some("/fw".into()),
             ..Settings::default()
         },
+        || panic!(),
         "Invalid combination of vars"
     )]
     #[case::framework_and_lib(
@@ -461,6 +506,7 @@ mod tests {
             framework_dir: Some("/fw".into()),
             ..Settings::default()
         },
+        || panic!(),
         "Invalid combination of vars"
     )]
     #[case::framework_and_lib_and_include(
@@ -471,30 +517,52 @@ mod tests {
             framework_dir: Some("/fw".into()),
             ..Settings::default()
         },
+        || panic!(),
         "Invalid combination of vars"
     )]
     #[case::no_pkg_config_on_windows(
         Target::windows("x86_64"),
         Settings::default(),
+        || panic!(),
         "DIGIDOCPP_DIR not set"
-    )]
-    #[case::pkg_config_failure(
-        Target::ios(),
-        Settings::default(),
-        "pkg-config libdigidocpp >= 4.5.0"
     )]
     #[case::offers_include_and_lib(
         Target::ios(),
         Settings::default(),
+        Install::probe_failed,
         "DIGIDOCPP_INCLUDE_DIR and DIGIDOCPP_LIB_DIR"
     )]
-    #[case::offers_framework(Target::ios(), Settings::default(), "DIGIDOCPP_FRAMEWORK_DIR")]
-    fn rejects_settings(
+    #[case::offers_framework(
+        Target::ios(),
+        Settings::default(),
+        Install::probe_failed,
+        "DIGIDOCPP_FRAMEWORK_DIR"
+    )]
+    #[case::probe_failed(
+        Target::ios(),
+        Settings::default(),
+        Install::probe_failed,
+        "probe failed"
+    )]
+    #[case::cross_compiling(
+        Target::linux(),
+        Settings {
+            cross_compiling: true,
+            ..Settings::default()
+        },
+        || Err(pkg_config::Error::Command {
+            command: "pkg-config".to_owned(),
+            cause: std::io::Error::from(std::io::ErrorKind::NotFound),
+        }),
+        "cross-compiling"
+    )]
+    fn rejects_resolution(
         #[case] target: Target,
         #[case] settings: Settings,
+        #[case] pkg_config: fn() -> Result<Install, pkg_config::Error>,
         #[case] expected_text: &str,
     ) {
-        let result = Install::resolve(settings, &target, Install::error);
+        let result = Install::resolve(settings, &target, pkg_config);
         let text = result.unwrap_err().to_string();
         assert!(text.contains(expected_text), "{text}");
     }
@@ -506,6 +574,40 @@ mod tests {
         let install = Install::resolve(Settings::default(), &target, Install::mock_library)?;
         assert_eq!(install, Install::library(&["/usr/local/lib"]));
         Ok(())
+    }
+
+    #[test]
+    fn skips_fallback_when_pkg_config_runs_and_fails() {
+        let result = Install::resolve(Settings::default(), &Target::linux(), Install::probe_failed);
+        let text = result.unwrap_err().to_string();
+        assert!(!text.contains("fallback"), "{text}");
+    }
+
+    #[rstest]
+    #[case::linux_x86_64(Target::linux(), &[
+        ("/usr/local/include", "/usr/local/lib/x86_64-linux-gnu"),
+        ("/usr/local/include", "/usr/local/lib"),
+        ("/usr/local/include", "/usr/local/lib64"),
+        ("/usr/include", "/usr/lib/x86_64-linux-gnu"),
+        ("/usr/include", "/usr/lib"),
+        ("/usr/include", "/usr/lib64"),
+    ])]
+    #[case::linux_other_arch(Target::new("linux", "riscv64", "unknown"), &[
+        ("/usr/local/include", "/usr/local/lib"),
+        ("/usr/local/include", "/usr/local/lib64"),
+        ("/usr/include", "/usr/lib"),
+        ("/usr/include", "/usr/lib64"),
+    ])]
+    #[case::macos(Target::macos(), &[
+        ("/opt/homebrew/include", "/opt/homebrew/lib"),
+        ("/usr/local/include", "/usr/local/lib"),
+    ])]
+    fn lists_fallback_candidates(#[case] target: Target, #[case] expected: &[(&str, &str)]) {
+        let expected: Vec<_> = expected
+            .iter()
+            .map(|(include_dir, lib_dir)| (PathBuf::from(include_dir), PathBuf::from(lib_dir)))
+            .collect();
+        assert_eq!(target.fallback_candidates(), expected);
     }
 
     #[rstest]
@@ -524,7 +626,7 @@ mod tests {
     ) -> Result<(), Box<dyn Error>> {
         let settings = settings(temp_dir_with_framework.path().to_path_buf());
 
-        let install = Install::resolve(settings, &target, Install::error)?;
+        let install = Install::resolve(settings, &target, Install::probe_failed)?;
         assert_eq!(install, Install::framework(temp_dir_with_framework.path()));
         Ok(())
     }
@@ -547,7 +649,7 @@ mod tests {
             ..Settings::default()
         };
 
-        let result = Install::resolve(settings, &Target::ios(), Install::error);
+        let result = Install::resolve(settings, &Target::ios(), Install::probe_failed);
         let text = result.unwrap_err().to_string();
         assert!(text.contains(expected_text), "{text}");
         Ok(())
@@ -572,7 +674,7 @@ mod tests {
             ..Settings::default()
         };
 
-        let install = Install::resolve(settings, &Target::macos(), Install::error)?;
+        let install = Install::resolve(settings, &Target::macos(), Install::probe_failed)?;
         assert_eq!(
             (install.kind(), install.lib_dirs()),
             (Kind::Library, &[root.join("lib")][..]),
@@ -598,7 +700,7 @@ mod tests {
             ..Settings::default()
         };
 
-        let result = Install::resolve(settings, &Target::linux(), Install::error);
+        let result = Install::resolve(settings, &Target::linux(), Install::probe_failed);
         let text = result.unwrap_err().to_string();
         assert!(text.contains(expected_text), "{text}");
     }
@@ -621,7 +723,7 @@ mod tests {
             ..Settings::default()
         };
 
-        let install = Install::resolve(settings, &Target::windows(arch), Install::error)?;
+        let install = Install::resolve(settings, &Target::windows(arch), Install::probe_failed)?;
         assert_eq!(install.lib_dirs(), &[root.join(folder)][..],);
         Ok(())
     }
