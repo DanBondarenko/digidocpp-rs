@@ -1,4 +1,50 @@
+//! Build-script helpers that locate a [libdigidocpp] installation.
+//!
+//! [`Install::discover`] finds the header, library and framework directories. This crate does not
+//! compile or link anything itself.
+//!
+//! # Examples
+//!
+//! ```no_run
+//! // build.rs
+//! use libdigidocpp_build::{Install, Kind};
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let install = Install::discover()?;
+//!
+//!     for dir in install.lib_dirs() {
+//!         let dir = dir.to_str().ok_or("invalid UTF-8")?;
+//!         println!("cargo:rustc-link-search=native={dir}");
+//!     }
+//!     for dir in install.framework_dirs() {
+//!         let dir = dir.to_str().ok_or("invalid UTF-8")?;
+//!         println!("cargo:rustc-link-search=framework={dir}");
+//!     }
+//!     match install.kind() {
+//!         Kind::Framework => println!("cargo:rustc-link-lib=framework=digidocpp"),
+//!         _ => println!("cargo:rustc-link-lib=dylib=digidocpp"),
+//!     }
+//!     install.emit_rpath()?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! # Overview
+//!
+//! - [`Install::discover`] searches for libdigidocpp. Environment variables override the search.
+//!   See its docs for the rules. Prints `cargo:rerun-if-env-changed` for each used variable.
+//!   [`Install::emit_rpath`] prints the directories the loader needs at run time. Prints nothing if
+//!   target is Windows. Downstream crates may need to call this in `build.rs`.
+//! - [`Install::include_dirs`], [`Install::lib_dirs`] and [`Install::framework_dirs`] return the
+//!   directories for the compiler and linker. Only the ones for the found [`Kind`] are non-empty.
+//! - [`Install::runtime_dirs`] returns the directories the loader needs at run time.
+//! - [`Install::kind`] returns [`Kind`]. A framework and a plain library need different link
+//!   directives.
+//!
+//! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
 #![expect(clippy::print_stdout)]
+
 use std::env;
 use std::error::Error;
 use std::fmt::Display;
@@ -15,6 +61,9 @@ const VARIABLES: [&str; 6] = [
     "ProgramFiles(x86)",
 ];
 
+/// A located libdigidocpp installation.
+///
+/// Get one with [`Install::discover`] from a build script.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Install {
     kind: Kind,
@@ -23,14 +72,45 @@ pub struct Install {
     framework_dirs: Vec<PathBuf>,
 }
 
+/// How libdigidocpp is installed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Kind {
+    /// Apple framework (`digidocpp.framework`).
     Framework,
+    /// Shared library with header directory.
     Library,
 }
 
 impl Install {
+    /// Finds libdigidocpp installation on build machine.
+    ///
+    /// Standard install needs no configuration. Environment variables are optional overrides.
+    ///
+    /// # Lookup
+    ///
+    /// 1. Overrides. Used when set, skip all defaults:
+    ///    - `DIGIDOCPP_INCLUDE_DIR` and `DIGIDOCPP_LIB_DIR`. Set both. First is directory that
+    ///      contains `digidocpp/`.
+    ///    - `DIGIDOCPP_FRAMEWORK_DIR`: directory that contains `digidocpp.framework` (Apple
+    ///      targets).
+    ///    - `DIGIDOCPP_DIR`: install root (Windows targets, ignored elsewhere).
+    /// 2. Defaults:
+    ///    - Linux: `pkg-config libdigidocpp`.
+    ///    - macOS: `/Library/Frameworks/digidocpp.framework`, then `pkg-config libdigidocpp`.
+    ///    - Windows: `%ProgramFiles%\libdigidocpp`. On ARM64 it is `libdigidocpp-arm64`. On x86
+    ///      it is under `%ProgramFiles(x86)%`.
+    ///
+    ///    If `pkg-config` binary is absent (not when it just fails to find libdigidocpp), Linux
+    ///    and macOS search `/usr/local` and `/usr` (Linux) or `/opt/homebrew` and `/usr/local`
+    ///    (macOS). Not done when cross-compiling.
+    ///
+    /// Reads target from `CARGO_CFG_TARGET_*`. Prints `cargo:rerun-if-env-changed` for each
+    /// variable it uses.
+    ///
+    /// # Errors
+    /// Returns an error when no installation is found, or when overrides conflict (for example
+    /// only one of include and lib directory is set).
     pub fn discover() -> Result<Self, Box<dyn Error>> {
         for name in VARIABLES {
             println!("cargo:rerun-if-env-changed={name}");
@@ -39,26 +119,37 @@ impl Install {
         Self::resolve(Settings::from_env(), &target, probe_pkg_config)
     }
 
+    /// Returns how libdigidocpp is installed.
     #[must_use]
     pub const fn kind(&self) -> Kind {
         self.kind
     }
 
+    /// Returns libdigidocpp header directories.
+    ///
+    /// Empty unless the kind is [`Kind::Library`].
     #[must_use]
     pub fn include_dirs(&self) -> &[PathBuf] {
         &self.include_dirs
     }
 
+    /// Returns libdigidocpp link directories.
+    ///
+    /// Empty unless the kind is [`Kind::Library`].
     #[must_use]
     pub fn lib_dirs(&self) -> &[PathBuf] {
         &self.lib_dirs
     }
 
+    /// Returns framework directories that contain `digidocpp.framework`.
+    ///
+    /// Empty unless the kind is [`Kind::Framework`].
     #[must_use]
     pub fn framework_dirs(&self) -> &[PathBuf] {
         &self.framework_dirs
     }
 
+    /// Returns directories the dynamic loader needs to find the library at run time.
     #[must_use]
     pub fn runtime_dirs(&self) -> &[PathBuf] {
         match self.kind {
@@ -67,6 +158,15 @@ impl Install {
         }
     }
 
+    /// Emits rpath for each directory needed to find the library at run time.
+    ///
+    /// Prints nothing on Windows, otherwise `cargo:rustc-link-arg=-Wl,-rpath,<dir>`.
+    ///
+    /// Directories are paths on build machine. They are useless for binary that runs elsewhere,
+    /// so skip this call when cross-compiling for such target.
+    ///
+    /// # Errors
+    /// Returns an error upon invalid UTF-8 or missing target variables.
     pub fn emit_rpath(&self) -> Result<(), Box<dyn Error>> {
         let target = Target::from_cargo_cfg(|name| env::var(name).ok())?;
         for dir in self.rpath_dirs(&target) {
