@@ -1,3 +1,5 @@
+//! Build script: compiles the C++ side of `cxx` bridges and links libdigidocpp.
+
 use libdigidocpp_build::{Install, Kind};
 use std::env;
 use std::error::Error;

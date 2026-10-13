@@ -1,23 +1,47 @@
+//! Rust readers and writers exposed to C++ as `std::istream` and `std::ostream`.
+//!
+//! # Failures
+//!
+//! A reader or writer can fail with an `io::Error` or a panic. C++ stream code cannot carry
+//! either one. So this module stores the first failure in a thread-local slot. The stream then
+//! reports a plain error to C++.
+//!
+//! Wrap every C++ call that may use a stream in [`call_then_deliver_stream_failure`]. After the
+//! call, it returns the stored `io::Error` or resumes the stored panic.
+
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::fmt::{self, Debug, Formatter};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::panic::{self, AssertUnwindSafe};
 
+/// Bridge for streams.
 #[cxx::bridge]
 pub mod ffi {
     #[namespace = "digidoc_rs::stream"]
     extern "Rust" {
+        /// A Rust [`Write`](std::io::Write) that C++ sees as an `std::ostream`.
         #[derive(ExternType)]
         type Sink<'a>;
+
+        /// A Rust [`Read`](std::io::Read) + [`Seek`](std::io::Seek) that C++ sees as an
+        /// `std::istream`.
         #[derive(ExternType)]
         type Source;
 
+        /// Writes all of `data`.
         fn write(self: &mut Sink<'_>, data: &[u8]) -> Result<()>;
 
+        /// Reads into `buffer`.
         fn read(self: &Source, buffer: &mut [u8]) -> Result<usize>;
+
+        /// Seeks to `offset` bytes from the start.
         fn seek_from_start(self: &Source, offset: u64) -> Result<u64>;
+
+        /// Seeks relative to the end.
         fn seek_from_end(self: &Source, offset: i64) -> Result<u64>;
+
+        /// Seeks relative to the current position.
         fn seek_from_current(self: &Source, offset: i64) -> Result<u64>;
     }
 
@@ -33,8 +57,22 @@ pub mod ffi {
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/test_util.h");
 
+        /// Writes `bytes` through the C++ `ostream` of `sink`.
+        ///
+        /// # Errors
+        /// Returns [`cxx::Exception`] when the C++ call throws.
         fn copy_bytes_through_sink(sink: &mut Sink<'_>, bytes: &[u8]) -> Result<()>;
+
+        /// Reads `source` to the end through its C++ `istream`, `chunk_size` bytes at a time.
+        ///
+        /// # Errors
+        /// Returns [`cxx::Exception`] when the C++ call throws.
         fn read_all_from_source(source: Box<Source>, chunk_size: usize) -> Result<Vec<u8>>;
+
+        /// Reads `source` to the end through the `rdbuf` of its C++ `istream`.
+        ///
+        /// # Errors
+        /// Returns [`cxx::Exception`] when the C++ call throws.
         fn copy_source_via_rdbuf(source: Box<Source>) -> Result<Vec<u8>>;
     }
 }
@@ -60,7 +98,14 @@ fn store_stream_failure(failure: StreamFailure) {
     });
 }
 
-/// performs call while checking stored error/panic: errors are returned, panics resumed
+/// Runs `ffi_call`, then returns the stream failure it caused, if any.
+///
+/// # Errors
+/// Returns the first `io::Error` that a [`Source`] or [`Sink`] hit during the call.
+///
+/// # Panics
+///
+/// Resumes the panic of a reader or writer that panicked during the call.
 pub fn call_then_deliver_stream_failure<T>(ffi_call: impl FnOnce() -> T) -> Result<T, io::Error> {
     let result = ffi_call();
     match STREAM_FAILURE.with_borrow_mut(Option::take) {
@@ -86,11 +131,13 @@ fn run_and_store_failure<T>(callback: impl FnOnce() -> io::Result<T>) -> Result<
     }
 }
 
+/// A writer for C++, exposed as `std::ostream`.
 pub struct Sink<'a> {
     writer: &'a mut dyn Write,
 }
 
 impl<'a> Sink<'a> {
+    /// Wraps `writer`.
     pub fn new(writer: &'a mut dyn Write) -> Self {
         Self { writer }
     }
@@ -110,6 +157,10 @@ trait ReadSeek: Read + Seek {}
 
 impl<T: Read + Seek> ReadSeek for T {}
 
+/// A reader for C++, exposed as `std::istream`.
+///
+/// After a failure it rejects all further calls. A reentrant call (the reader being used again
+/// while it runs) also fails.
 pub struct Source {
     // guard against reentrant reader calls
     reader: RefCell<Box<dyn ReadSeek>>,
@@ -117,6 +168,7 @@ pub struct Source {
 }
 
 impl Source {
+    /// Wraps `reader`.
     pub fn new(reader: impl Read + Seek + 'static) -> Self {
         Self {
             reader: RefCell::new(Box::new(reader)),
