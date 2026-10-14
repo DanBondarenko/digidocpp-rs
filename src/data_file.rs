@@ -17,9 +17,9 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```no_run
-/// use libdigidocpp::Container;
+/// use digidocpp::Container;
 ///
-/// # fn main() -> Result<(), libdigidocpp::Error> {
+/// # fn main() -> Result<(), digidocpp::Error> {
 /// let container = Container::open("document.asice")?;
 /// for data_file in container.data_files()? {
 ///     data_file.save_as(data_file.file_name()?)?;

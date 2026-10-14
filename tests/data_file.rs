@@ -17,8 +17,8 @@ use crate::common::{
     assert_internal_err, create_empty_asice_container, init_with_valid_tsl, open_container,
     required,
 };
+use digidocpp::{Container, DataFile, DigestAlgorithm, Error};
 use itertools::Itertools;
-use libdigidocpp::{Container, DataFile, DigestAlgorithm, Error};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
 use rstest::{fixture, rstest};

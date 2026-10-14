@@ -55,10 +55,10 @@ pub enum ContainerType {
 /// time-stamp and OCSP services set in [`Conf`](crate::Conf).
 ///
 /// ```no_run
-/// use libdigidocpp::{Container, Pkcs11Signer};
+/// use digidocpp::{Container, Pkcs11Signer};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// libdigidocpp::initialize()?;
+/// digidocpp::initialize()?;
 ///
 /// let mut container = Container::create("contract.asice")?;
 /// container.add_data_file("contract.pdf", "application/pdf")?;
@@ -75,10 +75,10 @@ pub enum ContainerType {
 /// qualified counts as valid.
 ///
 /// ```no_run
-/// use libdigidocpp::{Container, Error, Signature, ValidatorStatus};
+/// use digidocpp::{Container, Error, Signature, ValidatorStatus};
 ///
 /// # fn main() -> Result<(), Error> {
-/// libdigidocpp::initialize()?;
+/// digidocpp::initialize()?;
 ///
 /// let is_valid = |signature: Signature<'_>| -> Result<bool, Error> {
 ///     Ok(matches!(
@@ -426,11 +426,11 @@ impl Container {
     /// # Examples
     ///
     /// ```no_run
-    /// use libdigidocpp::{Container, ExternalPartialSigner};
+    /// use digidocpp::{Container, ExternalPartialSigner};
     ///
     /// # fn sign_remotely(_digest: &[u8]) -> Vec<u8> { Vec::new() }
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # libdigidocpp::initialize()?;
+    /// # digidocpp::initialize()?;
     /// let mut container = Container::open("unsigned.asice")?;
     ///
     /// let mut signer = ExternalPartialSigner::new(std::fs::read("signer.der")?)?;

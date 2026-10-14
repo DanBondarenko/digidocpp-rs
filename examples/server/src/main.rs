@@ -4,7 +4,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{Json, Router};
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
-use libdigidocpp::{
+use digidocpp::{
     Algorithm, Conf, Container, DataFile, DerCert, ExternalPartialSigner, PartialSigner,
     Pkcs12Signer, Signature, Signer, ValidatorStatus, ValidityExtension,
 };
@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
         .await?;
 
     // SAFETY: runtime has one thread and `axum::serve` returned, no handler running
-    Ok(unsafe { libdigidocpp::terminate() }?)
+    Ok(unsafe { digidocpp::terminate() }?)
 }
 
 fn init_library() -> anyhow::Result<()> {
@@ -47,8 +47,8 @@ fn init_library() -> anyhow::Result<()> {
     conf.add_tsl_cert(fs::read(Setting::TslCert.val()?)?)?;
     conf.set_ts_url(Setting::TimeStampUrl.val()?)?;
 
-    libdigidocpp::init_conf(conf)?;
-    Ok(libdigidocpp::initialize()?)
+    digidocpp::init_conf(conf)?;
+    Ok(digidocpp::initialize()?)
 }
 
 #[derive(Debug, PartialEq, Hash, Clone, Serialize, Deserialize)]

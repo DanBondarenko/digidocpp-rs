@@ -14,7 +14,7 @@ license = "MIT OR Apache-2.0"
 publish = false
 
 [package]
-name = "libdigidocpp"
+name = "digidocpp"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

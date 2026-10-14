@@ -2,10 +2,10 @@ use anyhow::{Context, Result, anyhow, ensure};
 use bytesize::ByteSize;
 use clap::{Args, Parser, Subcommand};
 #[cfg(not(windows))]
-use libdigidocpp::Pkcs11Signer;
+use digidocpp::Pkcs11Signer;
 #[cfg(windows)]
-use libdigidocpp::WinSigner;
-use libdigidocpp::{
+use digidocpp::WinSigner;
+use digidocpp::{
     Conf, Container, ContainerType, ExceptionCode, ExternalPartialSigner, PartialSigner, Signature,
     ValidatorResult, ValidatorStatus, ValidityExtension,
 };
@@ -88,10 +88,10 @@ fn main() -> Result<ExitCode> {
     let cli = Cli::parse();
 
     configure_library(&cli.library)?;
-    libdigidocpp::initialize()?;
+    digidocpp::initialize()?;
     let result = run(&cli.command);
     // SAFETY: no library object alive at this point, only this thread uses library.
-    unsafe { libdigidocpp::terminate() }?;
+    unsafe { digidocpp::terminate() }?;
     result
 }
 
@@ -108,7 +108,7 @@ fn configure_library(options: &LibraryOptions) -> Result<()> {
         conf.set_ts_url(&options.time_stamp_url)?;
     }
 
-    Ok(libdigidocpp::init_conf(conf)?)
+    Ok(digidocpp::init_conf(conf)?)
 }
 
 fn run(command: &Command) -> Result<ExitCode> {

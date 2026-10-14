@@ -1,6 +1,6 @@
 # Server example
 
-HTTP server to demonstrate main functionalities of `libdigidocpp`.
+HTTP server to demonstrate main functionalities of `digidocpp`.
 
 Endpoints:
 - `POST /validate`: Validate signatures of container.

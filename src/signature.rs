@@ -58,9 +58,9 @@ pub enum ValidatorStatus {
 /// # Examples
 ///
 /// ```no_run
-/// use libdigidocpp::Container;
+/// use digidocpp::Container;
 ///
-/// # fn main() -> Result<(), libdigidocpp::Error> {
+/// # fn main() -> Result<(), digidocpp::Error> {
 /// let container = Container::open("document.asice")?;
 /// for signature in container.signatures()? {
 ///     let result = signature.validator_result()?;

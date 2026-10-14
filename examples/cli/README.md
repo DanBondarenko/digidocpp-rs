@@ -1,4 +1,4 @@
-CLI to demonstrate main functionalities of `libdigidocpp`. 
+CLI to demonstrate main functionalities of `digidocpp`. 
 
 Commands:
 - `validate <file>`: Validate signatures of container.

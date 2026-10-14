@@ -13,11 +13,11 @@ mod common;
 
 use crate::common::{create_empty_asice_container, init_with_valid_tsl, parse_common_name};
 use bon::Builder;
-use itertools::Itertools;
-use libdigidocpp::{
+use digidocpp::{
     Algorithm, Container, DerCert, DigestAlgorithm, ExceptionCode, Signature, SignatureAlgorithm,
     SignatureProfile, TSAInfo, ValidatorResult, ValidatorStatus,
 };
+use itertools::Itertools;
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

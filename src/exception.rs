@@ -16,7 +16,7 @@ use thiserror::Error as ThisError;
 /// # Examples
 ///
 /// ```no_run
-/// use libdigidocpp::{Container, ExceptionCode, Pkcs11Signer};
+/// use digidocpp::{Container, ExceptionCode, Pkcs11Signer};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # let mut container = Container::create("document.asice")?;

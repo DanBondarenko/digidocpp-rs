@@ -10,7 +10,7 @@ exclude = ["tests/"]
 anyhow = "1.0.104"
 bytesize = "2.7.0"
 clap = { version = "4.6.7", features = ["derive", "env"] }
-libdigidocpp = { path = "../.." }
+digidocpp = { path = "../.." }
 mime_guess = "2.0.5"
 rpassword = "7.5.4"
 x509-parser = "0.18.1"

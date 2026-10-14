@@ -1,4 +1,4 @@
-# libdigidocpp
+# digidocpp
 
 Create, sign, validate and extend ASiC-E containers with XAdES signatures.
 
@@ -14,7 +14,7 @@ Unofficial. Not affiliated with the Estonian Information System Authority (RIA).
 ## Install
 
 ```sh
-cargo add libdigidocpp
+cargo add digidocpp
 ```
 
 Requires:
@@ -23,16 +23,16 @@ Requires:
 - A C++20 compiler.
 - Rust 1.88 or newer.
 
-See [Building](https://docs.rs/libdigidocpp/latest/libdigidocpp/#building) for how the build finds
+See [Building](https://docs.rs/digidocpp/latest/digidocpp/#building) for how the build finds
 the library and how a program finds it at run time.
 
 ## Quick start
 
 ```rust,no_run
-use libdigidocpp::Container;
+use digidocpp::Container;
 
-fn main() -> Result<(), libdigidocpp::Error> {
-    libdigidocpp::initialize()?;
+fn main() -> Result<(), digidocpp::Error> {
+    digidocpp::initialize()?;
     let container = Container::open("document.asice")?;
 
     for signature in container.signatures()? {
@@ -52,12 +52,12 @@ fn main() -> Result<(), libdigidocpp::Error> {
 }
 ```
 
-See [docs.rs](https://docs.rs/libdigidocpp) and
+See [docs.rs](https://docs.rs/digidocpp) and
 [examples](https://github.com/DanBondarenko/digidocpp-rs/tree/main/examples) for more information.
 
 ## Documentation
 
-See [docs.rs](https://docs.rs/libdigidocpp) for the API. The C++ API is documented in the
+See [docs.rs](https://docs.rs/digidocpp) for the API. The C++ API is documented in the
 [upstream reference](https://open-eid.github.io/libdigidocpp/).
 
 Source and issue tracker: [digidocpp-rs](https://github.com/DanBondarenko/digidocpp-rs).

@@ -24,7 +24,7 @@ use strum::FromRepr;
 /// # Examples
 ///
 /// ```no_run
-/// use libdigidocpp::Conf;
+/// use digidocpp::Conf;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut conf = Conf::new()?;
@@ -32,8 +32,8 @@ use strum::FromRepr;
 /// conf.clear_tsl_certs();
 /// conf.add_tsl_cert(std::fs::read("test-tsl.der")?)?;
 ///
-/// libdigidocpp::init_conf(conf)?;
-/// libdigidocpp::initialize()?;
+/// digidocpp::init_conf(conf)?;
+/// digidocpp::initialize()?;
 /// # Ok(())
 /// # }
 /// ```

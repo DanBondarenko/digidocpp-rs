@@ -14,7 +14,7 @@ mod common;
 use crate::common::{
     assert_general_digidoc_err, assert_internal_err, init_with_valid_tsl, pkcs12_signer,
 };
-use libdigidocpp::{
+use digidocpp::{
     Algorithm, AlgorithmSetting, DigestAlgorithm, Error, PartialSigner, Pkcs11Signer, Pkcs12Signer,
     Signer, SigningProfile,
 };

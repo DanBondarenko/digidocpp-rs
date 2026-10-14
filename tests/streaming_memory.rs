@@ -13,7 +13,7 @@
 mod common;
 
 use crate::common::{MEDIA_TYPE_OCTET_STREAM, create_empty_asice_container, init_with_valid_tsl};
-use libdigidocpp::{Container, DigestAlgorithm};
+use digidocpp::{Container, DigestAlgorithm};
 use rstest::rstest;
 use serial_test::serial;
 use std::cell::Cell;

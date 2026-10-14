@@ -9,10 +9,10 @@
 //! # Quick start
 //!
 //! ```no_run
-//! use libdigidocpp::Container;
+//! use digidocpp::Container;
 //!
-//! fn main() -> Result<(), libdigidocpp::Error> {
-//!     libdigidocpp::initialize()?;
+//! fn main() -> Result<(), digidocpp::Error> {
+//!     digidocpp::initialize()?;
 //!     let container = Container::open("document.asice")?;
 //!
 //!     for signature in container.signatures()? {
@@ -38,10 +38,10 @@
 //! password from an environment variable.
 //!
 //! ```no_run
-//! use libdigidocpp::{Container, Pkcs12Signer};
+//! use digidocpp::{Container, Pkcs12Signer};
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     libdigidocpp::initialize()?;
+//!     digidocpp::initialize()?;
 //!     let mut container = Container::create("signed.asice")?;
 //!     container.add_data_file("document.pdf", "application/pdf")?;
 //!

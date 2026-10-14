@@ -11,7 +11,7 @@
 mod common;
 
 use crate::common::{conf_for_testing, dir_with_fixtures};
-use libdigidocpp::{Conf, app_info, init_conf, initialize_with_user_agent, terminate, user_agent};
+use digidocpp::{Conf, app_info, init_conf, initialize_with_user_agent, terminate, user_agent};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error;

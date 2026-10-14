@@ -44,7 +44,7 @@
 //!
 //! # See also
 //!
-//! Looking for the bindings? See [`libdigidocpp`](https://docs.rs/libdigidocpp).
+//! Looking for the bindings? See [`digidocpp`](https://docs.rs/digidocpp).
 //!
 //! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
 #![expect(clippy::print_stdout)]

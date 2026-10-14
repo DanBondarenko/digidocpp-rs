@@ -9,19 +9,19 @@ exclude = ["tests/"]
 [dependencies]
 anyhow = "1.0.104"
 axum = "0.8.9"
-libdigidocpp = { path = "../.." }
+digidocpp = { path = "../.." }
 serde = { version = "1.0.229", features = ["derive"] }
 tempfile = "3.27.0"
 tokio = { version = "1.53.2", features = ["full"] }
 strum = "0.28.0"
-axum_typed_multipart = { version = "0.16.7", default-features = false, features = ["tempfile_3"] }
+axum_typed_multipart = { version = "0.16.8", default-features = false, features = ["tempfile_3"] }
 
 [build-dependencies]
 libdigidocpp-build = { path = "../../libdigidocpp-build" }
 
 [dev-dependencies]
 rstest = "0.27.0"
-serde_json = "1.0.151"
+serde_json = "1.0.154"
 serial_test = "4.0.1"
 ureq = { version = "3.4.2", features = ["multipart"] }
 

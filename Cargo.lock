@@ -609,13 +609,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "digidocpp"
+version = "0.1.0"
+dependencies = [
+ "bon",
+ "cxx",
+ "derive_more",
+ "hex",
+ "httpmock",
+ "itertools",
+ "libdigidocpp-build",
+ "libdigidocpp-sys",
+ "memory-stats",
+ "rand",
+ "rstest",
+ "secrecy",
+ "serde_json",
+ "serial_test",
+ "strum",
+ "tempfile",
+ "thiserror",
+ "time",
+ "x509-parser",
+]
+
+[[package]]
 name = "digidocpp-example-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytesize",
  "clap",
- "libdigidocpp",
+ "digidocpp",
  "libdigidocpp-build",
  "mime_guess",
  "predicates",
@@ -634,7 +659,7 @@ dependencies = [
  "anyhow",
  "axum",
  "axum_typed_multipart",
- "libdigidocpp",
+ "digidocpp",
  "libdigidocpp-build",
  "rstest",
  "serde",
@@ -1202,31 +1227,6 @@ name = "libc"
 version = "0.2.190"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce5d3ddc6d3fa000eb1536d85e147bfe31aacaba692ed6a876f95cb7c855be78"
-
-[[package]]
-name = "libdigidocpp"
-version = "0.1.0"
-dependencies = [
- "bon",
- "cxx",
- "derive_more",
- "hex",
- "httpmock",
- "itertools",
- "libdigidocpp-build",
- "libdigidocpp-sys",
- "memory-stats",
- "rand",
- "rstest",
- "secrecy",
- "serde_json",
- "serial_test",
- "strum",
- "tempfile",
- "thiserror",
- "time",
- "x509-parser",
-]
 
 [[package]]
 name = "libdigidocpp-build"

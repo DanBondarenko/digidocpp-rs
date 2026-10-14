@@ -11,7 +11,7 @@
 mod common;
 
 use crate::common::{assert_internal_err, conf_from_fixture, der_cert, dir_with_fixtures};
-use libdigidocpp::{
+use digidocpp::{
     Algorithm, Conf, DerCert, DigestAlgorithm, Error, ExposeSecret, LogLevel, ReportedLogLevel,
 };
 use rstest::rstest;

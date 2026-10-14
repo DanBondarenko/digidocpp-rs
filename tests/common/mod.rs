@@ -1,6 +1,6 @@
 #![allow(dead_code, reason = "integration test helpers")]
 
-use libdigidocpp::{Conf, Container, DerCert, Pkcs12Signer};
+use digidocpp::{Conf, Container, DerCert, Pkcs12Signer};
 use rstest::fixture;
 use std::error::Error as StdError;
 use std::ffi::OsString;
@@ -16,10 +16,10 @@ macro_rules! assert_general_digidoc_err {
     ($val:expr $(,)?) => {
         match $val {
             result => {
-                let ::core::result::Result::Err(::libdigidocpp::Error::Library(::libdigidocpp::LibraryError::DigiDoc(error))) = result else {
+                let ::core::result::Result::Err(::digidocpp::Error::Library(::digidocpp::LibraryError::DigiDoc(error))) = result else {
                     ::core::panic!("Expected digidoc error, instead got {result:?}");
                 };
-                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::libdigidocpp::ExceptionCode::General));
+                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::digidocpp::ExceptionCode::General));
                 error
             }
         }
@@ -27,13 +27,13 @@ macro_rules! assert_general_digidoc_err {
     ($val:expr, $($arg:tt)+) => {
         match $val {
             result => {
-                let ::core::result::Result::Err(::libdigidocpp::Error::Library(::libdigidocpp::LibraryError::DigiDoc(error))) = result else {
+                let ::core::result::Result::Err(::digidocpp::Error::Library(::digidocpp::LibraryError::DigiDoc(error))) = result else {
                     ::core::panic!(
                         "{}: Expected digidoc error, instead got {result:?}",
                         ::core::format_args!($($arg)+)
                     );
                 };
-                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::libdigidocpp::ExceptionCode::General));
+                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::digidocpp::ExceptionCode::General));
                 error
             }
         }
@@ -48,7 +48,7 @@ macro_rules! assert_internal_err {
     ($val:expr $(,)?) => {
         match $val {
             result => {
-                let ::core::result::Result::Err(::libdigidocpp::Error::Internal(message)) = result else {
+                let ::core::result::Result::Err(::digidocpp::Error::Internal(message)) = result else {
                     ::core::panic!("Expected internal error, instead got {result:?}");
                 };
                 message
@@ -58,7 +58,7 @@ macro_rules! assert_internal_err {
     ($val:expr, $($arg:tt)+) => {
         match $val {
             result => {
-                let ::core::result::Result::Err(::libdigidocpp::Error::Internal(message)) = result else {
+                let ::core::result::Result::Err(::digidocpp::Error::Internal(message)) = result else {
                     ::core::panic!(
                         "{}: Expected internal error, instead got {result:?}",
                         ::core::format_args!($($arg)+)
@@ -159,8 +159,8 @@ pub fn init(
     #[default(&[])] extra_files: &[&str],
 ) -> TempDir {
     let directory = dir_with_fixtures(&[&[tsl_name], extra_files].concat());
-    libdigidocpp::init_conf(conf_for_testing(directory.path(), tsl_name)).unwrap();
-    libdigidocpp::initialize().unwrap();
+    digidocpp::init_conf(conf_for_testing(directory.path(), tsl_name)).unwrap();
+    digidocpp::initialize().unwrap();
 
     directory
 }
