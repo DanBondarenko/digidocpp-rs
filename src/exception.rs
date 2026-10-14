@@ -1,4 +1,4 @@
-#![allow(deprecated, reason = "strum")]
+#![expect(deprecated, reason = "strum")]
 
 use cxx::Exception;
 use libdigidocpp_sys::exception::ffi;
@@ -6,15 +6,43 @@ use std::fmt::{Debug, Display, Formatter};
 use strum::FromRepr;
 use thiserror::Error as ThisError;
 
+/// Error returned by this crate.
+///
+/// Most errors come from libdigidocpp. Use [`Error::as_digidoc`] to inspect them, or
+/// [`Error::has_code`] to test for a specific failure such as a wrong PIN.
+///
+/// Any call into libdigidocpp can fail, because the C++ code throws.
+///
+/// # Examples
+///
+/// ```no_run
+/// use libdigidocpp::{Container, ExceptionCode, Pkcs11Signer};
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// # let mut container = Container::create("document.asice")?;
+/// # let mut signer = Pkcs11Signer::new()?;
+/// if let Err(error) = container.sign(&mut signer) {
+///     if error.has_code(ExceptionCode::PINIncorrect) {
+///         eprintln!("wrong PIN");
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(ThisError, Debug)]
 #[non_exhaustive]
 pub enum Error {
+    /// libdigidocpp threw any exception
     #[error(transparent)]
     Library(LibraryError),
+    /// This crate rejected the input before calling libdigidocpp, for example a path that is not
+    /// valid UTF-8.
     #[error("internal error: {0}")]
     Internal(String),
+    /// The Rust/C++ boundary failed, for example a C++ exception could not be converted to Rust.
     #[error("FFI error: {0}")]
     Ffi(String),
+    /// A reader or writer passed to libdigidocpp returned an error.
     #[error("I/O error: {0}")]
     Io(std::io::Error),
 }
@@ -36,6 +64,9 @@ impl Error {
         }
     }
 
+    /// Returns a representation of the upstream [`digidoc::Exception`], if this error is one.
+    ///
+    /// [`digidoc::Exception`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[must_use]
     pub const fn as_digidoc(&self) -> Option<&DigiDocError> {
         match self {
@@ -44,22 +75,38 @@ impl Error {
         }
     }
 
-    /// Searches causes tree for exception code
+    /// Returns whether this error, or any of its causes, has `code`.
+    ///
+    /// `code` corresponds to the upstream [`digidoc::Exception::ExceptionCode`].
+    ///
+    /// [`digidoc::Exception::ExceptionCode`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[must_use]
     pub fn has_code(&self, code: ExceptionCode) -> bool {
         self.as_digidoc().is_some_and(|error| error.has_code(code))
     }
 }
 
+/// A representation of an exception thrown by libdigidocpp
 #[derive(ThisError, Debug, Clone)]
 #[non_exhaustive]
 pub enum LibraryError {
+    /// A representation of upstream [`digidoc::Exception`] with code and causes.
+    ///
+    /// [`digidoc::Exception`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[error(transparent)]
     DigiDoc(DigiDocError),
+    /// Any other C++ exception. Only its message is kept.
     #[error("unknown C++ error: {0}")]
     Unknown(String),
 }
 
+/// A representation of [`digidoc::Exception`]: a message and code, the C++ source location that
+/// threw it, and the tree of causes that led to it.
+///
+/// A failed signature validation, for example, is one error whose causes are the individual
+/// failed checks.
+///
+/// [`digidoc::Exception`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
 #[derive(Debug, Clone)]
 pub struct DigiDocError {
     raw_code: i32,
@@ -70,64 +117,87 @@ pub struct DigiDocError {
 }
 
 impl DigiDocError {
+    /// Returns the message.
     #[must_use]
     pub fn message(&self) -> &str {
         &self.message
     }
 
+    /// Returns the message.
     #[must_use]
     pub fn into_message(self) -> String {
         self.message
     }
 
+    /// Returns the exception's [`digidoc::Exception::ExceptionCode`] or `None` if this crate does
+    /// not know the value.
+    ///
+    /// The raw integer representing the code is accessible via [`raw_code`](Self::raw_code).
+    ///
+    /// [`digidoc::Exception::ExceptionCode`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[must_use]
     pub const fn code(&self) -> Option<ExceptionCode> {
         ExceptionCode::from_repr(self.raw_code)
     }
 
+    /// Returns the integer representation of the exception's [`digidoc::Exception::ExceptionCode`].
+    ///
+    /// [`digidoc::Exception::ExceptionCode`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[must_use]
     pub const fn raw_code(&self) -> i32 {
         self.raw_code
     }
 
+    /// Returns the libdigidocpp source file that threw the exception.
     #[must_use]
     pub fn cpp_file(&self) -> &str {
         &self.cpp_file
     }
 
+    /// Returns the libdigidocpp source file that threw the exception.
     #[must_use]
     pub fn into_cpp_file(self) -> String {
         self.cpp_file
     }
 
+    /// Returns the line in [`cpp_file`](Self::cpp_file) that threw the exception.
     #[must_use]
     pub const fn cpp_line(&self) -> i32 {
         self.cpp_line
     }
 
+    /// Returns its direct causes.
+    ///
+    /// Does not traverse deeper into the causes of those causes.
     #[must_use]
     pub fn into_causes(self) -> Vec<Self> {
         self.causes
     }
 
+    /// Returns its direct causes.
+    ///
+    /// Does not traverse deeper into the causes of those causes.
     #[must_use]
     pub fn causes(&self) -> &[Self] {
         &self.causes
     }
 
-    /// Iterates causes tree including this error (DFS)
+    /// Iterates over this error and all its causal descendants, depth first.
     pub fn iter(&self) -> impl Iterator<Item = &Self> {
         let mut stack = vec![self];
 
         std::iter::from_fn(move || {
             let error = stack.pop()?;
             stack.extend(error.causes.iter().rev());
-
             Some(error)
         })
     }
 
-    /// Searches causes tree for exception code
+    /// Returns whether this error, or any causal descendant, has `code`.
+    ///
+    /// `code` refers to the exception's [`digidoc::Exception::ExceptionCode`].
+    ///
+    /// [`digidoc::Exception::ExceptionCode`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[must_use]
     pub fn has_code(&self, code: ExceptionCode) -> bool {
         self.iter().any(|error| error.code() == Some(code))
@@ -144,7 +214,10 @@ impl DigiDocError {
     }
 }
 
-/// Expects DFS order of causes
+/// Builds errors with nested causes from a flat list of causes.
+///
+/// The list must be in depth-first order. A cause nests under the nearest earlier cause with a
+/// lower `depth`.
 fn errors_from_dfs_causes(causes: &[ffi::ExceptionCause]) -> Vec<DigiDocError> {
     let mut errors = Vec::new();
     let mut remaining = causes;
@@ -182,7 +255,7 @@ impl Display for DigiDocError {
 }
 
 impl std::error::Error for DigiDocError {
-    /// The first cause. Use [`DigiDocError::causes`] to get all of them.
+    /// Returns the first cause.
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         self.causes
             .first()
@@ -190,38 +263,69 @@ impl std::error::Error for DigiDocError {
     }
 }
 
+/// Error code of a [`DigiDocError`].
+///
+/// Corresponds to the [`digidoc::Exception::ExceptionCode`] of the underlying [`digidoc::Exception`].
+///
+/// Codes from `ReferenceDigestWeak` to `MimeTypeWarning` are warnings: validation reports them
+/// as causes of a failed [`Signature::validate`](crate::Signature::validate), but the signature
+/// itself is sound.
+///
+/// [`digidoc::Exception::ExceptionCode`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
+/// [`digidoc::Exception`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
 #[derive(Clone, Debug, Copy, FromRepr, Eq, PartialEq)]
 #[non_exhaustive]
 #[repr(i32)]
 pub enum ExceptionCode {
+    /// No specific code.
     General = 0,
+    /// A network connection failed.
     NetworkError = 20,
+    /// A host name did not resolve.
     HostNotFound = 101,
+    /// A URL is invalid.
     InvalidUrl = 102,
-    //Verification errors
+    /// The issuer certificate of the signing certificate is missing.
     CertificateIssuerMissing = 10,
+    /// The OCSP response says the certificate is revoked.
     CertificateRevoked = 5,
+    /// The OCSP response says the certificate status is unknown.
     CertificateUnknown = 6,
+    /// The OCSP `producedAt` time is before the time-stamp time.
     OCSPBeforeTimeStamp = 19,
+    /// There is no OCSP responder URL.
     OCSPResponderMissing = 8,
+    /// The OCSP responder certificate is missing.
     OCSPCertMissing = 9,
+    /// The OCSP response is outside its valid time window.
     OCSPTimeSlot = 7,
+    /// The OCSP responder requires a signed request.
     OCSPRequestUnauthorized = 11,
+    /// The time-stamp service answered Forbidden.
     TSForbidden = 21,
+    /// The time-stamp service request limit is reached.
     TSTooManyRequests = 18,
-    //Pin exceptions
+    /// The user cancelled the PIN prompt.
     PINCanceled = 2,
+    /// PIN verification failed for another reason.
     PINFailed = 4,
+    /// The PIN is wrong.
     PINIncorrect = 1,
+    /// The PIN is locked.
     PINLocked = 3,
-    //Warnings
+    /// A referenced object uses a weak digest (SHA-1).
     ReferenceDigestWeak = 12,
+    /// The signed digest is weak (SHA-1).
     SignatureDigestWeak = 13,
+    /// DDOC: a `DataFile` element has no `xmlns` attribute.
     DataFileNameSpaceWarning = 14,
+    /// DDOC: an `X509IssuerName` or `X509IssuerSerial` element has no `xmlns` attribute.
     IssuerNameSpaceWarning = 15,
+    /// The time-stamp and the OCSP response are more than 15 minutes apart.
     ProducedATLateWarning = 16,
+    /// A data file media type is not a valid MIME type.
     MimeTypeWarning = 17,
-    //DDoc error codes
+    /// Unused.
     #[deprecated]
     DDocError = 512,
 }

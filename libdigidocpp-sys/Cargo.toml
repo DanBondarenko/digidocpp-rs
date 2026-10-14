@@ -18,6 +18,7 @@ cxx-build = "1.0.177"
 libdigidocpp-build = { path = "../libdigidocpp-build" }
 
 [features]
+# For this crate's own tests. Not public API.
 _test_util = []
 
 [dev-dependencies]

@@ -26,4 +26,5 @@ serial_test = "4.0.1"
 tempfile = "3.27.0"
 
 [features]
+# Enables tests that need network access. Not public API.
 _online_tests = []

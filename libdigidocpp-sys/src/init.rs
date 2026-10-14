@@ -6,6 +6,7 @@
 
 /// Bridge for upstream `digidocpp/Container.h` lifecycle functions.
 #[cxx::bridge]
+#[allow(clippy::missing_errors_doc, reason = "cxx")]
 #[allow(clippy::missing_safety_doc, reason = "cxx")]
 pub mod ffi {
     #[namespace = "digidoc"]

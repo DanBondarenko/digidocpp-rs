@@ -1,3 +1,5 @@
+//! Build script: emits the run-time search path of libdigidocpp.
+
 use std::env;
 use std::error::Error;
 

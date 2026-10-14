@@ -49,11 +49,19 @@
 //! - Optionally call [`init::ffi::terminate`] once at the end. No call is valid afterwards.
 //! - Use the library from one thread. Upstream keeps global state and has no synchronization.
 //!
+//! # Building
+//!
+//! libdigidocpp is linked dynamically. It is not bundled, and there is no `vendored` or `static`
+//! option. See [Building] docs of the `libdigidocpp` crate for the requirements, the search rules
+//! and the run-time setup. They apply to this crate too.
+//!
 //! # See also
 //!
+//! - Most users want the safe [`libdigidocpp`](https://docs.rs/libdigidocpp) crate instead.
 //! - The upstream C++ [API reference](https://open-eid.github.io/libdigidocpp/).
 //!
 //! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
+//! [Building]: https://docs.rs/libdigidocpp/latest/libdigidocpp/#building
 #![expect(clippy::multiple_unsafe_ops_per_block, reason = "cxx")]
 
 pub mod conf;

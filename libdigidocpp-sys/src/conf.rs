@@ -9,6 +9,7 @@ use std::fmt::{self, Debug, Formatter};
 /// Bridge for the settable configuration object.
 #[cxx::bridge]
 #[allow(clippy::exhaustive_structs, reason = "cxx")]
+#[allow(clippy::missing_errors_doc, reason = "cxx")]
 pub mod ffi {
     /// A DER-encoded certificate.
     #[namespace = "digidoc_rs::conf"]

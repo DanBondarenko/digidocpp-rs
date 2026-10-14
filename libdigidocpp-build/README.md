@@ -4,7 +4,8 @@ Build-script helpers that locate a [libdigidocpp](https://github.com/open-eid/li
 installation. They report the header, library and framework directories. They do not compile or
 link anything.
 
-Part of [digidocpp-rs](https://github.com/DanBondarenko/digidocpp-rs).
+Part of [digidocpp-rs](https://github.com/DanBondarenko/digidocpp-rs). Looking for the
+bindings? See [`libdigidocpp`](https://crates.io/crates/libdigidocpp).
 
 ## Install
 
@@ -42,6 +43,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+## Lookup
+
+`Install::discover` searches common install locations by default. The environment variables that
+override the search and the platform defaults are in
+[Building](https://docs.rs/libdigidocpp/latest/libdigidocpp/#building) in the `libdigidocpp` docs.
 
 ## Documentation
 

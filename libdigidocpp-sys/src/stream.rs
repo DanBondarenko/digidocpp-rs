@@ -17,6 +17,7 @@ use std::panic::{self, AssertUnwindSafe};
 
 /// Bridge for streams.
 #[cxx::bridge]
+#[allow(clippy::missing_errors_doc, reason = "cxx")]
 pub mod ffi {
     #[namespace = "digidoc_rs::stream"]
     extern "Rust" {

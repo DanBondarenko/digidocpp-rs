@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 // TODO: find a way to deduplicate (vs signing.rs) while keeping conditional compilation
 #![cfg(feature = "_online_tests")]
 #![cfg_attr(

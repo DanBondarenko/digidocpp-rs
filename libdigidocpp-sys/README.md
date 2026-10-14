@@ -3,6 +3,8 @@
 Low-level Rust bindings to [libdigidocpp](https://github.com/open-eid/libdigidocpp), the C++ engine behind
 [DigiDoc4](https://github.com/open-eid/DigiDoc4-Client), the Estonian state's e-signature client. Built with [cxx](https://cxx.rs).
 
+Most users want the safe [`libdigidocpp`](https://crates.io/crates/libdigidocpp) crate instead.
+
 Covers the main libdigidocpp workflows:
 - Open, create, and save containers.
 - Create and validate signatures.
@@ -38,6 +40,13 @@ fn main() -> Result<(), cxx::Exception> {
     Ok(())
 }
 ```
+
+## Building
+
+libdigidocpp is linked dynamically. It is not bundled, and there is no `vendored` or `static`
+option. See [Building](https://docs.rs/libdigidocpp/latest/libdigidocpp/#building) docs of
+`libdigidocpp` for how the build finds the library and how a program finds it at run time. The same
+rules apply to this crate.
 
 ## Documentation
 

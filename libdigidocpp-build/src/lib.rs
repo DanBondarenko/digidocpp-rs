@@ -42,6 +42,10 @@
 //! - [`Install::kind`] returns [`Kind`]. A framework and a plain library need different link
 //!   directives.
 //!
+//! # See also
+//!
+//! Looking for the bindings? See [`libdigidocpp`](https://docs.rs/libdigidocpp).
+//!
 //! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
 #![expect(clippy::print_stdout)]
 

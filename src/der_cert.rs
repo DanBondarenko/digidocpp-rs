@@ -1,5 +1,8 @@
 use std::fmt::{Debug, Formatter};
 
+/// A DER-encoded X.509 certificate.
+///
+/// The bytes are not parsed.
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct DerCert(pub(crate) Vec<u8>);
 
@@ -9,6 +12,7 @@ impl DerCert {
         is_filled.then_some(Self(bytes))
     }
 
+    /// Returns the DER bytes.
     #[must_use]
     pub fn into_bytes(self) -> Vec<u8> {
         self.0

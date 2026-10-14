@@ -48,11 +48,12 @@ time = { version = "0.3.55", features = ["parsing"] }
 x509-parser = "0.18.1"
 
 [features]
+# Enables tests that need network access. Not public API.
 _online_tests = []
+# Enables the RSA-PSS signing test. Needs xmlsec1 1.3 or newer. Not public API.
 _rsa_pss_validation_tests = []
 
 [workspace.lints.rust]
-missing_docs = "allow" # TODO: Turn on before publishing
 unreachable_pub = "warn"
 unsafe_op_in_unsafe_fn = "warn"
 missing_debug_implementations = "warn"
@@ -77,8 +78,6 @@ as_conversions = "warn"
 indexing_slicing = "warn"
 exhaustive_structs = "warn"
 exhaustive_enums = "warn"
-missing_errors_doc = "allow" # TODO: Turn on before publishing
-cargo_common_metadata = "allow" # TODO: Turn on before publishing
 
 [lints]
 workspace = true

@@ -26,4 +26,5 @@ serial_test = "4.0.1"
 ureq = { version = "3.4.2", features = ["multipart"] }
 
 [features]
+# Enables tests that need network access. Not public API.
 _online_tests = []

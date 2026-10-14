@@ -9,6 +9,7 @@ use std::fmt::{self, Debug, Formatter};
 
 /// Bridge for containers.
 #[cxx::bridge]
+#[allow(clippy::missing_errors_doc, reason = "cxx")]
 #[allow(clippy::exhaustive_structs, reason = "cxx")]
 pub mod ffi {
     /// Outcome of upstream `Container::extendContainerValidity`.

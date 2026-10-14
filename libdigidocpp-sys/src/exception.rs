@@ -5,6 +5,7 @@
 
 /// Bridge for exception data.
 #[cxx::bridge]
+#[allow(clippy::missing_errors_doc, reason = "cxx")]
 #[allow(clippy::exhaustive_structs, reason = "cxx")]
 #[allow(clippy::exhaustive_enums, reason = "cxx")]
 pub mod ffi {

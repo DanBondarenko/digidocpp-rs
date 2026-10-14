@@ -8,6 +8,7 @@ use std::panic::{self, AssertUnwindSafe};
 
 /// Bridge for the online-validation callback.
 #[cxx::bridge]
+#[allow(clippy::missing_errors_doc, reason = "cxx")]
 #[allow(unreachable_pub, reason = "cxx")]
 mod ffi {
     #[namespace = "digidoc"]

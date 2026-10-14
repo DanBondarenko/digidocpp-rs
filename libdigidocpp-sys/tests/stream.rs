@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 #![cfg_attr(
     test,
     allow(

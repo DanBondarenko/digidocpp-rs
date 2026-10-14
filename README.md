@@ -1,165 +1,73 @@
-# TODO
+# libdigidocpp
 
-The goal is to achieve feature parity with `libdigidocpp`'s public interface as exposed through SWIG.
-Below is an overview of the members of that interface. Deprecated members are excluded.
+Create, sign, validate and extend ASiC-E containers with XAdES signatures.
 
-## Free functions
-- [x] `appInfo()`
-- [x] `userAgent()`
-- [x] `version()`
-- [x] `terminate()`
-- [x] `initializeLib(appName, userAgent, path)`
-- [x] `initializeLib(appName, userAgent)`
- 
-## `Conf`/`XmlConf`/`DigiDocConf`
-- [x] `init()`
-- [x] XmlConf Constructor `(path = "", schema = "")`
-- [x] DigiDocConf Constructor `(cache = "")`
-- [ ] `instance()`
-- [x] `logLevel()`
-- [x] `logFile()`
-- [x] `xsdPath()`
-- [x] `PKCS11Driver()`
-- [x] `proxyHost()`
-- [x] `proxyPort()`
-- [x] `proxyUser()`
-- [x] `proxyPass()`
-- [x] `proxyForceSSL()`
-- [x] `proxyTunnelSSL()`
-- [x] `digestUri()`
-- [x] `signatureDigestUri()`
-- [x] `ocsp(issuer)`
-- [x] `TSUrl()`
-- [x] `verifyServiceUri()`
-- [x] `TSLAllowExpired()`
-- [x] `TSLAutoUpdate()`
-- [x] `TSLCache()`
-- [x] `TSLOnlineDigest()`
-- [x] `TSLTimeOut()`
-- [x] `TSLUrl()`
-- [x] `setProxyHost(host)`
-- [x] `setProxyPort(port)`
-- [x] `setProxyUser(user)`
-- [x] `setProxyPass(pass)`
-- [x] `setProxyTunnelSSL(enable)`
-- [x] `setTSLOnlineDigest(enable)`
-- [x] `setTSLTimeOut(timeOut)`
-- [x] `setTSUrl(url)`
-- [x] `setVerifyServiceUri(url)`
-- [x] `setLogLevel(level)`
-- [x] `setLogFile(file)`
-- [x] `setTSCert(cert)`
-- [x] `addTSCert(cert)`
-- [x] `setTSLCert(cert)`
-- [x] `addTSLCert(cert)`
-- [x] `setTSLUrl(url)`
-- [x] `setOCSPUrls(urls)`
-- [x] `setOCSPTMProfiles(profiles)`
-- [x] `setVerifyServiceCert(cert)`
-- [x] `addVerifyServiceCert(cert)`
+Rust bindings for [libdigidocpp](https://github.com/open-eid/libdigidocpp), the C++ engine behind
+[DigiDoc4](https://github.com/open-eid/DigiDoc4-Client), the Estonian state's e-signature client.
+Main workflows:
+- Open, create, and save containers.
+- Create and validate signatures.
+- Add, extract and stream data files.
 
-## `Container`
-- [x] `open(path, ContainerOpenCB *cb)`
-- [x] `extendContainerValidity(doc, signer, extendedCount)`
-- [x] `save(path = "")`
-- [x] `mediaType()`
-- [x] `addDataFile(path, mediaType)`
-- [x] `addDataFile(stream, path, mediaType)`
-- [x] `dataFiles()`
-- [x] `removeDataFile(index)`
-- [x] `addAdESSignature(bytes)`
-- [x] `prepareSignature(signer)`
-- [x] `signatures()`
-- [x] `removeSignature(index)`
-- [x] `sign(signer)`
-- [ ] ~~`prepareWebSignature(cert, profile = "", roles = [], city = "", state = "", postalCode = "", country = "")`~~
+Unofficial. Not affiliated with the Estonian Information System Authority (RIA).
 
-## `ContainerOpenCB`
-- [x] `validateOnline()`
+## Install
 
-## `DataFile`
-- [x] `id()`
-- [x] `fileName()`
-- [x] `fileSize()`
-- [x] `mediaType()`
-- [x] `calcDigest(method)`
-- [x] `saveAs(path)`
-- [x] `saveAs(stream)`
+```sh
+cargo add libdigidocpp
+```
 
-## `Signature`
-- [x] `POLv1`
-- [x] `POLv2`
-- [x] `id()`
-- [x] `claimedSigningTime()`
-- [x] `trustedSigningTime()`
-- [x] `signingCertificate()`
-- [x] `signatureMethod()`
-- [x] `validate()`
-- [x] `validate(policy)`
-- [x] `dataToSign()`
-- [x] `setSignatureValue(bytes)`
-- [x] `policy()`
-- [x] `SPUri()`
-- [x] `profile()`
-- [x] `city()`
-- [x] `stateOrProvince()`
-- [x] `postalCode()`
-- [x] `countryName()`
-- [x] `streetAddress()`
-- [x] `signerRoles()`
-- [x] `OCSPProducedAt()`
-- [x] `OCSPCertificate()`
-- [x] `TimeStampCertificate()`
-- [x] `TimeStampTime()`
-- [x] `ArchiveTimeStamps()`
-- [x] `signedBy()`
-- [x] `messageImprint()`
-- [x] `extendSignatureProfile(signer)`
- 
-## `Signature::Validator`
-- [ ] ~~Constructor~~
-- [x] `diagnostics()`
-- [x] `status()`
-- [x] `Status` (enum)
+Requires:
 
-## `TSAInfo`
-- [x] `cert`
-- [x] `time`
+- libdigidocpp 4.5.0 or newer, with headers. It is linked dynamically, not bundled.
+- A C++20 compiler.
+- Rust 1.88 or newer.
 
-## `Signer`
-- [x] `cert()`
-- [x] `sign(method, digest)`
-- [x] `method()`
-- [x] `profile()`
-- [x] `userAgent()`
-- [x] `usingENProfile()`
-- [x] `city()`
-- [x] `streetAddress()`
-- [x] `stateOrProvince()`
-- [x] `postalCode()`
-- [x] `countryName()`
-- [x] `signerRoles()`
-- [x] `setMethod(method)`
-- [x] `setProfile(profile)`
-- [x] `setUserAgent(userAgent)`
-- [x] `setENProfile(enable)`
-- [x] `setSignatureProductionPlace(city, state, postalCode, country)`
-- [x] `setSignatureProductionPlaceV2(city, streetAddress, state, postalCode, country)`
-- [x] `setSignerRoles(roles)`
-- [x] `PKCS12Signer` (subclass)
-- [x] `PKCS11Signer` (subclass)
-- [x] `WinSigner` (subclass)
-- [x] `ExternalSigner`
+See [Building](https://docs.rs/libdigidocpp/latest/libdigidocpp/#building) for how the build finds
+the library and how a program finds it at run time.
 
-## Other ideas
-- [ ] add cxx shared struct for vectors of non-owned data e.g. `Container::dataFiles()` and `Container::signatures()`
-- [ ] use types to prevent invalid initialization and termination
-- [ ] use types to prevent invalid container ops
-- [ ] use a lock to ensure `libdigidocpp` can't be called from multiple threads
-- [ ] custom signers
+## Quick start
+
+```rust,no_run
+use libdigidocpp::Container;
+
+fn main() -> Result<(), libdigidocpp::Error> {
+    libdigidocpp::initialize()?;
+    let container = Container::open("document.asice")?;
+
+    for signature in container.signatures()? {
+        println!("Signed by: {}", signature.signed_by()?);
+        println!("Signed at: {}", signature.trusted_signing_time()?);
+        println!("Validity: {:?}", signature.validator_result()?.status());
+    }
+
+    for file in container.data_files()? {
+        println!("File name: {}", file.file_name()?);
+        println!("File size: {}", file.file_size()?);
+        let mut contents = Vec::new();
+        file.write_to(&mut contents)?;
+    }
+
+    Ok(())
+}
+```
+
+See [docs.rs](https://docs.rs/libdigidocpp) and
+[examples](https://github.com/DanBondarenko/digidocpp-rs/tree/main/examples) for more information.
+
+## Documentation
+
+See [docs.rs](https://docs.rs/libdigidocpp) for the API. The C++ API is documented in the
+[upstream reference](https://open-eid.github.io/libdigidocpp/).
+
+Source and issue tracker: [digidocpp-rs](https://github.com/DanBondarenko/digidocpp-rs).
 
 ## License
 
-Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.
+Licensed under either of
+[Apache License, Version 2.0](https://github.com/DanBondarenko/digidocpp-rs/blob/main/LICENSE-APACHE)
+or [MIT license](https://github.com/DanBondarenko/digidocpp-rs/blob/main/LICENSE-MIT) at your
+option.
 
-Files copied from other projects keep their original licenses. A notice beside them states this.
+[libdigidocpp](https://github.com/open-eid/libdigidocpp) itself is licensed under
+[LGPL 2.1](https://github.com/open-eid/libdigidocpp/blob/master/LICENSE.LGPL).

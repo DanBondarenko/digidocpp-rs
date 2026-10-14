@@ -1,3 +1,4 @@
+#![allow(missing_docs)]
 #![cfg_attr(
     test,
     allow(
@@ -12,7 +13,7 @@
 mod common;
 
 use crate::common::{assert_general_digidoc_err, conf_for_testing, dir_with_fixtures};
-use libdigidocpp::{Conf, Container, LogLevel, init_conf, initialize};
+use libdigidocpp::{init_conf, initialize, Conf, Container, LogLevel};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;
