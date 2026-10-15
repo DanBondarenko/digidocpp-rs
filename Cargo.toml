@@ -22,6 +22,9 @@ license.workspace = true
 publish.workspace = true
 exclude = ["tests/"]
 
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+
 [dependencies]
 libdigidocpp-sys = { path = "libdigidocpp-sys" }
 cxx = "1.0.177"

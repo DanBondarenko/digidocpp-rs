@@ -8,6 +8,9 @@ links = "digidocpp"
 publish.workspace = true
 exclude = ["tests/"]
 
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+
 [dependencies]
 cxx = "1.0.177"
 serde = { version = "1.0.229", features = ["derive"] }

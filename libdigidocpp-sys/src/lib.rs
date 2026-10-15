@@ -27,7 +27,7 @@
 //! - Validate signatures: [`container::ffi::signature_at`], then [`signature::ffi::validate`]
 //!   or [`signature::ffi::validator`].
 //! - Sign: make a signer with [`signer::ffi::make_pkcs11_signer`] or
-//!   [`signer::ffi::make_win_signer`], then [`container::ffi::sign`].
+//!   `signer::ffi::make_win_signer`, then [`container::ffi::sign`].
 //! - Stream data through Rust readers and writers: [`stream`].
 //!
 //! # From the C++ API
@@ -63,6 +63,10 @@
 //! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
 //! [Building]: https://docs.rs/digidocpp/latest/digidocpp/#building
 #![expect(clippy::multiple_unsafe_ops_per_block, reason = "cxx")]
+
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
 
 pub mod conf;
 pub mod container;

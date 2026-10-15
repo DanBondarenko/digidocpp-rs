@@ -49,6 +49,10 @@
 //! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
 #![expect(clippy::print_stdout)]
 
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 use std::env;
 use std::error::Error;
 use std::fmt::Display;

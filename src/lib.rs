@@ -122,6 +122,10 @@
 //! [`Install::emit_rpath`]: https://docs.rs/libdigidocpp-build/latest/libdigidocpp_build/struct.Install.html#method.emit_rpath
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 mod algorithm;
 mod conf;
 mod container;
