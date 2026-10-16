@@ -1,6 +1,8 @@
 #![allow(dead_code, reason = "integration test helpers")]
 
-use digidocpp::{Conf, Container, DerCert, Pkcs12Signer};
+use digidocpp::conf::Conf;
+use digidocpp::signer::Pkcs12Signer;
+use digidocpp::{Container, DerCert};
 use rstest::fixture;
 use std::error::Error as StdError;
 use std::ffi::OsString;
@@ -16,10 +18,10 @@ macro_rules! assert_general_digidoc_err {
     ($val:expr $(,)?) => {
         match $val {
             result => {
-                let ::core::result::Result::Err(::digidocpp::Error::Library(::digidocpp::LibraryError::DigiDoc(error))) = result else {
+                let ::core::result::Result::Err(::digidocpp::Error::Library(::digidocpp::error::LibraryError::DigiDoc(error))) = result else {
                     ::core::panic!("Expected digidoc error, instead got {result:?}");
                 };
-                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::digidocpp::ExceptionCode::General));
+                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::digidocpp::error::ExceptionCode::General));
                 error
             }
         }
@@ -27,13 +29,13 @@ macro_rules! assert_general_digidoc_err {
     ($val:expr, $($arg:tt)+) => {
         match $val {
             result => {
-                let ::core::result::Result::Err(::digidocpp::Error::Library(::digidocpp::LibraryError::DigiDoc(error))) = result else {
+                let ::core::result::Result::Err(::digidocpp::Error::Library(::digidocpp::error::LibraryError::DigiDoc(error))) = result else {
                     ::core::panic!(
                         "{}: Expected digidoc error, instead got {result:?}",
                         ::core::format_args!($($arg)+)
                     );
                 };
-                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::digidocpp::ExceptionCode::General));
+                ::core::assert_eq!(error.code(), ::core::option::Option::Some(::digidocpp::error::ExceptionCode::General));
                 error
             }
         }

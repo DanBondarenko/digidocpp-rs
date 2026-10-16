@@ -13,7 +13,9 @@
 mod common;
 
 use crate::common::{assert_general_digidoc_err, init, open_container};
-use digidocpp::{Container, ExceptionCode, ValidatorStatus};
+use digidocpp::Container;
+use digidocpp::error::ExceptionCode;
+use digidocpp::signature::ValidatorStatus;
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

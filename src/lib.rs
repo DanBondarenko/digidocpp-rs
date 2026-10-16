@@ -5,7 +5,7 @@
 //! - Opening existing containers and validating the digital signatures or timestamps contained
 //!   therein.
 //! - Creating containers from files and adding digital signatures using either [PKCS #11],
-//!   [PKCS #12], Windows CryptoAPI, or an external signer (e.g. mobile ID).
+//!   [PKCS #12], Windows `CryptoAPI`, or an external signer (e.g. mobile ID).
 //! - Extending the
 //!   [validity evidence](https://open-eid.github.io/libdigidocpp/manual.html#extend-validity)
 //!   of existing containers.
@@ -68,7 +68,8 @@
 //! [`Container::sign`] with a signer for the signature to be added.
 //!
 //! ```no_run
-//! use digidocpp::{Container, Pkcs11Signer};
+//! use digidocpp::Container;
+//! use digidocpp::signer::Pkcs11Signer;
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     digidocpp::initialize()?;
@@ -95,7 +96,7 @@
 //! initialize-function variant).
 //!
 //! ```no_run
-//! use digidocpp::{Conf, LogLevel};
+//! use digidocpp::conf::{Conf, LogLevel};
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let mut conf = Conf::from_file("path/to/digidocpp.conf")?;
@@ -225,30 +226,50 @@
 //! [PKCS #12]: https://en.wikipedia.org/wiki/PKCS_12
 //! [libdigidocpp-sys]: https://crates.io/crates/libdigidocpp-sys
 //! [`digidoc::Exception`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
+//! [`Pkcs11Signer`]: signer::Pkcs11Signer
+//! [`Pkcs12Signer`]: signer::Pkcs12Signer
+//! [`ExternalPartialSigner`]: signer::ExternalPartialSigner
+//! [`Conf`]: conf::Conf
+//! [`Conf::from_file`]: conf::Conf::from_file
+//! [`LibraryError::DigiDoc`]: error::LibraryError::DigiDoc
+//! [`LibraryError::Unknown`]: error::LibraryError::Unknown
+//! [`DigiDocError::has_code`]: error::DigiDocError::has_code
+//! [`DigiDocError::iter_tree`]: error::DigiDocError::iter_tree
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 #[cfg(doctest)]
 #[doc = include_str!("../README.md")]
 struct ReadmeDoctests;
 
-mod algorithm;
-mod conf;
-mod container;
 mod data_file;
 mod der_cert;
-mod exception;
 mod init;
-mod signature;
-mod signer;
 mod stream;
 mod util;
 
-pub use algorithm::*;
-pub use conf::*;
-pub use container::*;
-pub use data_file::*;
-pub use der_cert::*;
-pub use exception::*;
-pub use init::*;
-pub use signature::*;
-pub use signer::*;
+pub mod algorithm;
+pub mod conf;
+pub mod container;
+pub mod error;
+pub mod signature;
+pub mod signer;
+
+#[doc(inline)]
+pub use conf::init_conf;
+#[doc(inline)]
+pub use container::Container;
+#[doc(inline)]
+pub use data_file::DataFile;
+#[doc(inline)]
+pub use der_cert::DerCert;
+#[doc(inline)]
+pub use error::Error;
+#[doc(inline)]
+pub use init::{
+    app_info, initialize, initialize_with_app_info, initialize_with_user_agent, terminate,
+    user_agent, version,
+};
+#[doc(inline)]
+pub use signature::Signature;
+#[doc(inline)]
+pub use signer::{PartialSigner, Signer};

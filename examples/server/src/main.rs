@@ -4,10 +4,12 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use axum::{Json, Router};
 use axum_typed_multipart::{FieldData, TryFromMultipart, TypedMultipart};
-use digidocpp::{
-    Algorithm, Conf, Container, DataFile, DerCert, ExternalPartialSigner, PartialSigner,
-    Pkcs12Signer, Signature, Signer, ValidatorStatus, ValidityExtension,
-};
+use digidocpp::algorithm::Algorithm;
+use digidocpp::conf::Conf;
+use digidocpp::container::ValidityExtension;
+use digidocpp::signature::ValidatorStatus;
+use digidocpp::signer::{ExternalPartialSigner, Pkcs12Signer};
+use digidocpp::{Container, DataFile, DerCert, PartialSigner, Signature, Signer};
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 use std::{env, fs, io};

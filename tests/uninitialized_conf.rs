@@ -11,9 +11,9 @@
 mod common;
 
 use crate::common::{assert_internal_err, conf_from_fixture, der_cert, dir_with_fixtures};
-use digidocpp::{
-    Algorithm, Conf, DerCert, DigestAlgorithm, Error, ExposeSecret, LogLevel, ReportedLogLevel,
-};
+use digidocpp::algorithm::{Algorithm, DigestAlgorithm};
+use digidocpp::conf::{Conf, ExposeSecret, LogLevel, ReportedLogLevel};
+use digidocpp::{DerCert, Error};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

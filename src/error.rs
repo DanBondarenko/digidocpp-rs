@@ -1,3 +1,5 @@
+//! Exception details behind [`Error`]
+
 #![expect(deprecated, reason = "strum")]
 
 use cxx::Exception;
@@ -16,7 +18,9 @@ use thiserror::Error as ThisError;
 /// # Examples
 ///
 /// ```no_run
-/// use digidocpp::{Container, ExceptionCode, Pkcs11Signer};
+/// use digidocpp::error::ExceptionCode;
+/// use digidocpp::signer::Pkcs11Signer;
+/// use digidocpp::Container;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// # let mut container = Container::create("document.asice")?;

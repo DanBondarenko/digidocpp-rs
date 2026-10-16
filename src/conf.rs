@@ -1,7 +1,10 @@
+//! Config and log level types
+
+use crate::algorithm::Algorithm;
 use crate::util::{
     ffi_variant_doc, library_and_ffi_variants_doc, library_variant_doc, path_to_str,
 };
-use crate::{Algorithm, DerCert, Error};
+use crate::{DerCert, Error};
 use cxx::UniquePtr;
 use libdigidocpp_sys::conf::ffi;
 pub use secrecy::{ExposeSecret, SecretString};
@@ -24,7 +27,7 @@ use strum::FromRepr;
 /// # Examples
 ///
 /// ```no_run
-/// use digidocpp::Conf;
+/// use digidocpp::conf::Conf;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut conf = Conf::new()?;
@@ -576,7 +579,7 @@ impl Conf {
 
     /// Returns the path of the PKCS #11 driver.
     ///
-    /// [`Pkcs11Signer::new`](crate::Pkcs11Signer::new) loads this driver. The default is chosen
+    /// [`Pkcs11Signer::new`](crate::signer::Pkcs11Signer::new) loads this driver. The default is chosen
     /// when libdigidocpp is built.
     ///
     /// # Errors
@@ -585,7 +588,7 @@ impl Conf {
         Ok(self.0.pkcs11_driver()?)
     }
 
-    /// Returns the hash function for [`DigestSetting::Default`](crate::DigestSetting::Default).
+    /// Returns the hash function for [`DigestSetting::Default`](crate::algorithm::DigestSetting::Default).
     ///
     /// # Errors
     #[doc = library_and_ffi_variants_doc!()]

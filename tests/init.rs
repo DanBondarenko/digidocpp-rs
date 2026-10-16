@@ -12,9 +12,9 @@
 mod common;
 
 use crate::common::{conf_for_testing, dir_with_fixtures, init_with_valid_tsl};
+use digidocpp::conf::Conf;
 use digidocpp::{
-    Conf, app_info, init_conf, initialize_with_app_info, initialize_with_user_agent, user_agent,
-    version,
+    app_info, init_conf, initialize_with_app_info, initialize_with_user_agent, user_agent, version,
 };
 use rstest::rstest;
 use serial_test::serial;

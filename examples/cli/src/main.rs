@@ -1,14 +1,16 @@
 use anyhow::{Context, Result, anyhow, ensure};
 use bytesize::ByteSize;
 use clap::{Args, Parser, Subcommand};
+use digidocpp::conf::Conf;
+use digidocpp::container::{ContainerType, ValidityExtension};
+use digidocpp::error::ExceptionCode;
+use digidocpp::signature::{ValidatorResult, ValidatorStatus};
+use digidocpp::signer::ExternalPartialSigner;
 #[cfg(not(windows))]
-use digidocpp::Pkcs11Signer;
+use digidocpp::signer::Pkcs11Signer;
 #[cfg(windows)]
-use digidocpp::WinSigner;
-use digidocpp::{
-    Conf, Container, ContainerType, ExceptionCode, ExternalPartialSigner, PartialSigner, Signature,
-    ValidatorResult, ValidatorStatus, ValidityExtension,
-};
+use digidocpp::signer::WinSigner;
+use digidocpp::{Container, PartialSigner, Signature};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

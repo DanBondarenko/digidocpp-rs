@@ -13,7 +13,8 @@
 mod common;
 
 use crate::common::{assert_general_digidoc_err, init, init_with_valid_tsl, open_container};
-use digidocpp::{Container, DigiDocError, ExceptionCode};
+use digidocpp::Container;
+use digidocpp::error::{DigiDocError, ExceptionCode};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

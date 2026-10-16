@@ -1,9 +1,10 @@
+use crate::Error;
+use crate::algorithm::DigestSetting;
 use crate::stream::call_then_deliver_stream_failure;
 use crate::util::{
     ffi_variant_doc, io_variant_doc, library_and_ffi_variants_doc, library_io_and_ffi_variants_doc,
     library_variant_doc, path_to_str, reader_or_writer_panic_doc,
 };
-use crate::{DigestSetting, Error};
 use libdigidocpp_sys::data_file::ffi;
 use libdigidocpp_sys::stream::Sink;
 use std::fmt::{Debug, Display, Formatter};
@@ -75,7 +76,7 @@ impl DataFile<'_> {
     /// Calculates the digest of the content.
     ///
     /// [`DigestSetting::Default`] uses the hash function from
-    /// [`Conf::digest_uri`](crate::Conf::digest_uri).
+    /// [`Conf::digest_uri`](crate::conf::Conf::digest_uri).
     ///
     /// # Errors
     #[doc = library_io_and_ffi_variants_doc!()]

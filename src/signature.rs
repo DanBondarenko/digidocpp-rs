@@ -1,11 +1,15 @@
+//! Signatures and validation results
+
 #![expect(deprecated, reason = "strum")]
 
+use crate::algorithm::{Algorithm, SignatureProfile};
+use crate::error::ExceptionCode;
 use crate::stream::call_then_deliver_stream_failure;
 use crate::util::{
     ffi_variant_doc, io_variant_doc, library_and_ffi_variants_doc, library_io_and_ffi_variants_doc,
     library_variant_doc, reader_or_writer_panic_doc,
 };
-use crate::{Algorithm, DerCert, Error, ExceptionCode, PartialSigner, SignatureProfile};
+use crate::{DerCert, Error, PartialSigner};
 use libdigidocpp_sys::signature::ffi;
 use std::fmt::{Debug, Display, Formatter};
 use std::pin::Pin;
@@ -226,7 +230,7 @@ impl Signature<'_> {
     /// # Errors
     /// Returns [`Error`] when a check fails or the signature has warnings, such as a weak digest.
     /// The failed checks are the causes (see
-    /// [`DigiDocError::causes`](crate::DigiDocError::causes)).
+    /// [`DigiDocError::causes`](crate::error::DigiDocError::causes)).
     #[doc = io_variant_doc!()]
     ///
     /// # Panics

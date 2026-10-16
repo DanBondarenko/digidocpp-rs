@@ -1,10 +1,11 @@
+//! Signer implementations
+
+use crate::algorithm::{Algorithm, AlgorithmSetting, ProfileSetting, SigningProfile};
+use crate::conf::{ExposeSecret, SecretString};
 use crate::util::{
     ffi_variant_doc, library_and_ffi_variants_doc, library_variant_doc, path_to_str,
 };
-use crate::{
-    Algorithm, AlgorithmSetting, DerCert, Error, ExposeSecret, ProfileSetting, SecretString,
-    SigningProfile,
-};
+use crate::{DerCert, Error};
 use cxx::UniquePtr;
 use libdigidocpp_sys::signer::ffi;
 use std::fmt::{Debug, Formatter};
@@ -250,7 +251,7 @@ pub trait Signer: PartialSigner {
     /// # Errors
     #[doc = library_variant_doc!()]
     /// For example, signing fails on a wrong or locked PIN (see
-    /// [`ExceptionCode`](crate::ExceptionCode)).
+    /// [`ExceptionCode`](crate::error::ExceptionCode)).
     #[doc = ffi_variant_doc!()]
     fn sign(&self, method: Algorithm, digest: &[u8]) -> Result<Vec<u8>, Error> {
         Ok(ffi::sign(self.ffi_signer(), method.as_ref(), digest)?)
@@ -261,7 +262,7 @@ pub trait Signer: PartialSigner {
 /// it can't be used for signing directly.
 ///
 /// Use it to prepare a signature that is signed externally. Intended use case is calling
-/// [`SignatureMut::extend_signature_profile`](crate::SignatureMut::extend_signature_profile) and
+/// [`SignatureMut::extend_signature_profile`](crate::signature::SignatureMut::extend_signature_profile) and
 /// [`Container::extend_container_validity`](crate::Container::extend_container_validity).
 pub struct ExternalPartialSigner(UniquePtr<ffi::ExternalPartialSigner>);
 
@@ -306,7 +307,7 @@ impl Debug for ExternalPartialSigner {
 pub struct Pkcs11Signer(UniquePtr<ffi::PKCS11Signer>);
 
 impl Pkcs11Signer {
-    /// Loads the driver from [`Conf::pkcs11_driver`](crate::Conf::pkcs11_driver).
+    /// Loads the driver from [`Conf::pkcs11_driver`](crate::conf::Conf::pkcs11_driver).
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
@@ -334,7 +335,7 @@ impl Pkcs11Signer {
     /// Sets the PIN used to sign (PIN2 on Estonian ID cards).
     ///
     /// Not used when the reader has its own PIN pad. Signing fails with
-    /// [`ExceptionCode::PINLocked`](crate::ExceptionCode::PINLocked) when the card is locked.
+    /// [`ExceptionCode::PINLocked`](crate::error::ExceptionCode::PINLocked) when the card is locked.
     ///
     /// # Errors
     #[doc = library_and_ffi_variants_doc!()]

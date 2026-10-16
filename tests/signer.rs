@@ -14,10 +14,9 @@ mod common;
 use crate::common::{
     assert_general_digidoc_err, assert_internal_err, init_with_valid_tsl, pkcs12_signer,
 };
-use digidocpp::{
-    Algorithm, AlgorithmSetting, DigestAlgorithm, Error, PartialSigner, Pkcs11Signer, Pkcs12Signer,
-    Signer, SigningProfile,
-};
+use digidocpp::algorithm::{Algorithm, AlgorithmSetting, DigestAlgorithm, SigningProfile};
+use digidocpp::signer::{Pkcs11Signer, Pkcs12Signer};
+use digidocpp::{Error, PartialSigner, Signer};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

@@ -1,3 +1,5 @@
+//! Algorithm and profile enums
+
 use derive_more::From;
 use std::convert::Infallible;
 use std::str::FromStr;
@@ -109,7 +111,7 @@ pub enum SignatureAlgorithm {
 #[derive(Clone, Copy, Debug, Default, Eq, Hash, PartialEq, AsRefStr, Display, From)]
 #[non_exhaustive]
 pub enum DigestSetting {
-    /// The library default, configured via [`Conf::digest_uri`](crate::Conf::digest_uri).
+    /// The library default, configured via [`Conf::digest_uri`](crate::conf::Conf::digest_uri).
     #[default]
     #[strum(serialize = "")]
     #[from(skip)]

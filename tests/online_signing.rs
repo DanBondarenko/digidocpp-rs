@@ -18,10 +18,12 @@ use crate::common::{
     MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err, assert_is_recent,
     create_unsigned_asice_with_data_file, init_with_valid_tsl,
 };
-use digidocpp::{
-    Algorithm, AlgorithmSetting, Container, ContainerType, ExceptionCode, PartialSigner,
-    ProfileSetting, SignatureAlgorithm, SignatureProfile, Signer, ValidityExtension,
+use digidocpp::algorithm::{
+    Algorithm, AlgorithmSetting, ProfileSetting, SignatureAlgorithm, SignatureProfile,
 };
+use digidocpp::container::{ContainerType, ValidityExtension};
+use digidocpp::error::ExceptionCode;
+use digidocpp::{Container, PartialSigner, Signer};
 use rstest::rstest;
 use serial_test::serial;
 use std::error::Error as StdError;

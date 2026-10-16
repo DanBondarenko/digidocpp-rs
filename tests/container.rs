@@ -17,9 +17,9 @@ use crate::common::{
     create_empty_asice_container, create_unsigned_asice_with_data_file, dir_with_fixtures,
     init_with_valid_tsl,
 };
-use digidocpp::{
-    Container, ContainerType, Error, SignatureAlgorithm, SignatureProfile, init_conf, initialize,
-};
+use digidocpp::algorithm::{SignatureAlgorithm, SignatureProfile};
+use digidocpp::container::ContainerType;
+use digidocpp::{Container, Error, init_conf, initialize};
 use httpmock::{Mock, MockServer, Then};
 use rstest::{fixture, rstest};
 use serde_json::json;

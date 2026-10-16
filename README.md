@@ -55,7 +55,8 @@ Digitally sign a file with an ID card through PKCS #11. With the default profile
 time-stamp and OCSP services.
 
 ```rust,no_run
-use digidocpp::{Container, Pkcs11Signer};
+use digidocpp::Container;
+use digidocpp::signer::Pkcs11Signer;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     digidocpp::initialize()?;

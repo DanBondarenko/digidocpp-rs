@@ -1,3 +1,5 @@
+//! Types used by [`Container`]
+
 use crate::signature::{Signature, SignatureMut};
 use crate::stream::call_then_deliver_stream_failure;
 use crate::util::{
@@ -52,10 +54,11 @@ pub enum ContainerType {
 /// # Examples
 ///
 /// Sign a file with an ID card through PKCS #11. With the default profile, signing contacts the
-/// time-stamp and OCSP services set in [`Conf`](crate::Conf).
+/// time-stamp and OCSP services set in [`Conf`](crate::conf::Conf).
 ///
 /// ```no_run
-/// use digidocpp::{Container, Pkcs11Signer};
+/// use digidocpp::Container;
+/// use digidocpp::signer::Pkcs11Signer;
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// digidocpp::initialize()?;
@@ -75,7 +78,8 @@ pub enum ContainerType {
 /// qualified counts as valid.
 ///
 /// ```no_run
-/// use digidocpp::{Container, Error, Signature, ValidatorStatus};
+/// use digidocpp::signature::ValidatorStatus;
+/// use digidocpp::{Container, Error, Signature};
 ///
 /// # fn main() -> Result<(), Error> {
 /// digidocpp::initialize()?;
@@ -121,7 +125,7 @@ impl Container {
     ///
     /// ASiC-E, ASiC-S and ADOC are read locally. DDOC, PDF and ASiC-E or ASiC-S with CAdES
     /// signatures are sent to the SiVa service
-    /// ([`Conf::verify_service_uri`](crate::Conf::verify_service_uri)). To disallow SiVa service,
+    /// ([`Conf::verify_service_uri`](crate::conf::Conf::verify_service_uri)). To disallow SiVa service,
     /// use [`Container::open_requiring_online_validation_consent`] with a callback returning false.
     ///
     /// # Errors
@@ -350,9 +354,9 @@ impl Container {
     ///
     /// The signer's [profile](PartialSigner::profile) sets what libdigidocpp adds after signing.
     /// Profiles with `time-stamp` add a time-stamp and an OCSP response. For this,
-    /// libdigidocpp contacts the services from [`Conf`](crate::Conf). ASiC-S accepts one
+    /// libdigidocpp contacts the services from [`Conf`](crate::conf::Conf). ASiC-S accepts one
     /// signature and only with profile
-    /// [`ProfileSetting::TimeStampToken`](crate::ProfileSetting::TimeStampToken).
+    /// [`ProfileSetting::TimeStampToken`](crate::algorithm::ProfileSetting::TimeStampToken).
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
@@ -426,7 +430,8 @@ impl Container {
     /// # Examples
     ///
     /// ```no_run
-    /// use digidocpp::{Container, ExternalPartialSigner};
+    /// use digidocpp::Container;
+    /// use digidocpp::signer::ExternalPartialSigner;
     ///
     /// # fn sign_remotely(_digest: &[u8]) -> Vec<u8> { Vec::new() }
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
