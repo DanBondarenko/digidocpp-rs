@@ -3,8 +3,8 @@ name = "digidocpp-example-cli"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-publish.workspace = true
 exclude = ["tests/"]
+publish = false
 
 [dependencies]
 anyhow = "1.0.104"

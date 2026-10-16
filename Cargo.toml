@@ -8,19 +8,37 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
+authors = ["Dan Bondarenko <dan.bondarenko.1@gmail.com>"]
 edition = "2024"
 rust-version = "1.88"
 license = "MIT OR Apache-2.0"
-publish = false
+publish = true
+repository = "https://github.com/DanBondarenko/digidocpp-rs"
 
 [package]
 name = "digidocpp"
+description = "Safe bindings to libdigidocpp: create and validate eIDAS digital signatures in ASiC-E/XAdES containers"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 license.workspace = true
+readme = "README.md"
+keywords = ["digidoc", "digital-signature", "xades", "asice", "eidas"]
+categories = ["api-bindings", "cryptography"]
 publish.workspace = true
-exclude = ["tests/"]
+exclude = [
+    "tests/",
+    ".config/",
+    ".clang-format",
+    ".clang-format-ignore",
+    ".clang-tidy",
+    ".gitattributes",
+    ".gitignore",
+    "clippy.toml",
+    "rust-toolchain.toml",
+]
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]

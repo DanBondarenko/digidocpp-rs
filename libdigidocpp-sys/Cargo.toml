@@ -1,12 +1,21 @@
 [package]
 name = "libdigidocpp-sys"
+description = "Low-level bindings to libdigidocpp. See digidocpp crate for safe API."
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 license.workspace = true
+readme = "README.md"
+keywords = ["cxx", "xades", "digidoc", "sys", "ffi"]
+categories = ["external-ffi-bindings", "cryptography"]
 links = "digidocpp"
 publish.workspace = true
-exclude = ["tests/"]
+exclude = [
+    "tests/",
+    ".gitignore",
+]
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]

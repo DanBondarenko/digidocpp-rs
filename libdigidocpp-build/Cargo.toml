@@ -1,9 +1,15 @@
 [package]
 name = "libdigidocpp-build"
+description = "Build-script helpers to find libdigidocpp on Linux, macOS and Windows, and to emit its runtime rpath"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 license.workspace = true
+readme = "README.md"
+keywords = ["pkg-config", "build-dependencies", "build-script", "rpath"]
+categories = ["development-tools::build-utils"]
 publish.workspace = true
 
 [dependencies]
