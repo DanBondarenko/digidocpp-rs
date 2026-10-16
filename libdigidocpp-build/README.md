@@ -7,7 +7,7 @@ link anything.
 Part of [digidocpp-rs](https://github.com/DanBondarenko/digidocpp-rs). Looking for the
 bindings? See [`digidocpp`](https://crates.io/crates/digidocpp).
 
-## Install
+## Installation
 
 ```sh
 cargo add --build libdigidocpp-build
@@ -48,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 `Install::discover` searches common install locations by default. The environment variables that
 override the search and the platform defaults are in
-[Building](https://docs.rs/digidocpp/latest/digidocpp/#building) in the `digidocpp` docs.
+[Installation](https://docs.rs/digidocpp/latest/digidocpp/#installation) in the `digidocpp` docs.
 
 ## Documentation
 

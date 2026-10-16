@@ -1,39 +1,36 @@
 # digidocpp
 
-Create, sign, validate and extend ASiC-E containers with XAdES signatures.
+Create and validate eIDAS digital signatures in ASiC-E/XAdES containers.
 
-Rust bindings for [libdigidocpp](https://github.com/open-eid/libdigidocpp), the C++ engine behind
-[DigiDoc4](https://github.com/open-eid/DigiDoc4-Client), the Estonian state's e-signature client.
+This crate provides safe Rust bindings for
+[libdigidocpp](https://www.id.ee/en/article/digidoc-libraries-c-library-libdigidocpp/), the C++
+library for creating and validating digital signatures maintained by the Estonian Information System
+Authority.
+
 Main workflows:
 - Open, create, and save containers.
-- Create and validate signatures.
+- Create and validate digital signatures.
+- Extend the validity of signed containers.
 - Add, extract and stream data files.
+
+Low-level bindings to libdigidocpp are provided in the
+[libdigidocpp-sys](https://crates.io/crates/libdigidocpp-sys) crate.
 
 Unofficial. Not affiliated with the Estonian Information System Authority (RIA).
 
-## Install
+## Code examples
 
-```sh
-cargo add digidocpp
-```
+### Reading a container
 
-Requires:
-
-- libdigidocpp 4.5.0 or newer, with headers. It is linked dynamically, not bundled.
-- A C++20 compiler.
-- Rust 1.88 or newer.
-
-See [Building](https://docs.rs/digidocpp/latest/digidocpp/#building) for how the build finds
-the library and how a program finds it at run time.
-
-## Quick start
+Inspect the signatures and files of a container. Check the validity of signatures. Write contained
+files to a target of your choosing.
 
 ```rust,no_run
 use digidocpp::Container;
 
 fn main() -> Result<(), digidocpp::Error> {
     digidocpp::initialize()?;
-    let container = Container::open("document.asice")?;
+    let container = Container::open("path/to/document.asice")?;
 
     for signature in container.signatures()? {
         println!("Signed by: {}", signature.signed_by()?);
@@ -52,13 +49,64 @@ fn main() -> Result<(), digidocpp::Error> {
 }
 ```
 
-See [docs.rs](https://docs.rs/digidocpp) and
-[examples](https://github.com/DanBondarenko/digidocpp-rs/tree/main/examples) for more information.
+### Creating and signing a container
+
+Digitally sign a file with an ID card through PKCS #11. With the default profile, signing contacts
+time-stamp and OCSP services.
+
+```rust,no_run
+use digidocpp::{Container, Pkcs11Signer};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    digidocpp::initialize()?;
+
+    let mut container = Container::create("contract.asice")?;
+    container.add_data_file("path/to/contract.pdf", "application/pdf")?;
+    let mut signer = Pkcs11Signer::new()?;
+
+    signer.set_pin(std::env::var("PIN2")?)?;
+    container.sign(&mut signer)?;
+    container.save()?;
+
+    Ok(())
+}
+```
+
+## Installation
+
+```sh
+cargo add digidocpp
+```
+
+### Requires:
+
+- libdigidocpp 4.5.0 or newer, with headers. It is linked dynamically, not bundled.
+- A C++20 compiler.
+- Rust 1.88 or newer.
+
+### Running your program
+
+The loader must find libdigidocpp at start-up. If it cannot:
+
+- Linux and macOS: emit a rpath from your `build.rs`. You may use a helper
+  (`cargo add --build libdigidocpp-build`).
+
+  ```rust,ignore
+  // build.rs
+  fn main() -> Result<(), Box<dyn std::error::Error>> {
+      libdigidocpp_build::Install::discover()?.emit_rpath()?;
+      Ok(())
+  }
+  ```
+
+- Windows: add the DLL directory to `PATH`, or place the DLL next to the executable.
 
 ## Documentation
 
-See [docs.rs](https://docs.rs/digidocpp) for the API. The C++ API is documented in the
-[upstream reference](https://open-eid.github.io/libdigidocpp/).
+See [docs.rs](https://docs.rs/digidocpp) for documentation. The repository also contains functional
+[examples](https://github.com/DanBondarenko/digidocpp-rs/tree/main/examples) demonstrating common
+use cases with test data. The upstream library and API are documented in the
+[libdigidocpp manual](https://open-eid.github.io/libdigidocpp/).
 
 Source and issue tracker: [digidocpp-rs](https://github.com/DanBondarenko/digidocpp-rs).
 

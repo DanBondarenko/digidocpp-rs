@@ -22,7 +22,8 @@
 //!
 //! - Configure and initialize the library: [`conf::ffi::SettableConf`], [`conf::ffi::init_conf`],
 //!   then [`init::ffi::initialize_default`].
-//! - Open, create or save a container: [`container::ffi::open`], [`container::ffi::create`], [`container::ffi::save`].
+//! - Open, create or save a container: [`container::ffi::open`], [`container::ffi::create`],
+//!   [`container::ffi::save`].
 //! - Read data files: [`container::ffi::data_file_at`], operations in [`data_file::ffi`].
 //! - Validate signatures: [`container::ffi::signature_at`], then [`signature::ffi::validate`]
 //!   or [`signature::ffi::validator`].
@@ -32,7 +33,8 @@
 //!
 //! # From the C++ API
 //!
-//! - Classes keep their names. C++ methods are represented as free functions that take the object first.
+//! - Classes keep their names. C++ methods are represented as free functions that take the object
+//!   first.
 //! - A list becomes a `*_size` function and an `*_at` function.
 //! - Paths and strings are `&str`, so they must be UTF-8.
 //!
@@ -49,10 +51,10 @@
 //! - Optionally call [`init::ffi::terminate`] once at the end. No call is valid afterwards.
 //! - Use the library from one thread. Upstream keeps global state and has no synchronization.
 //!
-//! # Building
+//! # Installation
 //!
 //! libdigidocpp is linked dynamically. It is not bundled, and there is no `vendored` or `static`
-//! option. See [Building] docs of the `digidocpp` crate for the requirements, the search rules
+//! option. See [Installation] docs of the `digidocpp` crate for the requirements, the search rules
 //! and the run-time setup. They apply to this crate too.
 //!
 //! # See also
@@ -61,7 +63,7 @@
 //! - The upstream C++ [API reference](https://open-eid.github.io/libdigidocpp/).
 //!
 //! [libdigidocpp]: https://github.com/open-eid/libdigidocpp
-//! [Building]: https://docs.rs/digidocpp/latest/digidocpp/#building
+//! [Installation]: https://docs.rs/digidocpp/latest/digidocpp/#installation
 #![expect(clippy::multiple_unsafe_ops_per_block, reason = "cxx")]
 
 #[cfg(doctest)]

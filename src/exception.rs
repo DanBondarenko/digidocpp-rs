@@ -183,7 +183,7 @@ impl DigiDocError {
     }
 
     /// Iterates over this error and all its causal descendants, depth first.
-    pub fn iter(&self) -> impl Iterator<Item = &Self> {
+    pub fn iter_tree(&self) -> impl Iterator<Item = &Self> {
         let mut stack = vec![self];
 
         std::iter::from_fn(move || {
@@ -200,7 +200,7 @@ impl DigiDocError {
     /// [`digidoc::Exception::ExceptionCode`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Exception.html
     #[must_use]
     pub fn has_code(&self, code: ExceptionCode) -> bool {
-        self.iter().any(|error| error.code() == Some(code))
+        self.iter_tree().any(|error| error.code() == Some(code))
     }
 
     fn from_cause(cause: &ffi::ExceptionCause, subcauses: Vec<Self>) -> Self {
@@ -544,7 +544,7 @@ mod tests {
         let messages: Vec<_> = error
             .as_digidoc()
             .unwrap()
-            .iter()
+            .iter_tree()
             .map(DigiDocError::message)
             .collect();
 
