@@ -22,29 +22,25 @@ env:
 
 jobs:
   test:
-    name: Test (Ubuntu ${{ matrix.version }})
-    runs-on: ubuntu-${{ matrix.version }}
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - version: "22.04"
-            codename: jammy
-          - version: "24.04"
-            codename: noble
-          - version: "26.04"
-            codename: resolute
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04, macos-26]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
-        with:
-          codename: ${{ matrix.codename }}
+      - uses: ./.github/actions/install-libdigidocpp-apt
+        if: runner.os == 'Linux'
+
+      - uses: ./.github/actions/install-libdigidocpp-pkg
+        if: runner.os == 'macOS'
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
-          cache-key: ${{ matrix.codename }}
+          cache-key: ${{ matrix.os }}
 
       - name: Test
         run: cargo test --workspace --locked --no-fail-fast
@@ -72,13 +68,21 @@ jobs:
         run: git ls-files -z '*.cpp' '*.h' | xargs -0 clang-format --dry-run --Werror
 
   clippy:
-    name: Clippy
-    runs-on: ubuntu-24.04
+    name: Clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
+      - uses: ./.github/actions/install-libdigidocpp-apt
+        if: runner.os == 'Linux'
+
+      - uses: ./.github/actions/install-libdigidocpp-pkg
+        if: runner.os == 'macOS'
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
@@ -86,15 +90,29 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
   clang-tidy:
-    name: Clang-tidy
-    runs-on: ubuntu-24.04
+    name: Clang-tidy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
-        with:
-          extra-packages: bear
+      - uses: ./.github/actions/install-libdigidocpp-apt
+        if: runner.os == 'Linux'
+
+      - uses: ./.github/actions/install-libdigidocpp-pkg
+        if: runner.os == 'macOS'
+
+      - name: Install bear (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y bear
+
+      - name: Install bear (macOS)
+        if: runner.os == 'macOS'
+        run: brew install bear
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
@@ -106,17 +124,29 @@ jobs:
           cargo clean -p libdigidocpp-sys
           bear -- cargo build -p libdigidocpp-sys --all-features --locked
 
+      - name: Select macOS SDK
+        if: runner.os == 'macOS'
+        run: echo "SDKROOT=$(xcrun --show-sdk-path)" >> "$GITHUB_ENV"
+
       - name: Clang-tidy
         run: git ls-files -z '*.cpp' '*.h' | xargs -0 clang-tidy -p .
 
   msrv:
-    name: MSRV
-    runs-on: ubuntu-24.04
+    name: MSRV (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
+      - uses: ./.github/actions/install-libdigidocpp-apt
+        if: runner.os == 'Linux'
+
+      - uses: ./.github/actions/install-libdigidocpp-pkg
+        if: runner.os == 'macOS'
 
       - name: Read MSRV
         id: msrv
@@ -133,15 +163,23 @@ jobs:
         run: cargo check -p digidocpp -p libdigidocpp-sys -p libdigidocpp-build --locked
 
   docs:
-    name: Docs
-    runs-on: ubuntu-24.04
+    name: Docs (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
     env:
       RUSTDOCFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
+      - uses: ./.github/actions/install-libdigidocpp-apt
+        if: runner.os == 'Linux'
+
+      - uses: ./.github/actions/install-libdigidocpp-pkg
+        if: runner.os == 'macOS'
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
@@ -170,7 +208,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
+      - uses: ./.github/actions/install-libdigidocpp-apt
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
@@ -184,7 +222,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp
+      - uses: ./.github/actions/install-libdigidocpp-apt
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
