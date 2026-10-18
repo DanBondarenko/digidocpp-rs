@@ -9,7 +9,7 @@ runs:
       env:
         GH_TOKEN: ${{ github.token }}
         RELEASE_TAG: v4.5.1
-      run: |
+      run: | # zizmor: ignore[github-env] path is a constant
         $PSNativeCommandUseErrorActionPreference = $true
         gh release download $env:RELEASE_TAG --repo open-eid/libdigidocpp --pattern '*.x64.msi' --output "$env:RUNNER_TEMP\libdigidocpp.msi"
         $installer = Start-Process msiexec -ArgumentList '/i', "$env:RUNNER_TEMP\libdigidocpp.msi", '/qn', '/norestart' -Wait -PassThru
