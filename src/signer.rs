@@ -371,10 +371,10 @@ impl Debug for Pkcs11Signer {
 /// Wraps upstream [`digidoc::WinSigner`].
 ///
 /// [`digidoc::WinSigner`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1WinSigner.html
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 pub struct WinSigner(UniquePtr<ffi::WinSigner>);
 
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 impl WinSigner {
     /// Creates a signer.
     ///
@@ -413,7 +413,7 @@ impl WinSigner {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 impl sealed::Sealed for WinSigner {
     fn ffi_signer(&self) -> &ffi::Signer {
         ffi::win_as_signer(&self.0)
@@ -424,13 +424,13 @@ impl sealed::Sealed for WinSigner {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 impl PartialSigner for WinSigner {}
 
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 impl Signer for WinSigner {}
 
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 impl Debug for WinSigner {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WinSigner").finish_non_exhaustive()

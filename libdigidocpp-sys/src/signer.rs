@@ -33,7 +33,7 @@ pub mod ffi {
         type PKCS12Signer;
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, docs_rs))]
     #[namespace = "digidoc"]
     unsafe extern "C++" {
         include!("digidocpp/crypto/WinSigner.h");
@@ -44,7 +44,7 @@ pub mod ffi {
         type WinSigner;
     }
 
-    #[cfg(windows)]
+    #[cfg(any(windows, docs_rs))]
     #[namespace = "digidoc_rs::signer"]
     unsafe extern "C++" {
         include!("libdigidocpp-sys/include/signer_ffi.h");
@@ -303,7 +303,7 @@ impl Debug for ffi::ExternalPartialSigner {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, docs_rs))]
 impl Debug for ffi::WinSigner {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("WinSigner").finish_non_exhaustive()
