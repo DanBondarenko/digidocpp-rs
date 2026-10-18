@@ -31,7 +31,9 @@ const SOURCES: [&str; 8] = [
 
 fn main() -> Result<(), Box<dyn Error>> {
     emit("cargo:rerun-if-env-changed=DOCS_RS");
+    emit("cargo:rustc-check-cfg=cfg(docs_rs)");
     if env::var_os("DOCS_RS").is_some() {
+        emit("cargo:rustc-cfg=docs_rs");
         return Ok(());
     }
 

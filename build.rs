@@ -7,7 +7,9 @@ use libdigidocpp_build::Install;
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-env-changed=DOCS_RS");
+    println!("cargo:rustc-check-cfg=cfg(docs_rs)");
     if env::var_os("DOCS_RS").is_some() {
+        println!("cargo:rustc-cfg=docs_rs");
         return Ok(());
     }
 
