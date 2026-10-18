@@ -31,12 +31,14 @@ publish.workspace = true
 exclude = [
     "tests/",
     ".config/",
+    ".github/",
     ".clang-format",
     ".clang-format-ignore",
     ".clang-tidy",
     ".gitattributes",
     ".gitignore",
     "clippy.toml",
+    "deny.toml",
     "rust-toolchain.toml",
 ]
 
