@@ -1,0 +1,14 @@
+name: Install libdigidocpp
+description: Install libdigidocpp for runner OS
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/install-libdigidocpp-apt
+      if: runner.os == 'Linux'
+
+    - uses: ./.github/actions/install-libdigidocpp-pkg
+      if: runner.os == 'macOS'
+
+    - uses: ./.github/actions/install-libdigidocpp-msi
+      if: runner.os == 'Windows'

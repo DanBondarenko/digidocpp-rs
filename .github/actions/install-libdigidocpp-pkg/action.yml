@@ -1,0 +1,14 @@
+name: Install libdigidocpp (pkg)
+description: Install libdigidocpp framework from release package
+
+runs:
+  using: composite
+  steps:
+    - name: Install libdigidocpp from release package
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: v4.5.0
+      run: |
+        gh release download "$RELEASE_TAG" --repo open-eid/libdigidocpp --pattern '*.pkg' --dir "$RUNNER_TEMP/libdigidocpp"
+        sudo installer -pkg "$RUNNER_TEMP"/libdigidocpp/*.pkg -target /

@@ -1,0 +1,19 @@
+name: Install libdigidocpp (msi)
+description: Install libdigidocpp from release package
+
+runs:
+  using: composite
+  steps:
+    - name: Install libdigidocpp from release package
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RELEASE_TAG: v4.5.1
+      run: | # zizmor: ignore[github-env] path is a constant
+        $PSNativeCommandUseErrorActionPreference = $true
+        gh release download $env:RELEASE_TAG --repo open-eid/libdigidocpp --pattern '*.x64.msi' --output "$env:RUNNER_TEMP\libdigidocpp.msi"
+        $installer = Start-Process msiexec -ArgumentList '/i', "$env:RUNNER_TEMP\libdigidocpp.msi", '/qn', '/norestart' -Wait -PassThru
+        if ($installer.ExitCode -notin 0, 3010) {
+          throw "msiexec failed with exit code $($installer.ExitCode)"
+        }
+        Add-Content -Path $env:GITHUB_PATH -Value "$env:ProgramFiles\libdigidocpp" -Encoding utf8
