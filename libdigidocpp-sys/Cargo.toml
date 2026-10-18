@@ -27,7 +27,7 @@ serde_json = "1.0.151"
 
 [build-dependencies]
 cxx-build = "1.0.177"
-libdigidocpp-build = { path = "../libdigidocpp-build" }
+libdigidocpp-build = { path = "../libdigidocpp-build", version = "0.1.0" }
 
 [features]
 # For this crate's own tests. Not public API.
