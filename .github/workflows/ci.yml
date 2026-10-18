@@ -28,15 +28,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04, macos-26]
+        os: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04, macos-26, windows-2025]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp-apt
-        if: runner.os == 'Linux'
-
-      - uses: ./.github/actions/install-libdigidocpp-pkg
-        if: runner.os == 'macOS'
+      - uses: ./.github/actions/install-libdigidocpp
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
@@ -74,15 +70,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-26]
+        os: [ubuntu-24.04, macos-26, windows-2025]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp-apt
-        if: runner.os == 'Linux'
-
-      - uses: ./.github/actions/install-libdigidocpp-pkg
-        if: runner.os == 'macOS'
+      - uses: ./.github/actions/install-libdigidocpp
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
@@ -100,11 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp-apt
-        if: runner.os == 'Linux'
-
-      - uses: ./.github/actions/install-libdigidocpp-pkg
-        if: runner.os == 'macOS'
+      - uses: ./.github/actions/install-libdigidocpp
 
       - name: Install bear (Linux)
         if: runner.os == 'Linux'
@@ -138,15 +126,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-26]
+        os: [ubuntu-24.04, macos-26, windows-2025]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp-apt
-        if: runner.os == 'Linux'
-
-      - uses: ./.github/actions/install-libdigidocpp-pkg
-        if: runner.os == 'macOS'
+      - uses: ./.github/actions/install-libdigidocpp
 
       - name: Read MSRV
         id: msrv
@@ -169,17 +153,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-26]
+        os: [ubuntu-24.04, macos-26, windows-2025]
     env:
       RUSTDOCFLAGS: -D warnings
     steps:
       - uses: actions/checkout@v7
 
-      - uses: ./.github/actions/install-libdigidocpp-apt
-        if: runner.os == 'Linux'
-
-      - uses: ./.github/actions/install-libdigidocpp-pkg
-        if: runner.os == 'macOS'
+      - uses: ./.github/actions/install-libdigidocpp
 
       - uses: actions-rust-lang/setup-rust-toolchain@v2
 
