@@ -1,5 +1,11 @@
 # digidocpp
 
+[![CI](https://github.com/DanBondarenko/digidocpp-rs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DanBondarenko/digidocpp-rs/actions/workflows/ci.yml?query=branch%3Amain)
+[![crates.io](https://img.shields.io/crates/v/digidocpp.svg)](https://crates.io/crates/digidocpp)
+[![docs.rs](https://docs.rs/digidocpp/badge.svg)](https://docs.rs/digidocpp)
+[![License](https://img.shields.io/crates/l/digidocpp.svg)](https://github.com/DanBondarenko/digidocpp-rs#license)
+[![MSRV](https://img.shields.io/crates/msrv/digidocpp.svg)](https://github.com/DanBondarenko/digidocpp-rs/blob/main/Cargo.toml)
+
 Create and validate eIDAS digital signatures in ASiC-E/XAdES containers.
 
 This crate provides safe Rust bindings for
