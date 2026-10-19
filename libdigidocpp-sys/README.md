@@ -1,5 +1,11 @@
 # libdigidocpp-sys
 
+[![CI](https://github.com/DanBondarenko/digidocpp-rs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DanBondarenko/digidocpp-rs/actions/workflows/ci.yml?query=branch%3Amain)
+[![crates.io](https://img.shields.io/crates/v/libdigidocpp-sys.svg)](https://crates.io/crates/libdigidocpp-sys)
+[![docs.rs](https://docs.rs/libdigidocpp-sys/badge.svg)](https://docs.rs/libdigidocpp-sys)
+[![License](https://img.shields.io/crates/l/libdigidocpp-sys.svg)](https://github.com/DanBondarenko/digidocpp-rs#license)
+[![MSRV](https://img.shields.io/crates/msrv/libdigidocpp-sys.svg)](https://github.com/DanBondarenko/digidocpp-rs/blob/main/Cargo.toml)
+
 Low-level Rust bindings to [libdigidocpp](https://github.com/open-eid/libdigidocpp), the C++ engine
 behind [DigiDoc4](https://github.com/open-eid/DigiDoc4-Client), the Estonian state's e-signature
 client. Built with [cxx](https://cxx.rs).

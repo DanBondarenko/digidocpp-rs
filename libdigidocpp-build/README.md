@@ -1,5 +1,11 @@
 # libdigidocpp-build
 
+[![CI](https://github.com/DanBondarenko/digidocpp-rs/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DanBondarenko/digidocpp-rs/actions/workflows/ci.yml?query=branch%3Amain)
+[![crates.io](https://img.shields.io/crates/v/libdigidocpp-build.svg)](https://crates.io/crates/libdigidocpp-build)
+[![docs.rs](https://docs.rs/libdigidocpp-build/badge.svg)](https://docs.rs/libdigidocpp-build)
+[![License](https://img.shields.io/crates/l/libdigidocpp-build.svg)](https://github.com/DanBondarenko/digidocpp-rs#license)
+[![MSRV](https://img.shields.io/crates/msrv/libdigidocpp-build.svg)](https://github.com/DanBondarenko/digidocpp-rs/blob/main/Cargo.toml)
+
 Build-script helpers that locate a [libdigidocpp](https://github.com/open-eid/libdigidocpp)
 installation. They report the header, library and framework directories. They do not compile or
 link anything.
