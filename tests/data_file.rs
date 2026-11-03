@@ -13,38 +13,34 @@
 mod common;
 
 use crate::common::{
-    MEDIA_TYPE_OCTET_STREAM, MEDIA_TYPE_TEXT_PLAIN, assert_general_digidoc_err,
-    assert_internal_err, create_empty_asice_container, init_with_valid_tsl, open_container,
-    required,
+    MEDIA_TYPE_OCTET_STREAM, MEDIA_TYPE_TEXT_PLAIN, TestEnv, assert_general_digidoc_err,
+    assert_internal_err, init_with_valid_tsl, open_container,
 };
 use digidocpp::algorithm::DigestAlgorithm;
-use digidocpp::{Container, DataFile, Error};
+use digidocpp::{Container, DataFile, Error, Initialized, Library};
 use itertools::Itertools;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
-use rstest::{fixture, rstest};
-use serial_test::serial;
+use rstest::rstest;
 use std::cell::{Cell, RefCell};
 use std::error::Error as StdError;
 use std::fmt::Debug;
 use std::fs;
 use std::io::{self, Cursor, ErrorKind, Read, Seek, SeekFrom};
+use std::mem;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::Path;
 use std::rc::{Rc, Weak};
-use tempfile::TempDir;
 
-#[fixture]
-fn create_container_with_accepted_txt(
-    #[default(required())] directory: &Path,
-    #[from(create_empty_asice_container)] mut container: Container,
-) -> Container {
-    let accepted = common::write_file(directory, "accepted.txt", b"x").unwrap();
-    container
-        .add_data_file(&accepted, MEDIA_TYPE_TEXT_PLAIN)
-        .unwrap();
+fn create_unsigned_container_with_file<'lib>(
+    library: &'lib Library<Initialized>,
+    directory: &Path,
+) -> Result<Container<'lib>, Box<dyn StdError>> {
+    let mut container = Container::create(library, "new.asice")?;
+    let accepted = common::write_file(directory, "accepted.txt", b"x")?;
+    container.add_data_file(&accepted, MEDIA_TYPE_TEXT_PLAIN)?;
 
-    container
+    Ok(container)
 }
 
 fn assert_data_files(
@@ -101,25 +97,24 @@ fn assert_holds_only_the_accepted_file(container: &Container) -> Result<(), Box<
     MEDIA_TYPE_TEXT_PLAIN
 )]
 #[case::asice_for_tsl_validation("tsl.asice", "test.txt", 4, MEDIA_TYPE_OCTET_STREAM)]
-#[serial]
 fn reads_data_files_from_containers(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
     #[case] fixture: &str,
     #[case] file_name_and_id: &str,
     #[case] file_size: u64,
     #[case] media_type: &str,
 ) -> Result<(), Box<dyn StdError>> {
-    let container = Container::open(common::fixture_path(fixture))?;
+    let container = Container::open(&library, common::fixture_path(fixture))?;
 
     assert_data_files(&container, &[(file_name_and_id, file_size, media_type)])
 }
 
 #[rstest]
-#[serial]
 fn newly_crated_asice_container_has_no_data_files(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(create_empty_asice_container)] container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = Container::create(&library, "new.asice")?;
+
     assert_data_files(&container, &[])
 }
 
@@ -157,21 +152,15 @@ fn newly_crated_asice_container_has_no_data_files(
     DigestAlgorithm::Sha3_512,
     "0505da4c583d0bfa95692bf9845abf2a40f32e34caef5acc57bd3015aefa54777847cda68d017acfed634f07957a5ce601b23b1cc040a9dec5443a6c9f56c948"
 )]
-#[serial]
 fn calculates_data_file_digests(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[values(
-        open_container("test.asice"),
-        container_with_file_from_reader(
-            "test1.txt",
-            MEDIA_TYPE_TEXT_PLAIN,
-            Cursor::new(b"1234\n".to_vec())
-        )
-    )]
-    container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
+    #[values(open_signed_asice, container_with_text_file_from_reader)]
+    build_container: for<'lib> fn(&'lib Library<Initialized>) -> Result<Container<'lib>, Error>,
     #[case] method: DigestAlgorithm,
     #[case] expected: &str,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = build_container(&library)?;
+
     let digest = hex::encode(container.data_files()?[0].calc_digest(method)?);
 
     assert_eq!(digest, expected);
@@ -182,17 +171,17 @@ fn calculates_data_file_digests(
 #[case::text_file("test1.txt", b"1234\n")]
 #[case::symbols_name("0123456789~#%&()=`@{[]}'.txt", b"x")]
 #[case::non_ascii_name("öäüõ.txt", b"x")]
-#[serial]
 fn adds_data_file_from_reader(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
     #[case] file_name: &str,
     #[case] contents: &[u8],
 ) -> Result<(), Box<dyn StdError>> {
     let container = container_with_file_from_reader(
+        &library,
         file_name,
         MEDIA_TYPE_TEXT_PLAIN,
         Cursor::new(contents.to_vec()),
-    );
+    )?;
 
     assert_data_files(
         &container,
@@ -205,13 +194,12 @@ fn adds_data_file_from_reader(
 }
 
 #[rstest]
-#[serial]
 fn adds_multiple_data_files(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
-    let first = common::write_file(temp_dir.path(), "first.txt", b"12345")?;
-    let second = common::write_file(temp_dir.path(), "second.bin", b"abc")?;
+    let mut container = Container::create(&library, "new.asice")?;
+    let first = common::write_file(directory.path(), "first.txt", b"12345")?;
+    let second = common::write_file(directory.path(), "second.bin", b"abc")?;
 
     container.add_data_file(&first, MEDIA_TYPE_TEXT_PLAIN)?;
     container.add_data_file(&second, MEDIA_TYPE_OCTET_STREAM)?;
@@ -230,15 +218,14 @@ fn adds_multiple_data_files(
 #[case::binary_file("second.bin", b"abc", MEDIA_TYPE_OCTET_STREAM)]
 #[case::symbols_name("0123456789~#%&()=`@{[]}'.txt", b"x", MEDIA_TYPE_TEXT_PLAIN)]
 #[case::non_ascii_name("öäüõ.txt", b"x", MEDIA_TYPE_TEXT_PLAIN)]
-#[serial]
 fn adds_data_file(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] file_name: &str,
     #[case] contents: &[u8],
     #[case] media_type: &str,
 ) -> Result<(), Box<dyn StdError>> {
-    let path = common::write_file(temp_dir.path(), file_name, contents)?;
+    let mut container = Container::create(&library, "new.asice")?;
+    let path = common::write_file(directory.path(), file_name, contents)?;
 
     container.add_data_file(&path, media_type)?;
 
@@ -254,23 +241,22 @@ fn adds_data_file(
 #[case::duplicate_name("accepted.txt", Some("x"), MEDIA_TYPE_TEXT_PLAIN)]
 #[case::zero_bytes("empty.txt", Some(""), MEDIA_TYPE_TEXT_PLAIN)]
 #[case::missing_file("missing.txt", None, MEDIA_TYPE_TEXT_PLAIN)]
-#[serial]
 fn rejects_adding_an_invalid_data_file(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
-    #[with(temp_dir.path())] mut create_container_with_accepted_txt: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] file_name: &str,
     #[case] contents: Option<&str>,
     #[case] media_type: &str,
 ) -> Result<(), Box<dyn StdError>> {
-    let path = temp_dir.path().join(file_name);
+    let mut container = create_unsigned_container_with_file(&library, directory.path())?;
+    let path = directory.path().join(file_name);
     if let Some(contents) = contents {
         fs::write(&path, contents)?;
     }
 
-    let result = create_container_with_accepted_txt.add_data_file(&path, media_type);
+    let result = container.add_data_file(&path, media_type);
 
     assert_general_digidoc_err!(result);
-    assert_holds_only_the_accepted_file(&create_container_with_accepted_txt)
+    assert_holds_only_the_accepted_file(&container)
 }
 
 #[rstest]
@@ -285,15 +271,12 @@ fn rejects_adding_an_invalid_data_file(
     )
 })]
 #[case::remove_data_file(|container: &mut Container, _: &Path| container.remove_data_file(0))]
-#[serial]
 fn rejects_data_file_modification_when_signed(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
-    #[from(open_container)]
-    #[with("test.asice")]
-    mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] operation: fn(&mut Container, &Path) -> Result<(), Error>,
 ) -> Result<(), Box<dyn StdError>> {
-    let extra_file = common::write_file(temp_dir.path(), "extra.txt", b"x")?;
+    let mut container = open_container(&library, "test.asice");
+    let extra_file = common::write_file(directory.path(), "extra.txt", b"x")?;
 
     let result = operation(&mut container, &extra_file);
 
@@ -308,12 +291,11 @@ fn rejects_data_file_modification_when_signed(
 #[case::dot(".")]
 #[case::empty_name("")]
 #[case::reserved_name("mimetype")]
-#[serial]
 fn rejects_invalid_data_file_from_reader(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
     #[case] file_name: &str,
 ) -> Result<(), Box<dyn StdError>> {
+    let mut container = Container::create(&library, "new.asice")?;
     let result =
         container.add_data_file_from_reader(file_name, MEDIA_TYPE_TEXT_PLAIN, Cursor::new(b"x"));
 
@@ -322,16 +304,15 @@ fn rejects_invalid_data_file_from_reader(
 }
 
 #[rstest]
-#[serial]
 fn removes_data_files_one_by_one(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
-    let first = common::write_file(temp_dir.path(), "first.txt", b"x")?;
+    let mut container = Container::create(&library, "new.asice")?;
+    let first = common::write_file(directory.path(), "first.txt", b"x")?;
     container.add_data_file(&first, MEDIA_TYPE_TEXT_PLAIN)?;
     let first_file_expectation = ("first.txt", 1, MEDIA_TYPE_TEXT_PLAIN);
 
-    let second = common::write_file(temp_dir.path(), "second.bin", b"x")?;
+    let second = common::write_file(directory.path(), "second.bin", b"x")?;
     container.add_data_file(&second, MEDIA_TYPE_TEXT_PLAIN)?;
     let second_file_expectation = ("second.bin", 1, MEDIA_TYPE_TEXT_PLAIN);
 
@@ -350,15 +331,14 @@ fn removes_data_files_one_by_one(
 #[rstest]
 #[case::empty_container(&[], 0)]
 #[case::too_high(&["accepted.txt"], 1)]
-#[serial]
 fn rejects_removing_data_file_if_index_invalid(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] existing_files: &[&str],
     #[case] index: usize,
 ) -> Result<(), Box<dyn StdError>> {
+    let mut container = Container::create(&library, "new.asice")?;
     for file_name in existing_files {
-        let path = common::write_file(temp_dir.path(), file_name, b"x")?;
+        let path = common::write_file(directory.path(), file_name, b"x")?;
         container.add_data_file(&path, MEDIA_TYPE_TEXT_PLAIN)?;
     }
 
@@ -374,48 +354,56 @@ fn rejects_removing_data_file_if_index_invalid(
 
 #[cfg(target_pointer_width = "64")]
 #[rstest]
-#[serial]
 fn rejects_index_unless_fits_32_bits(
-    #[allow(unused_variables)]
-    #[from(init_with_valid_tsl)]
-    temp_dir: TempDir,
-    #[with(temp_dir.path())] mut create_container_with_accepted_txt: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let mut container = create_unsigned_container_with_file(&library, directory.path())?;
     let too_large = usize::try_from(u64::from(u32::MAX) + 1)?;
 
-    let result = create_container_with_accepted_txt.remove_data_file(too_large);
+    let result = container.remove_data_file(too_large);
 
     assert_internal_err!(result);
-    assert_holds_only_the_accepted_file(&create_container_with_accepted_txt)
+    assert_holds_only_the_accepted_file(&container)
 }
 
 #[rstest]
 #[case::save_as(|data_file: &DataFile, path: &Path| data_file.save_as(path))]
-#[serial]
 fn rejects_non_utf8_path(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(open_container)]
-    #[with("test.asice")]
-    container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
     #[case] operation: fn(&DataFile, &Path) -> Result<(), Error>,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = open_container(&library, "test.asice");
     let result = operation(&container.data_files()?[0], &common::non_utf8_path());
 
     assert!(assert_internal_err!(result).contains("UTF-8"));
     Ok(())
 }
 
-fn container_with_file_from_reader(
+fn container_with_file_from_reader<'lib>(
+    library: &'lib Library<Initialized>,
     file_name: &str,
     media_type: &str,
     reader: impl Read + Seek + 'static,
-) -> Container {
-    let mut container = create_empty_asice_container();
-    container
-        .add_data_file_from_reader(file_name, media_type, reader)
-        .unwrap();
+) -> Result<Container<'lib>, Error> {
+    let mut container = Container::create(library, "new.asice")?;
+    container.add_data_file_from_reader(file_name, media_type, reader)?;
 
-    container
+    Ok(container)
+}
+
+fn open_signed_asice(library: &Library<Initialized>) -> Result<Container<'_>, Error> {
+    Container::open(library, common::fixture_path("test.asice"))
+}
+
+fn container_with_text_file_from_reader(
+    library: &Library<Initialized>,
+) -> Result<Container<'_>, Error> {
+    container_with_file_from_reader(
+        library,
+        "test1.txt",
+        MEDIA_TYPE_TEXT_PLAIN,
+        Cursor::new(b"1234\n".to_vec()),
+    )
 }
 
 #[track_caller]
@@ -525,30 +513,30 @@ impl Seek for PanickingReader {
     ErrorKind::Unsupported,
     "scripted seek failure"
 )]
-#[serial]
 fn reports_failing_reader(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] operation: fn(&DataFile, &Path) -> Result<(), Error>,
     #[case] reader: FailingReader,
     #[case] expected_kind: ErrorKind,
     #[case] expected_message: &str,
 ) -> Result<(), Box<dyn StdError>> {
-    let container = container_with_file_from_reader("data.bin", MEDIA_TYPE_OCTET_STREAM, reader);
+    let container =
+        container_with_file_from_reader(&library, "data.bin", MEDIA_TYPE_OCTET_STREAM, reader)?;
 
-    let result = operation(&container.data_files()?[0], temp_dir.path());
+    let result = operation(&container.data_files()?[0], directory.path());
 
     assert_io_error(&result, expected_kind, expected_message);
     Ok(())
 }
 
 #[rstest]
-#[serial]
 fn never_uses_failed_reader_twice(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     let reader = FailingReader::failing_reads();
     let calls = Rc::clone(&reader.calls);
-    let container = container_with_file_from_reader("data.bin", MEDIA_TYPE_OCTET_STREAM, reader);
+    let container =
+        container_with_file_from_reader(&library, "data.bin", MEDIA_TYPE_OCTET_STREAM, reader)?;
     let data_file = &container.data_files()?[0];
 
     data_file
@@ -575,19 +563,19 @@ fn never_uses_failed_reader_twice(
 #[case::file_size(|data_file: &DataFile, _: &Path| data_file.file_size().map(|_| ()))]
 #[case::write_to(|data_file: &DataFile, _: &Path| data_file.write_to(Vec::new()))]
 #[case::save_as(|data_file: &DataFile, directory: &Path| data_file.save_as(directory.join("saved.bin")))]
-#[serial]
 fn transfers_reader_panic(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] operation: fn(&DataFile, &Path) -> Result<(), Error>,
 ) -> Result<(), Box<dyn StdError>> {
     let container = container_with_file_from_reader(
+        &library,
         "data.bin",
         MEDIA_TYPE_OCTET_STREAM,
         PanickingReader::default(),
-    );
+    )?;
     let data_file = &container.data_files()?[0];
 
-    let outcome = panic::catch_unwind(AssertUnwindSafe(|| operation(data_file, temp_dir.path())));
+    let outcome = panic::catch_unwind(AssertUnwindSafe(|| operation(data_file, directory.path())));
 
     let payload = outcome.err().unwrap();
     assert_eq!(payload.downcast_ref::<&str>(), Some(&"scripted panic"));
@@ -595,13 +583,13 @@ fn transfers_reader_panic(
 }
 
 #[rstest]
-#[serial]
 fn never_uses_panicked_reader_twice(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     let reader = PanickingReader::default();
     let calls = Rc::clone(&reader.calls);
-    let container = container_with_file_from_reader("data.bin", MEDIA_TYPE_OCTET_STREAM, reader);
+    let container =
+        container_with_file_from_reader(&library, "data.bin", MEDIA_TYPE_OCTET_STREAM, reader)?;
     let data_file = &container.data_files()?[0];
 
     let outcome = panic::catch_unwind(AssertUnwindSafe(|| {
@@ -622,16 +610,14 @@ fn never_uses_panicked_reader_twice(
 }
 
 #[rstest]
-#[serial]
 fn rejects_reentrant_reader(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(create_empty_asice_container)] container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     type NestedResult = Result<Vec<u8>, Error>;
 
     struct ReenteringReader {
         bytes: Cursor<Vec<u8>>,
-        container: Weak<RefCell<Container>>,
+        container: Weak<RefCell<Container<'static>>>,
         nested_result: Rc<RefCell<Option<NestedResult>>>,
     }
 
@@ -656,6 +642,9 @@ fn rejects_reentrant_reader(
         }
     }
 
+    let container = Container::create(&library, "new.asice")?;
+    // SAFETY: reader needs 'static. Container dropps before library, as local dropps before param.
+    let container = unsafe { mem::transmute::<Container<'_>, Container<'static>>(container) };
     let container = Rc::new(RefCell::new(container));
     let nested_result = Rc::new(RefCell::new(None));
     let reader = ReenteringReader {
@@ -684,10 +673,8 @@ fn rejects_reentrant_reader(
 }
 
 #[rstest]
-#[serial]
 fn reader_ownership_is_transferred_to_cpp(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     struct TrackedBytes {
         _reference_counter: Rc<()>,
@@ -699,6 +686,7 @@ fn reader_ownership_is_transferred_to_cpp(
         }
     }
 
+    let mut container = Container::create(&library, "new.asice")?;
     let reference_counter = Rc::new(());
     let tracked_reader = || {
         Cursor::new(TrackedBytes {
@@ -729,20 +717,19 @@ fn reader_ownership_is_transferred_to_cpp(
 #[rstest]
 #[case::asice("test.asice", b"1234\n")]
 #[case::asics_with_zero_size_contents("test-tera-empty.asics", b"")]
-#[serial]
 fn writes_exact_content_of_data_file(
-    #[from(init_with_valid_tsl)] temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, directory }: TestEnv,
     #[case] fixture: &str,
     #[case] expected: &[u8],
 ) -> Result<(), Box<dyn StdError>> {
-    let container = Container::open(common::fixture_path(fixture))?;
+    let container = Container::open(&library, common::fixture_path(fixture))?;
     let data_file = &container.data_files()?[0];
 
     let mut written = Vec::new();
     data_file.write_to(&mut written)?;
     assert_eq!(written, expected);
 
-    let saved_path = temp_dir.path().join("saved.bin");
+    let saved_path = directory.path().join("saved.bin");
     data_file.save_as(&saved_path)?;
     assert_eq!(fs::read(&saved_path)?, expected);
 
@@ -750,9 +737,8 @@ fn writes_exact_content_of_data_file(
 }
 
 #[rstest]
-#[serial]
 fn reports_writer_failures(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     struct FailingOnSecondWriteWriter {
         calls: usize,
@@ -773,10 +759,11 @@ fn reports_writer_failures(
     }
 
     let container = container_with_file_from_reader(
+        &library,
         "data.bin",
         MEDIA_TYPE_OCTET_STREAM,
         Cursor::new(vec![0; 200_000]),
-    );
+    )?;
     let data_file = &container.data_files()?[0];
     let mut writer = FailingOnSecondWriteWriter { calls: 0 };
 
@@ -794,10 +781,9 @@ fn reports_writer_failures(
 }
 
 #[rstest]
-#[serial]
 #[expect(clippy::manual_assert_eq, clippy::manual_assert)]
 fn writer_panic_is_transmitted_across_ffi(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     struct PanickingWriter {
         calls: usize,
@@ -820,10 +806,11 @@ fn writer_panic_is_transmitted_across_ffi(
     let mut expected = vec![0; 200_000];
     StdRng::seed_from_u64(0).fill_bytes(&mut expected);
     let container = container_with_file_from_reader(
+        &library,
         "data.bin",
         MEDIA_TYPE_OCTET_STREAM,
         Cursor::new(expected.clone()),
-    );
+    )?;
     let data_file = &container.data_files()?[0];
     let mut panicking_writer = PanickingWriter { calls: 0 };
 

@@ -12,14 +12,11 @@
 )]
 mod common;
 
-use crate::common::{assert_general_digidoc_err, init, open_container};
-use digidocpp::Container;
+use crate::common::{TestEnv, assert_general_digidoc_err, init, open_container};
 use digidocpp::error::ExceptionCode;
 use digidocpp::signature::ValidatorStatus;
 use rstest::rstest;
-use serial_test::serial;
 use std::error::Error as StdError;
-use tempfile::TempDir;
 
 #[rstest]
 #[case::ca_non_qa("EE_T-CA-non-qa.xml", ExceptionCode::CertificateIssuerMissing)]
@@ -58,7 +55,6 @@ use tempfile::TempDir;
     "EE_T-TSA-noqscd-granted-later.xml",
     ExceptionCode::CertificateUnknown
 )]
-#[serial]
 fn rejects_signature_unless_tsl_grants_trust(
     #[allow(unused_variables)]
     #[case]
@@ -66,11 +62,9 @@ fn rejects_signature_unless_tsl_grants_trust(
     #[case] expected_code: ExceptionCode,
     #[from(init)]
     #[with(tsl_name)]
-    _temp_dir: TempDir,
-    #[from(open_container)]
-    #[with("tsl.asice")]
-    container: Container,
+    TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = open_container(&library, "tsl.asice");
     let result = container.signatures()?[0].validate();
 
     let error = assert_general_digidoc_err!(result);
@@ -81,18 +75,15 @@ fn rejects_signature_unless_tsl_grants_trust(
 #[rstest]
 #[case::no_qc_statement("EE_T-no_QCStatement.xml")]
 #[case::no_qcsd("EE_T-no_QCSD.xml")]
-#[serial]
 fn reports_unqualified_signature(
     #[allow(unused_variables)]
     #[case]
     tsl_name: &str,
     #[from(init)]
     #[with(tsl_name)]
-    _temp_dir: TempDir,
-    #[from(open_container)]
-    #[with("tsl.asice")]
-    container: Container,
+    TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = open_container(&library, "tsl.asice");
     let signatures = container.signatures()?;
 
     let result = signatures[0].validator_result()?;
@@ -105,7 +96,6 @@ fn reports_unqualified_signature(
 }
 
 #[rstest]
-#[serial]
 fn accepts_signature_when_tsl_grants_trust(
     #[allow(unused_variables)]
     #[values(
@@ -119,11 +109,9 @@ fn accepts_signature_when_tsl_grants_trust(
     tsl_name: &str,
     #[from(init)]
     #[with(tsl_name)]
-    _temp_dir: TempDir,
-    #[from(open_container)]
-    #[with("tsl.asice")]
-    container: Container,
+    TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = open_container(&library, "tsl.asice");
     let validation = container.signatures()?[0].validate();
 
     assert!(validation.is_ok(), "{validation:?}");

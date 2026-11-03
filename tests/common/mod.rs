@@ -2,7 +2,7 @@
 
 use digidocpp::conf::Conf;
 use digidocpp::signer::Pkcs12Signer;
-use digidocpp::{Container, DerCert};
+use digidocpp::{Container, DerCert, Initialized, Library, Uninitialized};
 use rstest::fixture;
 use std::error::Error as StdError;
 use std::ffi::OsString;
@@ -91,9 +91,19 @@ pub fn path_to_string(path: impl AsRef<Path>) -> String {
     path.as_ref().to_str().unwrap().to_owned()
 }
 
-#[fixture]
-pub fn conf_from_fixture(#[default(required())] file_name: &str) -> Conf {
-    Conf::from_file(fixture_path(file_name)).unwrap()
+pub struct TestEnv {
+    pub directory: TempDir,
+    pub library: Library<Initialized>,
+}
+
+#[track_caller]
+pub fn initialize_with(mut library: Library<Uninitialized>, conf: Conf) -> Library<Initialized> {
+    library.configure(conf).unwrap();
+    library.initialize().unwrap()
+}
+
+pub fn conf_from_fixture(library: &Library<Uninitialized>, file_name: &str) -> Conf {
+    Conf::from_file(library, fixture_path(file_name)).unwrap()
 }
 
 pub fn copy_fixtures(directory: &Path, names: &[&str]) -> Result<(), Box<dyn StdError>> {
@@ -111,11 +121,13 @@ pub fn write_file(directory: &Path, name: &str, contents: &[u8]) -> io::Result<P
     Ok(path)
 }
 
-#[fixture]
-pub fn pkcs12_signer(#[default(required())] file_name: &str) -> Pkcs12Signer {
+pub fn pkcs12_signer<'lib>(
+    library: &'lib Library<Initialized>,
+    file_name: &str,
+) -> Pkcs12Signer<'lib> {
     // pass of signer files is file name w/o extension
     let password = file_name.strip_suffix(".p12").unwrap();
-    Pkcs12Signer::new(fixture_path(file_name), password).unwrap()
+    Pkcs12Signer::new(library, fixture_path(file_name), password).unwrap()
 }
 
 #[track_caller]
@@ -128,13 +140,13 @@ pub fn der_cert(#[default(required())] file_name: &str) -> DerCert {
     fs::read(fixture_path(file_name)).unwrap().into()
 }
 
-#[fixture]
 pub fn conf_for_testing(
-    #[default(required())] directory: &Path,
-    #[default(required())] tsl_name: &str,
+    library: &Library<Uninitialized>,
+    directory: &Path,
+    tsl_name: &str,
 ) -> Conf {
     // if we dont load conf from a specific file, `libdigidocpp` searches system dirs
-    let mut conf = conf_from_fixture("empty.conf");
+    let mut conf = conf_from_fixture(library, "empty.conf");
 
     conf.set_log_file(directory.join("libdigidocpp.log"))
         .unwrap();
@@ -159,16 +171,17 @@ pub fn conf_for_testing(
 pub fn init(
     #[default(required())] tsl_name: &str,
     #[default(&[])] extra_files: &[&str],
-) -> TempDir {
+) -> TestEnv {
     let directory = dir_with_fixtures(&[&[tsl_name], extra_files].concat());
-    digidocpp::init_conf(conf_for_testing(directory.path(), tsl_name)).unwrap();
-    digidocpp::initialize().unwrap();
+    let library = Library::<Uninitialized>::acquire().unwrap();
+    let conf = conf_for_testing(&library, directory.path(), tsl_name);
+    let library = initialize_with(library, conf);
 
-    directory
+    TestEnv { directory, library }
 }
 
 #[fixture]
-pub fn init_with_valid_tsl() -> TempDir {
+pub fn init_with_valid_tsl() -> TestEnv {
     init("TSL.xml", &["EE_T.xml"])
 }
 
@@ -180,18 +193,13 @@ pub fn dir_with_fixtures(#[default(required())] names: &[&str]) -> TempDir {
     directory
 }
 
-#[fixture]
-pub fn create_empty_asice_container() -> Container {
-    Container::create("new.asice").unwrap()
-}
-
-#[fixture]
-pub fn create_unsigned_asice_with_data_file(
-    #[default(required())] directory: &Path,
-    #[default("default.asice")] container_name: &str,
-) -> Container {
+pub fn create_unsigned_asice_with_data_file<'lib>(
+    library: &'lib Library<Initialized>,
+    directory: &Path,
+    container_name: &str,
+) -> Container<'lib> {
     let data_file = write_file(directory, "test1.txt", b"1234\n").unwrap();
-    let mut container = Container::create(directory.join(container_name)).unwrap();
+    let mut container = Container::create(library, directory.join(container_name)).unwrap();
     container
         .add_data_file(data_file, MEDIA_TYPE_TEXT_PLAIN)
         .unwrap();
@@ -199,9 +207,11 @@ pub fn create_unsigned_asice_with_data_file(
     container
 }
 
-#[fixture]
-pub fn open_container(#[default(required())] file_name: &str) -> Container {
-    Container::open(fixture_path(file_name)).unwrap()
+pub fn open_container<'lib>(
+    library: &'lib Library<Initialized>,
+    file_name: &str,
+) -> Container<'lib> {
+    Container::open(library, fixture_path(file_name)).unwrap()
 }
 
 pub fn parse_common_name(der: &DerCert) -> Result<String, Box<dyn StdError>> {

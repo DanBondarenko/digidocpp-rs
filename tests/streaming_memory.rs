@@ -12,16 +12,14 @@
 )]
 mod common;
 
-use crate::common::{MEDIA_TYPE_OCTET_STREAM, create_empty_asice_container, init_with_valid_tsl};
+use crate::common::{MEDIA_TYPE_OCTET_STREAM, TestEnv, init_with_valid_tsl};
 use digidocpp::Container;
 use digidocpp::algorithm::DigestAlgorithm;
 use rstest::rstest;
-use serial_test::serial;
 use std::cell::Cell;
 use std::error::Error as StdError;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::rc::Rc;
-use tempfile::TempDir;
 
 // KEEP THIS TEST IN A SEPARATE FILE: memory usage is measured per process
 
@@ -69,10 +67,8 @@ impl Seek for ZerosReader {
 }
 
 #[rstest]
-#[serial]
 fn streams_large_file_without_holding_in_memory(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(create_empty_asice_container)] mut container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
     const MAX_MEMORY_GROWTH: usize = 64 * 1024 * 1024;
 
@@ -92,6 +88,7 @@ fn streams_large_file_without_holding_in_memory(
         }
     }
 
+    let mut container = Container::create(&library, "new.asice")?;
     let baseline_memory = resident_memory();
     let peak_memory: Rc<Cell<usize>> = Rc::default();
     let memory_growth = || peak_memory.get().saturating_sub(baseline_memory);

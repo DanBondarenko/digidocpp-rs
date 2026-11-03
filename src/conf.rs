@@ -1,10 +1,11 @@
 //! Config and log level types
 
 use crate::algorithm::Algorithm;
+use crate::library::Uninitialized;
 use crate::util::{
     ffi_variant_doc, library_and_ffi_variants_doc, library_variant_doc, path_to_str,
 };
-use crate::{DerCert, Error};
+use crate::{DerCert, Error, Library};
 use cxx::UniquePtr;
 use libdigidocpp_sys::conf::ffi;
 pub use secrecy::{ExposeSecret, SecretString};
@@ -20,99 +21,108 @@ use strum::FromRepr;
 /// been set with a setter, then it takes precedence over the configuration file. A value resolves
 /// from, in order: a setter on this object, the config file, the library default.
 ///
-/// Install it with [`init_conf`] before initializing the library
-/// (e.g. [`initialize`](crate::initialize)). Read more about libdigidocpp's XML-based config,
-/// including default parameters for most settings, from [their documentation].
+/// Create it with [`Conf::new`] or one of its sibling constructors, and install it with
+/// [`Library<Uninitialized>::configure`] before initializing the library. Read more about libdigidocpp's
+/// XML-based config, including default parameters for most settings, from [their documentation].
 ///
 /// # Examples
 ///
 /// ```no_run
 /// use digidocpp::conf::Conf;
+/// use digidocpp::{Library, Uninitialized};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut conf = Conf::new()?;
+/// let mut library = Library::<Uninitialized>::acquire()?;
+///
+/// let mut conf = Conf::new(&library)?;
 /// conf.set_tsl_url("https://open-eid.github.io/test-TL/EE_T.xml")?;
 /// conf.clear_tsl_certs();
 /// conf.add_tsl_cert(std::fs::read("test-tsl.der")?)?;
 ///
-/// digidocpp::init_conf(conf)?;
-/// digidocpp::initialize()?;
+/// library.configure(conf)?;
+/// let library = library.initialize()?;
 /// # Ok(())
 /// # }
 /// ```
+/// [`Library<Uninitialized>::configure`]: crate::Library<crate::Uninitialized>::configure
 /// [`digidoc::XmlConf`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1XmlConfV5.html
 /// [their documentation]: https://open-eid.github.io/libdigidocpp/manual.html#conf
 pub struct Conf(UniquePtr<ffi::SettableConf>);
 
 impl Conf {
-    /// Loads the configuration from the default libdigidocpp locations.
+    /// Loads configuration from default libdigidocpp locations.
     ///
-    /// Upstream libdigidocpp searches for two config files: the system-level file (e.g.
-    /// `/etc/digidocpp/digidocpp.conf`) and the user-level file (e.g.
-    /// `~/.digidocpp/digidocpp.conf`). Read more about how libdigidocpp handles configuration
-    /// files from [their documentation].
+    /// Upstream libdigidocpp searches for two config files: system-level file (e.g.
+    /// `/etc/digidocpp/digidocpp.conf`) and user-level file (e.g. `~/.digidocpp/digidocpp.conf`).
+    /// Read more about how libdigidocpp handles configuration files from [their documentation].
     ///
-    /// A missing file is skipped, in which case library default configuration is used. A file that
-    /// does not parse or does not match the schema is skipped with a logged warning.
+    /// Missing file is skipped, in which case library default configuration is used. File that
+    /// does not parse or does not match schema is skipped with logged warning.
+    ///
+    /// Install result with [`Library<Uninitialized>::configure`].
     ///
     /// # Errors
     #[doc = library_and_ffi_variants_doc!()]
     ///
     /// [their documentation]: https://open-eid.github.io/libdigidocpp/manual.html#conf
-    pub fn new() -> Result<Self, Error> {
+    pub fn new(_library: &Library<Uninitialized>) -> Result<Self, Error> {
         Self::create("", "")
     }
 
-    /// Loads the configuration from a single XML config file.
+    /// Loads configuration from single XML config file.
     ///
-    /// A missing file is skipped, in which case library default configuration is used. A file that
-    /// does not parse or does not match the schema is skipped with a logged warning.
+    /// Missing file is skipped, in which case library default configuration is used. File that
+    /// does not parse or does not match schema is skipped with logged warning.
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
     /// Returns [`Error::Internal`] when `path` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
-    pub fn from_file(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn from_file(
+        _library: &Library<Uninitialized>,
+        path: impl AsRef<Path>,
+    ) -> Result<Self, Error> {
         Self::create(path_to_str(path.as_ref())?, "")
     }
 
-    /// Loads the configuration from a single XML config and validates the XML against `schema`.
+    /// Loads configuration from single XML config and validates XML against `schema`.
     ///
-    /// A missing file is skipped, in which case library default configuration is used. A file that
-    /// does not parse or does not match the schema is skipped with a logged warning.
+    /// Missing file is skipped, in which case library default configuration is used. File that
+    /// does not parse or does not match schema is skipped with logged warning.
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
     /// Returns [`Error::Internal`] when `path` or `schema` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
     pub fn from_file_with_schema(
+        _library: &Library<Uninitialized>,
         path: impl AsRef<Path>,
         schema: impl AsRef<Path>,
     ) -> Result<Self, Error> {
         Self::create(path_to_str(path.as_ref())?, path_to_str(schema.as_ref())?)
     }
 
-    /// Loads the configuration from the default libdigidocpp locations, validating XML against
-    /// `schema`.
+    /// Loads configuration from default libdigidocpp locations, validating XML against `schema`.
     ///
-    /// Upstream libdigidocpp searches for two config files: the system-level file (e.g.
-    /// `/etc/digidocpp/digidocpp.conf`) and the user-level file (e.g.
-    /// `~/.digidocpp/digidocpp.conf`). Read more about how libdigidocpp handles configuration
-    /// files from [their documentation].
-    ///
-    /// A missing file is skipped, in which case library default configuration is used. A file that
-    /// does not parse or does not match the schema is skipped with a logged warning.
+    /// See [`Conf::new`] for the search locations.
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
     /// Returns [`Error::Internal`] when `schema` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
-    pub fn with_schema(schema: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn with_schema(
+        _library: &Library<Uninitialized>,
+        schema: impl AsRef<Path>,
+    ) -> Result<Self, Error> {
         Self::create("", path_to_str(schema.as_ref())?)
     }
 
     fn create(path: &str, schema: &str) -> Result<Self, Error> {
         Ok(Self(ffi::SettableConf::create(path, schema)?))
+    }
+
+    pub(crate) fn install(self) -> Result<(), Error> {
+        Ok(ffi::init_conf(self.0)?)
     }
 
     /// Sets the log level.
@@ -605,17 +615,6 @@ impl Conf {
     pub fn signature_digest_uri(&self) -> Result<Algorithm, Error> {
         Ok(Algorithm::from(self.0.signature_digest_uri()?.as_str()))
     }
-}
-
-/// Installs `conf` as the global configuration and drops the previous one.
-///
-/// Call it before initializing the library (e.g. [`initialize`](crate::initialize)). Otherwise,
-/// upstream uses the default, which is the same as [`Conf::new`].
-///
-/// # Errors
-#[doc = library_and_ffi_variants_doc!()]
-pub fn init_conf(conf: Conf) -> Result<(), Error> {
-    Ok(ffi::init_conf(conf.0)?)
 }
 
 fn build_der_vec(certificates: Vec<ffi::DerCert>) -> Vec<DerCert> {

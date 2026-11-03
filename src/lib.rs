@@ -34,11 +34,11 @@
 //! [`DataFile::write_to`].
 //!
 //! ```no_run
-//! use digidocpp::Container;
+//! use digidocpp::{Container, Library, Uninitialized};
 //!
-//! fn main() -> Result<(), digidocpp::Error> {
-//!     digidocpp::initialize()?;
-//!     let container = Container::open("path/to/document.asice")?;
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let library = Library::<Uninitialized>::acquire()?.initialize()?;
+//!     let container = Container::open(&library, "path/to/document.asice")?;
 //!
 //!     for signature in container.signatures()? {
 //!         println!("Signed by: {}", signature.signed_by()?);
@@ -68,15 +68,15 @@
 //! [`Container::sign`] with a signer for the signature to be added.
 //!
 //! ```no_run
-//! use digidocpp::Container;
 //! use digidocpp::signer::Pkcs11Signer;
+//! use digidocpp::{Container, Library, Uninitialized};
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     digidocpp::initialize()?;
+//!     let library = Library::<Uninitialized>::acquire()?.initialize()?;
 //!
-//!     let mut container = Container::create("contract.asice")?;
+//!     let mut container = Container::create(&library, "contract.asice")?;
 //!     container.add_data_file("path/to/contract.pdf", "application/pdf")?;
-//!     let mut signer = Pkcs11Signer::new()?;
+//!     let mut signer = Pkcs11Signer::new(&library)?;
 //!
 //!     signer.set_pin(std::env::var("PIN2")?)?;
 //!     container.sign(&mut signer)?;
@@ -90,22 +90,24 @@
 //!
 //! Configuration is based on XML files described in the
 //! [libdigidocpp manual](https://open-eid.github.io/libdigidocpp/manual.html#conf). You can load
-//! the config from a file with [`Conf::from_file`]. Setters on [`Conf`] allow you to override
-//! values from the XML. For the configuration to take effect, it must be passed to [`init_conf`]
-//! after which the library must initialized or reinitialized via [`initialize`] (or other
-//! initialize-function variant).
+//! the config from a file with [`Conf::from_file`]. Setters on [`Conf`] allow you to
+//! override values from the XML. For configuration to take effect, pass it to
+//! [`Library<Uninitialized>::configure`], then initialize with [`Library<Uninitialized>::initialize`] (or other `initialize*`
+//! variant). Without configuration upstream installs its default.
 //!
 //! ```no_run
 //! use digidocpp::conf::{Conf, LogLevel};
+//! use digidocpp::{Library, Uninitialized};
 //!
 //! fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let mut conf = Conf::from_file("path/to/digidocpp.conf")?;
+//!     let mut library = Library::<Uninitialized>::acquire()?;
+//!     let mut conf = Conf::from_file(&library, "path/to/digidocpp.conf")?;
 //!
 //!     conf.set_tsl_cache("path/to/tsl")?;
 //!     conf.set_log_file("path/to/digidocpp.log")?;
 //!     conf.set_log_level(LogLevel::Debug);
-//!     digidocpp::init_conf(conf)?;
-//!     digidocpp::initialize()?;
+//!     library.configure(conf)?;
+//!     let library = library.initialize()?;
 //!
 //!     Ok(())
 //! }
@@ -168,30 +170,36 @@
 //!   [`Pkcs11Signer`] (ID-card) and `WinSigner` (Windows). [`ExternalPartialSigner`] takes the
 //!   signature value from another service.
 //! - [`Error`] wraps libdigidocpp failures, which form a tree structure.
-//! - The upstream library must be initialized with [`initialize`] before it can be used.
-//!   [`init_conf`] may be called with [`Conf`] beforehand to configure the library.
+//! - Every call into upstream needs a [`Library`] handle which only one thread may have at a time.
+//!   The handle can be obtained with [`acquire`]/[`try_acquire`] or associated functions on
+//!   [`Library<Uninitialized>`] and [`Library<Initialized>`].
 //! - Upstream libdigidocpp may connect to the network while performing tasks. It loads trust lists
 //!   and validates certain containers online unless explicitly disallowed.
 //!
 //! ## Initialization and configuration
 //!
-//! The upstream library MUST be initialized before it can be used. This is requirement that flows
-//! from their implementation. See the
-//! [relevant section](https://open-eid.github.io/libdigidocpp/manual.html#initialization) in their
-//! manual. We expose several `initialize*` functions for this purpose, the simplest of which is
-//! [`initialize`]. This may be called multiple times, ensure that this is called at least once.
+//! This library has process-level state: it's either uninitialized, initialized or terminated.
+//! These state transitions are irreversible and persist for the duration of the process.
+//!
+//! The library must be initialized before use. This is enforced with typestate on
+//! [`Library<Uninitialized>`] and [`Library<Initialized>`]. Call
+//! [`Library<Uninitialized>::initialize`] or sibling methods to initialize. The library can only be
+//! configured before it's initialized. Call [`Library<Uninitialized>::configure`] to apply
+//! configuration.
 //!
 //! Upstream has comprehensive configuration capabilities via XML configuration files. See the
 //! [relevant section](https://open-eid.github.io/libdigidocpp/manual.html#conf) in their manual
 //! and consult their
-//! [API reference](https://open-eid.github.io/libdigidocpp/classdigidoc_1_1XmlConfV5.html). For
-//! configuration to take effect, it must be installed by calling [`init_conf`], followed by a
-//! call to [`initialize`]. Note that upstream searches for the configuration XML from
-//! system/user directories by default unless you specify a path explicitly via [`Conf::from_file`].
+//! [API reference](https://open-eid.github.io/libdigidocpp/classdigidoc_1_1XmlConfV5.html). Note
+//! that upstream searches for configuration XML from system/user directories by default unless you
+//! specify path explicitly via [`Conf::from_file`].
 //!
-//! Upstream also has a termination function, exposed as [`terminate`], which may be optionally
-//! called to direct upstream to close opened libraries and delete temporary files. Using the
-//! library after this has been called is UNSAFE.
+//! Initialization is required by upstream libdigidocpp, see
+//! [the libdigidocpp manual](https://open-eid.github.io/libdigidocpp/manual.html#initialization)
+//! for more information on these constraints. Upstream also has termination function, exposed as
+//! [`Library<Initialized>::terminate`]. It may be optionally called to direct upstream to close
+//! opened libraries and delete temporary files. Termination is permanent: acquiring the library
+//! handle fails with [`AccessError::Terminated`] on every thread afterwards.
 //!
 //! ## Errors
 //!
@@ -210,8 +218,44 @@
 //!
 //! ## Thread safety
 //!
-//! Upstream libdigidocpp has global state and is not thread-safe in practice. This means that this
-//! crate can only be called used in a single thread.
+//! Upstream libdigidocpp has global mutable state without thread safety. This crate puts a
+//! process-wide lock in front of all upstream calls to ensure thread safety. Calls into upstream
+//! API require the [`Library`] handle which only one thread may have at a time. It is `!Send`
+//! and `!Sync`.
+//!
+//! [`acquire`]/[`Library<Uninitialized>::acquire`]/[`Library<Initialized>::acquire`] block until
+//! the library handle becomes available, while
+//! [`try_acquire`]/[`Library<Uninitialized>::try_acquire`]/[`Library<Initialized>::try_acquire`]
+//! fail with [`AccessError::WouldBlock`] instead of waiting. A thread that already holds
+//! the library calling these methods gets [`AccessError::AlreadyHeld`] to prevent deadlock.
+//!
+//! The library's state persists for the duration of the process. Dropping handle only releases lock.
+//! Once library has been initialized, it remains so for the duration of the process or until
+//! terminated.
+//!
+//! Hold handle for short time only as other threads may library wait for it.
+//! Since [`acquire`]/[`Library<Uninitialized>::acquire`]/[`Library<Initialized>::acquire`] blocks
+//! the thread and handles can't be held across `.await`, it is recommended to call the library
+//! inside a blocking task instead. Acquire handle in closure, do all library work, drop handle,
+//! return owned data.
+//!
+//! ```no_run
+//! # use digidocpp::{Initialized, Library};
+//! # async fn example() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+//! let signers = tokio::task::spawn_blocking(|| -> Result<Vec<String>, Box<dyn std::error::Error + Send + Sync>> {
+//!     let library = Library::<Initialized>::acquire()?;
+//!     let container = digidocpp::Container::open(&library, "contract.asice")?;
+//!     let signers = container
+//!         .signatures()?
+//!         .iter()
+//!         .map(|signature| signature.signed_by())
+//!         .collect::<Result<_, _>>()?;
+//!     Ok(signers)
+//! });
+//! # let _ = signers.await??;
+//! # Ok(())
+//! # }
+//! ```
 //!
 //! [libdigidocpp]: https://www.id.ee/en/article/digidoc-libraries-c-library-libdigidocpp/
 //! [libdigidocpp manual]: https://open-eid.github.io/libdigidocpp/
@@ -235,6 +279,13 @@
 //! [`LibraryError::Unknown`]: error::LibraryError::Unknown
 //! [`DigiDocError::has_code`]: error::DigiDocError::has_code
 //! [`DigiDocError::iter_tree`]: error::DigiDocError::iter_tree
+//! [`acquire`]: library::acquire
+//! [`try_acquire`]: library::try_acquire
+//! [`Access`]: library::Access
+//! [`AccessError::AlreadyHeld`]: library::AccessError::AlreadyHeld
+//! [`AccessError::AlreadyInitialized`]: library::AccessError::AlreadyInitialized
+//! [`AccessError::Terminated`]: library::AccessError::Terminated
+//! [`AccessError::WouldBlock`]: library::AccessError::WouldBlock
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
 #[cfg(doctest)]
@@ -243,7 +294,6 @@ struct ReadmeDoctests;
 
 mod data_file;
 mod der_cert;
-mod init;
 mod stream;
 mod util;
 
@@ -251,11 +301,10 @@ pub mod algorithm;
 pub mod conf;
 pub mod container;
 pub mod error;
+pub mod library;
 pub mod signature;
 pub mod signer;
 
-#[doc(inline)]
-pub use conf::init_conf;
 #[doc(inline)]
 pub use container::Container;
 #[doc(inline)]
@@ -265,10 +314,7 @@ pub use der_cert::DerCert;
 #[doc(inline)]
 pub use error::Error;
 #[doc(inline)]
-pub use init::{
-    app_info, initialize, initialize_with_app_info, initialize_with_user_agent, terminate,
-    user_agent, version,
-};
+pub use library::{Initialized, Library, Uninitialized};
 #[doc(inline)]
 pub use signature::Signature;
 #[doc(inline)]

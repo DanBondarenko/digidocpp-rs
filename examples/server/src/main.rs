@@ -9,13 +9,16 @@ use digidocpp::conf::Conf;
 use digidocpp::container::ValidityExtension;
 use digidocpp::signature::ValidatorStatus;
 use digidocpp::signer::{ExternalPartialSigner, Pkcs12Signer};
-use digidocpp::{Container, DataFile, DerCert, PartialSigner, Signature, Signer};
+use digidocpp::{
+    Container, DataFile, DerCert, Initialized, Library, PartialSigner, Signature, Signer,
+    Uninitialized,
+};
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 use std::{env, fs, io};
 use tempfile::NamedTempFile;
 
-#[tokio::main(flavor = "current_thread")]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     init_library()?;
 
@@ -35,22 +38,31 @@ async fn main() -> anyhow::Result<()> {
         })
         .await?;
 
-    // SAFETY: runtime has one thread and `axum::serve` returned, no handler running
-    Ok(unsafe { digidocpp::terminate() }?)
+    Ok(Library::<Initialized>::acquire()?.terminate()?)
+}
+
+// Library access handle is `!Send`, acquire and use it in a blocking thread pool
+async fn with_library<T: Send + 'static>(
+    work: impl FnOnce(&Library<Initialized>) -> Result<T, AppError> + Send + 'static,
+) -> Result<T, AppError> {
+    tokio::task::spawn_blocking(move || work(&Library::<Initialized>::acquire()?)).await?
 }
 
 fn init_library() -> anyhow::Result<()> {
-    let mut conf = Setting::Conf
-        .val_opt()
-        .map_or_else(Conf::new, Conf::from_file)?;
+    let mut library = Library::<Uninitialized>::acquire()?;
+    let mut conf = Setting::Conf.val_opt().map_or_else(
+        || Conf::new(&library),
+        |path| Conf::from_file(&library, path),
+    )?;
 
     conf.set_tsl_url(Setting::TslUrl.val()?)?;
     conf.clear_tsl_certs();
     conf.add_tsl_cert(fs::read(Setting::TslCert.val()?)?)?;
     conf.set_ts_url(Setting::TimeStampUrl.val()?)?;
 
-    digidocpp::init_conf(conf)?;
-    Ok(digidocpp::initialize()?)
+    library.configure(conf)?;
+    library.initialize()?;
+    Ok(())
 }
 
 #[derive(Debug, PartialEq, Hash, Clone, Serialize, Deserialize)]
@@ -95,18 +107,23 @@ async fn validate(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<Json<ValidateResponse>, AppError> {
     let path = request.file.into_temp_path();
-    let container = Container::open(&path)?;
-    let signatures = container
-        .signatures()?
-        .iter()
-        .map(SignatureValidity::of)
-        .collect::<Result<Vec<_>, _>>()?;
-    let is_valid = signatures.iter().all(|signature| signature.is_valid);
 
-    Ok(Json(ValidateResponse {
-        is_valid,
-        signatures,
-    }))
+    let result = with_library(move |library| {
+        let container = Container::open(library, &path)?;
+        let signatures = container
+            .signatures()?
+            .iter()
+            .map(SignatureValidity::of)
+            .collect::<Result<Vec<_>, _>>()?;
+        let is_valid = signatures.iter().all(|signature| signature.is_valid);
+
+        Ok(Json(ValidateResponse {
+            is_valid,
+            signatures,
+        }))
+    });
+
+    result.await
 }
 
 #[derive(Serialize)]
@@ -126,66 +143,81 @@ async fn info(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<Json<InfoResponse>, AppError> {
     let path = request.file.into_temp_path();
-    let container = Container::open(&path)?;
 
-    let data_files = container
-        .data_files()?
-        .iter()
-        .map(|data_file| {
-            Ok(DataFileInfo {
-                name: data_file.file_name()?,
-                size_bytes: data_file.file_size()?,
+    let result = with_library(move |library| {
+        let container = Container::open(library, &path)?;
+
+        let data_files = container
+            .data_files()?
+            .iter()
+            .map(|data_file| {
+                Ok(DataFileInfo {
+                    name: data_file.file_name()?,
+                    size_bytes: data_file.file_size()?,
+                })
             })
-        })
-        .collect::<Result<Vec<_>, AppError>>()?;
+            .collect::<Result<Vec<_>, AppError>>()?;
 
-    let signatures = container
-        .signatures()?
-        .iter()
-        .map(SignatureValidity::of)
-        .collect::<Result<Vec<_>, _>>()?;
+        let signatures = container
+            .signatures()?
+            .iter()
+            .map(SignatureValidity::of)
+            .collect::<Result<Vec<_>, _>>()?;
 
-    Ok(Json(InfoResponse {
-        container_type: container.media_type()?.to_string(),
-        data_files,
-        signatures,
-    }))
+        Ok(Json(InfoResponse {
+            container_type: container.media_type()?.to_string(),
+            data_files,
+            signatures,
+        }))
+    });
+
+    result.await
 }
 
 async fn store_files(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<(), AppError> {
     let path = request.file.into_temp_path();
-    let container = Container::open(&path)?;
 
-    fn store_file(file: &DataFile) -> Result<(), AppError> {
-        // this fn body is placeholder, replace this with your use case
-        let _name = file.file_name()?;
-        let _media_type = file.media_type()?;
-        Ok(file.write_to(io::sink())?)
-    }
-    for file in container.data_files()? {
-        store_file(&file)?;
-    }
+    let result = with_library(move |library| {
+        let container = Container::open(library, &path)?;
 
-    Ok(())
+        fn store_file(file: &DataFile) -> Result<(), AppError> {
+            // this fn body is placeholder, replace this with your use case
+            let _name = file.file_name()?;
+            let _media_type = file.media_type()?;
+            Ok(file.write_to(io::sink())?)
+        }
+        for file in container.data_files()? {
+            store_file(&file)?;
+        }
+
+        Ok(())
+    });
+
+    result.await
 }
 
 async fn extend(
     TypedMultipart(request): TypedMultipart<ContainerRequest>,
 ) -> Result<Vec<u8>, AppError> {
     let path = request.file.into_temp_path();
-    let mut container = Container::open(&path)?;
-    let mut signer = ExternalPartialSigner::new(Vec::new())?;
 
-    let mut extended_container = match container.extend_container_validity(&mut signer)? {
-        ValidityExtension::InPlace { .. } => container,
-        ValidityExtension::Wrapped(wrapper) => wrapper,
-    };
-    let extended_path = NamedTempFile::new()?.into_temp_path();
-    extended_container.save_as(&extended_path)?;
+    let result = with_library(move |library| {
+        let mut container = Container::open(library, &path)?;
+        let mut signer = ExternalPartialSigner::new(library, Vec::new())?;
 
-    Ok(fs::read(&extended_path)?)
+        let mut extended_container = match container.extend_container_validity(&mut signer)? {
+            ValidityExtension::InPlace { .. } => container,
+            ValidityExtension::Wrapped(wrapper) => wrapper,
+        };
+        let extended_path = NamedTempFile::new()?.into_temp_path();
+        extended_container.save_as(&extended_path)?;
+
+        Ok(fs::read(&extended_path)?)
+    });
+
+    result.await
 }
 
 #[derive(TryFromMultipart)]
@@ -198,19 +230,28 @@ async fn sign_with_p12(
 ) -> Result<Vec<u8>, AppError> {
     let FieldData { metadata, contents } = request.file;
     let path = NamedTempFile::with_suffix(".asice")?.into_temp_path();
-    let mut container = Container::create(&path)?;
 
-    container.add_data_file_from_reader(
-        &metadata.file_name.context("no file name")?,
-        &metadata.content_type.context("no media type")?,
-        contents,
-    )?;
+    let result = with_library(move |library| {
+        let mut container = Container::create(library, &path)?;
 
-    let mut signer = Pkcs12Signer::new(Setting::P12File.val()?, Setting::P12Password.val()?)?;
-    container.sign(&mut signer)?;
-    container.save()?;
+        container.add_data_file_from_reader(
+            &metadata.file_name.context("no file name")?,
+            &metadata.content_type.context("no media type")?,
+            contents,
+        )?;
 
-    Ok(fs::read(&path)?)
+        let mut signer = Pkcs12Signer::new(
+            library,
+            Setting::P12File.val()?,
+            Setting::P12Password.val()?,
+        )?;
+        container.sign(&mut signer)?;
+        container.save()?;
+
+        Ok(fs::read(&path)?)
+    });
+
+    result.await
 }
 
 async fn sign_with_external_service(
@@ -218,43 +259,64 @@ async fn sign_with_external_service(
 ) -> Result<Vec<u8>, AppError> {
     let FieldData { metadata, contents } = request.file;
     let path = NamedTempFile::with_suffix(".asice")?.into_temp_path();
-    let mut container = Container::create(&path)?;
-    container.add_data_file_from_reader(
-        &metadata.file_name.context("no file name")?,
-        &metadata.content_type.context("no media type")?,
-        contents,
-    )?;
 
-    // get signing certificate from somewhere:
-    // - ID-card signers: this would probably be an endpoint parameter
-    // - mobile-ID: this would be requested from the mobile ID service provider
-    // - organization e-seals: this would come from the environment (env-var, file, etc)
-    fn mock_external_cert() -> Result<DerCert, AppError> {
-        // this fn body is placeholder, replace this with your use case
-        let signer = Pkcs12Signer::new(Setting::P12File.val()?, Setting::P12Password.val()?)?;
-        Ok(signer.cert()?.context("no certificate in P12 file")?)
-    }
-    let cert = mock_external_cert()?;
+    let result = with_library(move |library| {
+        let mut container = Container::create(library, &path)?;
+        container.add_data_file_from_reader(
+            &metadata.file_name.context("no file name")?,
+            &metadata.content_type.context("no media type")?,
+            contents,
+        )?;
 
-    let mut signer = ExternalPartialSigner::new(cert)?;
-    let mut signature = container.prepare_signature(&mut signer)?;
-    let digest = signature.as_signature().data_to_sign()?;
+        // get signing certificate from somewhere:
+        // - ID-card signers: this would probably be an endpoint parameter
+        // - mobile-ID: this would be requested from the mobile ID service provider
+        // - organization e-seals: this would come from the environment (env-var, file, etc)
+        fn mock_external_cert(library: &Library<Initialized>) -> Result<DerCert, AppError> {
+            // this fn body is placeholder, replace this with your use case
+            let signer = Pkcs12Signer::new(
+                library,
+                Setting::P12File.val()?,
+                Setting::P12Password.val()?,
+            )?;
+            Ok(signer.cert()?.context("no certificate in P12 file")?)
+        }
+        let cert = mock_external_cert(library)?;
 
-    // ask a service to sign the bytes:
-    // - organization e-seals: HSM or signing service answers at once
-    // - mobile ID, ID-card signers: user signs on own device, flow splits in two requests
-    fn mock_external_sign(method: Algorithm, digest: &[u8]) -> Result<Vec<u8>, AppError> {
-        // this fn body is placeholder, replace this with your use case
-        let signer = Pkcs12Signer::new(Setting::P12File.val()?, Setting::P12Password.val()?)?;
-        Ok(signer.sign(method, digest)?)
-    }
-    let sig_value = mock_external_sign(signature.as_signature().signature_method()?, &digest)?;
+        let mut signer = ExternalPartialSigner::new(library, cert)?;
+        let mut signature = container.prepare_signature(&mut signer)?;
+        let digest = signature.as_signature().data_to_sign()?;
 
-    signature.set_signature_value(&sig_value)?;
-    signature.extend_signature_profile(&mut signer)?;
-    container.save()?;
+        // ask a service to sign the bytes:
+        // - organization e-seals: HSM or signing service answers at once
+        // - mobile ID, ID-card signers: user signs on own device, flow splits in two requests
+        fn mock_external_sign(
+            library: &Library<Initialized>,
+            method: Algorithm,
+            digest: &[u8],
+        ) -> Result<Vec<u8>, AppError> {
+            // this fn body is placeholder, replace this with your use case
+            let signer = Pkcs12Signer::new(
+                library,
+                Setting::P12File.val()?,
+                Setting::P12Password.val()?,
+            )?;
+            Ok(signer.sign(method, digest)?)
+        }
+        let sig_value = mock_external_sign(
+            library,
+            signature.as_signature().signature_method()?,
+            &digest,
+        )?;
 
-    Ok(fs::read(&path)?)
+        signature.set_signature_value(&sig_value)?;
+        signature.extend_signature_profile(&mut signer)?;
+        container.save()?;
+
+        Ok(fs::read(&path)?)
+    });
+
+    result.await
 }
 
 struct AppError(anyhow::Error);

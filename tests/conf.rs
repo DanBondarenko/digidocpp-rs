@@ -14,15 +14,13 @@ mod common;
 
 use crate::common::{assert_general_digidoc_err, conf_for_testing, dir_with_fixtures};
 use digidocpp::conf::{Conf, LogLevel};
-use digidocpp::{Container, init_conf, initialize};
+use digidocpp::{Container, Library, Uninitialized};
 use rstest::rstest;
-use serial_test::serial;
 use std::error::Error as StdError;
 use std::fs;
 use tempfile::TempDir;
 
 #[rstest]
-#[serial]
 fn config_file_tsl_settings_take_effect(
     #[from(dir_with_fixtures)]
     #[with(&["EE_T.xml"])]
@@ -43,13 +41,14 @@ fn config_file_tsl_settings_take_effect(
         ),
     )?;
 
-    let mut conf = Conf::from_file(config_file)?;
+    let mut library = Library::<Uninitialized>::acquire()?;
+    let mut conf = Conf::from_file(&library, config_file)?;
     conf.set_tsl_url(common::path_to_string(directory.path().join("EE_T.xml")))?;
     conf.add_tsl_cert(common::der_cert("TSL.der"))?;
-    init_conf(conf)?;
-    initialize()?;
+    library.configure(conf)?;
+    let library = library.initialize()?;
 
-    let container = Container::open(common::fixture_path("tsl.asice"))?;
+    let container = Container::open(&library, common::fixture_path("tsl.asice"))?;
     let signature = &container.signatures()?[0];
 
     // signature only valid if using `EE_T.xml`
@@ -58,21 +57,17 @@ fn config_file_tsl_settings_take_effect(
 }
 
 #[rstest]
-#[serial]
 fn writes_log_file(
-    #[allow(unused_variables)]
     #[from(dir_with_fixtures)]
     #[with(&["TSL.xml"])]
     cache_directory: TempDir,
-    #[from(conf_for_testing)]
-    #[with(cache_directory.path(), "TSL.xml")]
-    mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_for_testing(&library, cache_directory.path(), "TSL.xml");
     let log_directory = TempDir::new()?;
     let log_path = log_directory.path().join("libdigidocpp.log");
     conf.set_log_file(&log_path)?;
-    init_conf(conf)?;
-    initialize()?;
+    common::initialize_with(library, conf);
 
     let log = fs::read_to_string(&log_path)?;
     assert!(log.contains("digidocpp version"));
@@ -80,38 +75,33 @@ fn writes_log_file(
 }
 
 #[rstest]
-#[serial]
 fn log_level_filters_log_entries(
     #[from(dir_with_fixtures)]
     #[with(&["TSL.xml"])]
     directory: TempDir,
-    #[from(conf_for_testing)]
-    #[with(directory.path(), "TSL.xml")]
-    mut conf: Conf,
-) -> Result<(), Box<dyn StdError>> {
+) {
+    let library = Library::<Uninitialized>::acquire().unwrap();
+    let mut conf = conf_for_testing(&library, directory.path(), "TSL.xml");
     conf.set_log_level(LogLevel::Error);
-    init_conf(conf)?;
-    initialize()?;
+    common::initialize_with(library, conf);
 
     let log = fs::read_to_string(directory.path().join("libdigidocpp.log")).unwrap_or_default();
 
     assert!(!log.contains("digidocpp version"));
-    Ok(())
 }
 
 #[test]
-#[serial]
 fn writes_log_in_non_ascii_directory() -> Result<(), Box<dyn StdError>> {
     let directory = TempDir::new()?;
     let unicode_directory = directory.path().join("libdigidocpp-õ-ä-ö-ü");
     fs::create_dir(&unicode_directory)?;
     common::copy_fixtures(&unicode_directory, &["TSL.xml", "EE_T.xml"])?;
-    let conf = common::conf_for_testing(&unicode_directory, "TSL.xml");
-    init_conf(conf)?;
-    initialize()?;
+    let library = Library::<Uninitialized>::acquire()?;
+    let conf = conf_for_testing(&library, &unicode_directory, "TSL.xml");
+    let library = common::initialize_with(library, conf);
 
     let log = fs::read_to_string(unicode_directory.join("libdigidocpp.log"))?;
-    let container = Container::open(common::fixture_path("tsl.asice"))?;
+    let container = Container::open(&library, common::fixture_path("tsl.asice"))?;
     let signature = &container.signatures()?[0];
 
     assert!(log.contains("certificates into TSL certificate store"));
@@ -120,20 +110,17 @@ fn writes_log_in_non_ascii_directory() -> Result<(), Box<dyn StdError>> {
 }
 
 #[rstest]
-#[serial]
-fn initialize_fails_without_trusted_tsl_certificate(
-    #[allow(unused_variables)]
+fn failed_initialize_leaves_library_uninitialized_and_retryable(
     #[from(dir_with_fixtures)]
-    #[with(&[])]
+    #[with(&["TSL.xml"])]
     directory: TempDir,
-    #[from(conf_for_testing)]
-    #[with(directory.path(), "TSL.xml")]
-    mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
-    conf.clear_tsl_certs();
-    init_conf(conf)?;
+    let mut library = Library::<Uninitialized>::acquire()?;
+    let mut conf_without_tsl_certs = conf_for_testing(&library, directory.path(), "TSL.xml");
+    conf_without_tsl_certs.clear_tsl_certs();
+    library.configure(conf_without_tsl_certs)?;
 
-    let result = initialize();
+    let result = library.initialize();
     let error = assert_general_digidoc_err!(result);
     assert!(
         error
@@ -141,5 +128,10 @@ fn initialize_fails_without_trusted_tsl_certificate(
             .contains("trusted signing certificates empty")
     );
 
+    let mut library = Library::<Uninitialized>::acquire()?;
+    let fixed_conf = conf_for_testing(&library, directory.path(), "TSL.xml");
+    library.configure(fixed_conf)?;
+    let library = library.initialize_with_app_info("retry app")?;
+    assert_eq!(library.app_info()?, "retry app");
     Ok(())
 }

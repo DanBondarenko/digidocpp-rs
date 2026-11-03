@@ -28,7 +28,7 @@ Server behavior can be controlled via env vars:
 
 Notes:
 - Start with `cargo run -p digidocpp-example-server`.
-- Server is single-threaded since `libdigidocpp` is not thread-safe in practice.
+- Since `libdigidocpp` is not thread-safe, only one thread has library access at a time. Handlers use `tokio::task::spawn_blocking` so acquiring it doesn't block the runtime. 
 
 If libdigidocpp C++ has been installed to a custom location, use these env vars when building: 
 - `DIGIDOCPP_FRAMEWORK_DIR` 

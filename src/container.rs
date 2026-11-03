@@ -1,5 +1,6 @@
 //! Types used by [`Container`]
 
+use crate::library::{Initialized, Library};
 use crate::signature::{Signature, SignatureMut};
 use crate::stream::call_then_deliver_stream_failure;
 use crate::util::{
@@ -11,6 +12,7 @@ use libdigidocpp_sys::container::{self, ffi};
 use libdigidocpp_sys::stream::Source;
 use std::fmt::{Debug, Display, Formatter};
 use std::io::{Read, Seek};
+use std::marker::PhantomData;
 use std::path::Path;
 use strum::{AsRefStr, Display as StrumDisplay, EnumString};
 
@@ -49,7 +51,7 @@ pub enum ContainerType {
 ///
 /// Data files can be added and removed only while the container has no signatures.
 ///
-/// Wraps upstream [`digidoc::Container`].
+/// Wraps upstream [`digidoc::Container`]. Borrows [`Library`] handle it was created with.
 ///
 /// # Examples
 ///
@@ -57,16 +59,16 @@ pub enum ContainerType {
 /// time-stamp and OCSP services set in [`Conf`](crate::conf::Conf).
 ///
 /// ```no_run
-/// use digidocpp::Container;
 /// use digidocpp::signer::Pkcs11Signer;
+/// use digidocpp::{Container, Initialized, Library};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// digidocpp::initialize()?;
+/// let library = Library::<Initialized>::acquire()?;
 ///
-/// let mut container = Container::create("contract.asice")?;
+/// let mut container = Container::create(&library, "contract.asice")?;
 /// container.add_data_file("contract.pdf", "application/pdf")?;
 ///
-/// let mut signer = Pkcs11Signer::new()?;
+/// let mut signer = Pkcs11Signer::new(&library)?;
 /// signer.set_pin(std::env::var("PIN2")?)?;
 /// container.sign(&mut signer)?;
 /// container.save()?;
@@ -79,10 +81,10 @@ pub enum ContainerType {
 ///
 /// ```no_run
 /// use digidocpp::signature::ValidatorStatus;
-/// use digidocpp::{Container, Error, Signature};
+/// use digidocpp::{Container, Error, Initialized, Library, Signature};
 ///
-/// # fn main() -> Result<(), Error> {
-/// digidocpp::initialize()?;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let library = Library::<Initialized>::acquire()?;
 ///
 /// let is_valid = |signature: Signature<'_>| -> Result<bool, Error> {
 ///     Ok(matches!(
@@ -91,7 +93,7 @@ pub enum ContainerType {
 ///     ))
 /// };
 ///
-/// let container = Container::open("contract.asice")?;
+/// let container = Container::open(&library, "contract.asice")?;
 /// for signature in container.signatures()? {
 ///     println!("{}", is_valid(signature)?);
 /// }
@@ -100,12 +102,15 @@ pub enum ContainerType {
 /// ```
 ///
 /// [`digidoc::Container`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1Container.html
-pub struct Container(cxx::UniquePtr<ffi::Container>);
+pub struct Container<'lib>(
+    cxx::UniquePtr<ffi::Container>,
+    PhantomData<&'lib Library<Initialized>>,
+);
 
 /// Outcome of [`Container::extend_container_validity`].
 #[derive(Debug)]
 #[expect(clippy::exhaustive_enums)]
-pub enum ValidityExtension {
+pub enum ValidityExtension<'lib> {
     /// Signatures were extended inside the original container.
     InPlace {
         /// Number of signatures extended.
@@ -115,10 +120,10 @@ pub enum ValidityExtension {
     ///
     /// It is now the data file of a new ASiC-S container which carries a time-stamp. The new
     /// container is not saved yet. Its path is currently the original path plus `.asics`.
-    Wrapped(Container),
+    Wrapped(Container<'lib>),
 }
 
-impl Container {
+impl<'lib> Container<'lib> {
     /// Opens the container at `path`.
     ///
     /// The format is detected from the extension and content.
@@ -133,9 +138,12 @@ impl Container {
     /// For example, libdigidocpp fails when the file is missing or not a supported container.
     /// Returns [`Error::Internal`] when `path` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn open(
+        _library: &'lib Library<Initialized>,
+        path: impl AsRef<Path>,
+    ) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
-        Ok(Self(ffi::open(path)?))
+        Ok(Self(ffi::open(path)?, PhantomData))
     }
 
     /// Opens a container at `path` and asks `consent` before online validation.
@@ -151,14 +159,15 @@ impl Container {
     /// Returns [`Error::Internal`] when `path` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
     pub fn open_requiring_online_validation_consent(
+        _library: &'lib Library<Initialized>,
         path: impl AsRef<Path>,
         mut consent: impl FnMut() -> bool,
     ) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
-        Ok(Self(container::open_with_callback_resuming_panic(
-            path,
-            &mut consent,
-        )?))
+        Ok(Self(
+            container::open_with_callback_resuming_panic(path, &mut consent)?,
+            PhantomData,
+        ))
     }
 
     /// Creates an empty container that will be saved at `path`.
@@ -170,9 +179,12 @@ impl Container {
     #[doc = library_variant_doc!()]
     /// Returns [`Error::Internal`] when `path` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
-    pub fn create(path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn create(
+        _library: &'lib Library<Initialized>,
+        path: impl AsRef<Path>,
+    ) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
-        Ok(Self(ffi::create(path)?))
+        Ok(Self(ffi::create(path)?, PhantomData))
     }
 
     /// Returns the container format.
@@ -399,7 +411,7 @@ impl Container {
     pub fn extend_container_validity<S>(
         &mut self,
         signer: &mut S,
-    ) -> Result<ValidityExtension, Error>
+    ) -> Result<ValidityExtension<'lib>, Error>
     where
         S: PartialSigner + ?Sized,
     {
@@ -415,7 +427,7 @@ impl Container {
                 extended_count: extended.extended_count,
             }
         } else {
-            ValidityExtension::Wrapped(Self(extended.container))
+            ValidityExtension::Wrapped(Self(extended.container, PhantomData))
         })
     }
 
@@ -430,15 +442,15 @@ impl Container {
     /// # Examples
     ///
     /// ```no_run
-    /// use digidocpp::Container;
     /// use digidocpp::signer::ExternalPartialSigner;
+    /// use digidocpp::{Container, Initialized, Library};
     ///
     /// # fn sign_remotely(_digest: &[u8]) -> Vec<u8> { Vec::new() }
     /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-    /// # digidocpp::initialize()?;
-    /// let mut container = Container::open("unsigned.asice")?;
+    /// # let library = Library::<Initialized>::acquire()?;
+    /// let mut container = Container::open(&library, "unsigned.asice")?;
     ///
-    /// let mut signer = ExternalPartialSigner::new(std::fs::read("signer.der")?)?;
+    /// let mut signer = ExternalPartialSigner::new(&library, std::fs::read("signer.der")?)?;
     ///
     /// let mut signature = container.prepare_signature(&mut signer)?;
     /// let value = sign_remotely(&signature.as_signature().data_to_sign()?);
@@ -474,7 +486,7 @@ fn index_as_u32(index: usize, kind: &str) -> Result<u32, Error> {
         .map_err(|_| Error::Internal(format!("{kind} index does not fit in 32 bits: {index}")))
 }
 
-impl Display for Container {
+impl Display for Container<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let media_type = self.media_type().map_or_else(
             |_| String::from("<unknown>"),
@@ -495,7 +507,7 @@ impl Display for Container {
     }
 }
 
-impl Debug for Container {
+impl Debug for Container<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Container")
             .field("media_type()", &self.media_type())
