@@ -65,9 +65,10 @@ memory-stats = "1.2.0"
 rand = "0.10.3"
 rstest = "0.27.0"
 serde_json = "1.0.151"
-serial_test = "4.0.1"
+static_assertions = "1.1.0"
 tempfile = "3.27.0"
 time = { version = "0.3.55", features = ["parsing"] }
+tokio = { version = "1.53.2", features = ["rt-multi-thread"] }
 x509-parser = "0.18.1"
 
 [features]
@@ -83,7 +84,6 @@ missing_debug_implementations = "warn"
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
-nursery  = { level = "warn", priority = -1 }
 cargo    = { level = "warn", priority = -1 }
 unwrap_used = "warn"
 expect_used = "warn"

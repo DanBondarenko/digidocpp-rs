@@ -10,7 +10,7 @@ use digidocpp::signer::ExternalPartialSigner;
 use digidocpp::signer::Pkcs11Signer;
 #[cfg(windows)]
 use digidocpp::signer::WinSigner;
-use digidocpp::{Container, PartialSigner, Signature};
+use digidocpp::{Container, Initialized, Library, PartialSigner, Signature, Uninitialized};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -89,19 +89,18 @@ enum Command {
 fn main() -> Result<ExitCode> {
     let cli = Cli::parse();
 
-    configure_library(&cli.library)?;
-    digidocpp::initialize()?;
-    let result = run(&cli.command);
-    // SAFETY: no library object alive at this point, only this thread uses library.
-    unsafe { digidocpp::terminate() }?;
+    let library = initialize_library(&cli.library)?;
+    let result = run(&library, &cli.command);
+    library.terminate()?;
     result
 }
 
-fn configure_library(options: &LibraryOptions) -> Result<()> {
-    let mut conf = options
-        .conf
-        .as_deref()
-        .map_or_else(Conf::new, Conf::from_file)?;
+fn initialize_library(options: &LibraryOptions) -> Result<Library<Initialized>> {
+    let mut library = Library::<Uninitialized>::acquire()?;
+    let mut conf = options.conf.as_deref().map_or_else(
+        || Conf::new(&library),
+        |path| Conf::from_file(&library, path),
+    )?;
 
     if !options.production {
         conf.set_tsl_url(&options.tsl_url)?;
@@ -110,14 +109,15 @@ fn configure_library(options: &LibraryOptions) -> Result<()> {
         conf.set_ts_url(&options.time_stamp_url)?;
     }
 
-    Ok(digidocpp::init_conf(conf)?)
+    library.configure(conf)?;
+    Ok(library.initialize()?)
 }
 
-fn run(command: &Command) -> Result<ExitCode> {
+fn run(library: &Library<Initialized>, command: &Command) -> Result<ExitCode> {
     match command {
-        Command::Validate { file } => validate(file),
+        Command::Validate { file } => validate(library, file),
         Command::Extend { file, output } => {
-            extend(file, output)?;
+            extend(library, file, output)?;
             Ok(ExitCode::SUCCESS)
         }
         Command::Sign {
@@ -125,22 +125,22 @@ fn run(command: &Command) -> Result<ExitCode> {
             output,
             pkcs11_driver,
         } => {
-            sign(file, output, pkcs11_driver.as_deref())?;
+            sign(library, file, output, pkcs11_driver.as_deref())?;
             Ok(ExitCode::SUCCESS)
         }
         Command::Info { file } => {
-            info(file)?;
+            info(library, file)?;
             Ok(ExitCode::SUCCESS)
         }
         Command::Extract { file, output } => {
-            extract(file, output)?;
+            extract(library, file, output)?;
             Ok(ExitCode::SUCCESS)
         }
     }
 }
 
-fn validate(container_path: &Path) -> Result<ExitCode> {
-    let container = Container::open(container_path)?;
+fn validate(library: &Library<Initialized>, container_path: &Path) -> Result<ExitCode> {
+    let container = Container::open(library, container_path)?;
     let signatures = container.signatures()?;
     let results = signatures
         .iter()
@@ -183,9 +183,9 @@ fn validate(container_path: &Path) -> Result<ExitCode> {
     }
 }
 
-fn extend(path: &Path, output: &Path) -> Result<()> {
-    let mut container = Container::open(path)?;
-    let mut signer = ExternalPartialSigner::new(Vec::new())?;
+fn extend(library: &Library<Initialized>, path: &Path, output: &Path) -> Result<()> {
+    let mut container = Container::open(library, path)?;
+    let mut signer = ExternalPartialSigner::new(library, Vec::new())?;
 
     let (mut container, message) = match container.extend_container_validity(&mut signer)? {
         ValidityExtension::InPlace {
@@ -211,29 +211,40 @@ fn extend(path: &Path, output: &Path) -> Result<()> {
 }
 
 #[cfg(windows)]
-fn signer(_: Option<&Path>) -> Result<WinSigner> {
-    let mut signer = WinSigner::new()?;
+fn signer<'lib>(library: &'lib Library<Initialized>, _: Option<&Path>) -> Result<WinSigner<'lib>> {
+    let mut signer = WinSigner::new(library)?;
     signer.set_select_first(true)?;
     Ok(signer)
 }
 
 #[cfg(not(windows))]
-fn signer(pkcs11_driver: Option<&Path>) -> Result<Pkcs11Signer> {
-    let signer = pkcs11_driver.map_or_else(Pkcs11Signer::new, Pkcs11Signer::with_driver)?;
+fn signer<'lib>(
+    library: &'lib Library<Initialized>,
+    pkcs11_driver: Option<&Path>,
+) -> Result<Pkcs11Signer<'lib>> {
+    let signer = pkcs11_driver.map_or_else(
+        || Pkcs11Signer::new(library),
+        |driver| Pkcs11Signer::with_driver(library, driver),
+    )?;
     Ok(signer)
 }
 
-fn sign(file_path: &Path, output: &Path, pkcs11_driver: Option<&Path>) -> Result<()> {
+fn sign(
+    library: &Library<Initialized>,
+    file_path: &Path,
+    output: &Path,
+    pkcs11_driver: Option<&Path>,
+) -> Result<()> {
     ensure!(
         is_extension_valid(output, ContainerType::AsicE),
         "invalid extension"
     );
-    let mut container = Container::create(output)?;
+    let mut container = Container::create(library, output)?;
 
     let mime = mime_guess::from_path(file_path).first_or_octet_stream();
     container.add_data_file(file_path, mime.essence_str())?;
 
-    let mut signer = signer(pkcs11_driver)?;
+    let mut signer = signer(library, pkcs11_driver)?;
     let certificate = signer.cert()?.context("no cert")?;
     let (_, parsed) = x509_parser::parse_x509_certificate(certificate.as_ref())?;
     println!("Signing as {}", parsed.subject());
@@ -259,8 +270,8 @@ fn sign(file_path: &Path, output: &Path, pkcs11_driver: Option<&Path>) -> Result
     Ok(())
 }
 
-fn info(container_path: &Path) -> Result<()> {
-    let container = Container::open(container_path)?;
+fn info(library: &Library<Initialized>, container_path: &Path) -> Result<()> {
+    let container = Container::open(library, container_path)?;
 
     println!("type: {:?}", container.media_type()?);
 
@@ -294,8 +305,8 @@ fn is_considered_valid(result: &ValidatorResult) -> bool {
     )
 }
 
-fn extract(container_path: &Path, output: &Path) -> Result<()> {
-    let container = Container::open(container_path)?;
+fn extract(library: &Library<Initialized>, container_path: &Path, output: &Path) -> Result<()> {
+    let container = Container::open(library, container_path)?;
     fs::create_dir(output)?;
 
     for data_file in container.data_files()? {

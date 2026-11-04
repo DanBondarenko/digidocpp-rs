@@ -13,25 +13,20 @@ mod common;
 use crate::common::{assert_internal_err, conf_from_fixture, der_cert, dir_with_fixtures};
 use digidocpp::algorithm::{Algorithm, DigestAlgorithm};
 use digidocpp::conf::{Conf, ExposeSecret, LogLevel, ReportedLogLevel};
-use digidocpp::{DerCert, Error};
+use digidocpp::{DerCert, Error, Library, Uninitialized};
 use rstest::rstest;
-use serial_test::serial;
 use std::error::Error as StdError;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
 use tempfile::TempDir;
 
-// MUST BE IN SEPARATE FILE: no test here may initialize the library
 const DEFAULT_OCSP_TM_PROFILE: &str = "1.3.6.1.4.1.10015.4.1.2";
 
-#[rstest]
-#[serial]
-fn gets_values_from_config_file(
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    conf: Conf,
-) -> Result<(), Box<dyn StdError>> {
+#[test]
+fn gets_values_from_config_file() -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let conf = conf_from_fixture(&library, "digidocpp.conf");
     let proxy_pass = conf.proxy_pass()?;
 
     assert_eq!(conf.log_level()?, ReportedLogLevel::Known(LogLevel::Info));
@@ -46,26 +41,20 @@ fn gets_values_from_config_file(
     Ok(())
 }
 
-#[rstest]
-#[serial]
-fn verify_service_uri_defaults_to_https(
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    conf: Conf,
-) -> Result<(), Box<dyn StdError>> {
+#[test]
+fn verify_service_uri_defaults_to_https() -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let conf = conf_from_fixture(&library, "digidocpp.conf");
     let url = conf.verify_service_uri()?;
 
     assert!(url.starts_with("https://"), "{url}");
     Ok(())
 }
 
-#[rstest]
-#[serial]
-fn gets_unset_values_from_config_file(
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
-) -> Result<(), Box<dyn StdError>> {
+#[test]
+fn gets_unset_values_from_config_file() -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     conf.set_proxy_host("other-host")?;
 
     assert_eq!(conf.proxy_port()?, "port");
@@ -77,15 +66,13 @@ fn gets_unset_values_from_config_file(
 }
 
 #[rstest]
-#[serial]
 fn each_setter_overrides_matching_getter(
     #[from(dir_with_fixtures)]
     #[with(&[])]
     directory: TempDir,
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     let tsl_allow_expired = conf.tsl_allow_expired()?;
     let tsl_auto_update = conf.tsl_auto_update()?;
     let tsl_online_digest = conf.tsl_online_digest()?;
@@ -132,15 +119,13 @@ fn each_setter_overrides_matching_getter(
 }
 
 #[rstest]
-#[serial]
 fn clearing_and_adding_certificates_sets_each_certificate_list(
     #[from(der_cert)]
     #[with("TSL.der")]
     cert: DerCert,
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     assert!(!conf.tsl_certs()?.is_empty());
     conf.clear_tsl_certs();
     assert!(conf.tsl_certs()?.is_empty());
@@ -156,15 +141,13 @@ fn clearing_and_adding_certificates_sets_each_certificate_list(
 }
 
 #[rstest]
-#[serial]
 fn first_certificate_replaces_defaults(
     #[from(der_cert)]
     #[with("TSL.der")]
     cert: DerCert,
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     assert!(!conf.tsl_certs()?.is_empty());
 
     conf.add_tsl_cert(&cert)?;
@@ -174,15 +157,13 @@ fn first_certificate_replaces_defaults(
 }
 
 #[rstest]
-#[serial]
 fn appends_certificates(
     #[from(der_cert)]
     #[with("TSL.der")]
     cert: DerCert,
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
 ) -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     conf.clear_tsl_certs();
     conf.add_tsl_cert(&cert)?;
     conf.add_tsl_cert(&cert)?;
@@ -194,16 +175,14 @@ fn appends_certificates(
 #[rstest]
 #[case::empty(b"")]
 #[case::not_certificate(b"not certificate")]
-#[serial]
 fn rejects_adding_bad_certificate(
     #[from(der_cert)]
     #[with("TSL.der")]
     cert: DerCert,
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
     #[case] bad_certificate: &[u8],
 ) -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     let defaults = conf.tsl_certs()?;
 
     assert!(conf.add_tsl_cert(bad_certificate).is_err());
@@ -216,13 +195,10 @@ fn rejects_adding_bad_certificate(
     Ok(())
 }
 
-#[rstest]
-#[serial]
-fn ocsp_urls_replace_config_file_urls_and_keep_last(
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
-) -> Result<(), Box<dyn StdError>> {
+#[test]
+fn ocsp_urls_replace_config_file_urls_and_keep_last() -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     conf.set_ocsp_urls([
         ("issuer", "http://first.example"),
         ("other issuer", "http://other.example"),
@@ -235,13 +211,10 @@ fn ocsp_urls_replace_config_file_urls_and_keep_last(
     Ok(())
 }
 
-#[rstest]
-#[serial]
-fn ocsp_tm_profiles_replace_defaults(
-    #[from(conf_from_fixture)]
-    #[with("digidocpp.conf")]
-    mut conf: Conf,
-) -> Result<(), Box<dyn StdError>> {
+#[test]
+fn ocsp_tm_profiles_replace_defaults() -> Result<(), Box<dyn StdError>> {
+    let library = Library::<Uninitialized>::acquire()?;
+    let mut conf = conf_from_fixture(&library, "digidocpp.conf");
     let custom_profile = "1.3.6.1.4.1.10015.3.1.1";
     let profiles = [custom_profile, "1.3.6.1.4.1.10015.4.1.2"];
 
@@ -265,13 +238,15 @@ fn assert_no_settings_loaded(conf: &Conf) -> Result<(), Box<dyn StdError>> {
 }
 
 #[rstest]
-#[serial]
 fn ignores_missing_config_file(
     #[from(dir_with_fixtures)]
     #[with(&[])]
     directory: TempDir,
 ) -> Result<(), Box<dyn StdError>> {
-    let conf = Conf::from_file(directory.path().join("missing.conf"))?;
+    let conf = Conf::from_file(
+        &Library::<Uninitialized>::acquire()?,
+        directory.path().join("missing.conf"),
+    )?;
 
     assert_no_settings_loaded(&conf)
 }
@@ -279,7 +254,6 @@ fn ignores_missing_config_file(
 #[rstest]
 #[case::empty("")]
 #[case::invalid("this is not xml")]
-#[serial]
 fn ignores_unusable_config_files(
     #[from(dir_with_fixtures)]
     #[with(&[])]
@@ -289,13 +263,12 @@ fn ignores_unusable_config_files(
     let config_file = directory.path().join("unusable.conf");
     fs::write(&config_file, contents)?;
 
-    let conf = Conf::from_file(&config_file)?;
+    let conf = Conf::from_file(&Library::<Uninitialized>::acquire()?, &config_file)?;
 
     assert_no_settings_loaded(&conf)
 }
 
 #[rstest]
-#[serial]
 fn reads_config_file_in_non_ascii_dir(
     #[from(dir_with_fixtures)]
     #[with(&[])]
@@ -306,7 +279,7 @@ fn reads_config_file_in_non_ascii_dir(
     let config_file = unicode_directory.join("digidocpp.conf");
     fs::copy(common::fixture_path("digidocpp.conf"), &config_file)?;
 
-    let conf = Conf::from_file(config_file)?;
+    let conf = Conf::from_file(&Library::<Uninitialized>::acquire()?, config_file)?;
 
     assert_eq!(conf.log_level()?, ReportedLogLevel::Known(LogLevel::Info));
     assert_eq!(conf.proxy_host()?, "host");
@@ -314,18 +287,26 @@ fn reads_config_file_in_non_ascii_dir(
 }
 
 #[rstest]
-#[case::from_file(|path: &Path| Conf::from_file(path).map(|_| ()))]
-#[case::set_log_file(|path: &Path| conf_from_fixture("empty.conf").set_log_file(path))]
+#[case::from_file(|path: &Path| Conf::from_file(&Library::<Uninitialized>::acquire().unwrap(), path).map(|_| ()))]
+#[case::set_log_file(|path: &Path| {
+    let library = Library::<Uninitialized>::acquire().unwrap();
+    conf_from_fixture(&library, "empty.conf").set_log_file(path)
+})]
 #[case::from_file_with_bad_config(|path: &Path| {
-    Conf::from_file_with_schema(path, "schema.xsd").map(|_| ())
+    Conf::from_file_with_schema(&Library::<Uninitialized>::acquire().unwrap(), path, "schema.xsd").map(|_| ())
 })]
 #[case::from_file_with_bad_schema(|path: &Path| {
-    Conf::from_file_with_schema("digidocpp.conf", path).map(|_| ())
+    Conf::from_file_with_schema(&Library::<Uninitialized>::acquire().unwrap(), "digidocpp.conf", path).map(|_| ())
 })]
-#[case::with_schema(|path: &Path| Conf::with_schema(path).map(|_| ()))]
-#[case::set_tsl_cache(|path: &Path| conf_from_fixture("empty.conf").set_tsl_cache(path))]
-#[case::set_xsd_path(|path: &Path| conf_from_fixture("empty.conf").set_xsd_path(path))]
-#[serial]
+#[case::with_schema(|path: &Path| Conf::with_schema(&Library::<Uninitialized>::acquire().unwrap(), path).map(|_| ()))]
+#[case::set_tsl_cache(|path: &Path| {
+    let library = Library::<Uninitialized>::acquire().unwrap();
+    conf_from_fixture(&library, "empty.conf").set_tsl_cache(path)
+})]
+#[case::set_xsd_path(|path: &Path| {
+    let library = Library::<Uninitialized>::acquire().unwrap();
+    conf_from_fixture(&library, "empty.conf").set_xsd_path(path)
+})]
 fn rejects_non_utf8_path(#[case] operation: fn(&Path) -> Result<(), Error>) {
     let result = operation(&common::non_utf8_path());
 

@@ -18,10 +18,11 @@ use std::path::Path;
 /// # Examples
 ///
 /// ```no_run
-/// use digidocpp::Container;
+/// use digidocpp::{Container, Initialized, Library};
 ///
-/// # fn main() -> Result<(), digidocpp::Error> {
-/// let container = Container::open("document.asice")?;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let library = Library::<Initialized>::acquire()?;
+/// let container = Container::open(&library, "document.asice")?;
 /// for data_file in container.data_files()? {
 ///     data_file.save_as(data_file.file_name()?)?;
 /// }

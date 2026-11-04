@@ -12,13 +12,13 @@
 )]
 mod common;
 
-use crate::common::{assert_general_digidoc_err, init, init_with_valid_tsl, open_container};
+use crate::common::{
+    TestEnv, assert_general_digidoc_err, init, init_with_valid_tsl, open_container,
+};
 use digidocpp::Container;
 use digidocpp::error::{DigiDocError, ExceptionCode};
 use rstest::rstest;
-use serial_test::serial;
 use std::error::Error as StdError;
-use tempfile::TempDir;
 
 #[track_caller]
 fn assert_error(error: &DigiDocError, message: &str, code: ExceptionCode) {
@@ -35,13 +35,12 @@ fn assert_error(error: &DigiDocError, message: &str, code: ExceptionCode) {
     "Document file 'folder/../test1.txt' contains invalid path."
 )]
 #[case::empty_path("pt-empty.asice", "Manifest file entry full-path is empty.")]
-#[serial]
 fn errors_have_cause(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
     #[case] name: &str,
     #[case] cause_message: &str,
 ) {
-    let result = Container::open(common::fixture_path(name));
+    let result = Container::open(&library, common::fixture_path(name));
     let error = assert_general_digidoc_err!(result);
 
     assert_error(&error, "Failed to parse manifest", ExceptionCode::General);
@@ -63,15 +62,12 @@ fn errors_have_cause(
 }
 
 #[rstest]
-#[serial]
 fn validation_errors_have_cause_tree(
     #[from(init)]
     #[with("EE_T-CA-non-qa.xml")]
-    _temp_dir: TempDir,
-    #[from(open_container)]
-    #[with("tsl.asice")]
-    container: Container,
+    TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = open_container(&library, "tsl.asice");
     let result = container.signatures()?[0].validate();
 
     let error = assert_general_digidoc_err!(result);

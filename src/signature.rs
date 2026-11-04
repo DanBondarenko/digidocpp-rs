@@ -62,10 +62,11 @@ pub enum ValidatorStatus {
 /// # Examples
 ///
 /// ```no_run
-/// use digidocpp::Container;
+/// use digidocpp::{Container, Initialized, Library};
 ///
-/// # fn main() -> Result<(), digidocpp::Error> {
-/// let container = Container::open("document.asice")?;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let library = Library::<Initialized>::acquire()?;
+/// let container = Container::open(&library, "document.asice")?;
 /// for signature in container.signatures()? {
 ///     let result = signature.validator_result()?;
 ///     println!("{}: {:?}", signature.signed_by()?, result.status());

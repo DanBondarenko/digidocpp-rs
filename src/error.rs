@@ -20,11 +20,12 @@ use thiserror::Error as ThisError;
 /// ```no_run
 /// use digidocpp::error::ExceptionCode;
 /// use digidocpp::signer::Pkcs11Signer;
-/// use digidocpp::Container;
+/// use digidocpp::{Container, Initialized, Library};
 ///
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let mut container = Container::create("document.asice")?;
-/// # let mut signer = Pkcs11Signer::new()?;
+/// # let library = Library::<Initialized>::acquire()?;
+/// # let mut container = Container::create(&library, "document.asice")?;
+/// # let mut signer = Pkcs11Signer::new(&library)?;
 /// if let Err(error) = container.sign(&mut signer) {
 ///     if error.has_code(ExceptionCode::PINIncorrect) {
 ///         eprintln!("wrong PIN");

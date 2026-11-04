@@ -32,11 +32,11 @@ Inspect the signatures and files of a container. Check the validity of signature
 files to a target of your choosing.
 
 ```rust,no_run
-use digidocpp::Container;
+use digidocpp::{Container, Library, Uninitialized};
 
-fn main() -> Result<(), digidocpp::Error> {
-    digidocpp::initialize()?;
-    let container = Container::open("path/to/document.asice")?;
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let library = Library::<Uninitialized>::acquire()?.initialize()?;
+    let container = Container::open(&library, "path/to/document.asice")?;
 
     for signature in container.signatures()? {
         println!("Signed by: {}", signature.signed_by()?);
@@ -61,15 +61,15 @@ Digitally sign a file with an ID card through PKCS #11. With the default profile
 time-stamp and OCSP services.
 
 ```rust,no_run
-use digidocpp::Container;
 use digidocpp::signer::Pkcs11Signer;
+use digidocpp::{Container, Library, Uninitialized};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    digidocpp::initialize()?;
+    let library = Library::<Uninitialized>::acquire()?.initialize()?;
 
-    let mut container = Container::create("contract.asice")?;
+    let mut container = Container::create(&library, "contract.asice")?;
     container.add_data_file("path/to/contract.pdf", "application/pdf")?;
-    let mut signer = Pkcs11Signer::new()?;
+    let mut signer = Pkcs11Signer::new(&library)?;
 
     signer.set_pin(std::env::var("PIN2")?)?;
     container.sign(&mut signer)?;

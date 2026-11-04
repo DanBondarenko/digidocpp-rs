@@ -2,6 +2,7 @@
 
 use crate::algorithm::{Algorithm, AlgorithmSetting, ProfileSetting, SigningProfile};
 use crate::conf::{ExposeSecret, SecretString};
+use crate::library::{Initialized, Library};
 use crate::util::{
     ffi_variant_doc, library_and_ffi_variants_doc, library_variant_doc, path_to_str,
 };
@@ -9,6 +10,7 @@ use crate::{DerCert, Error};
 use cxx::UniquePtr;
 use libdigidocpp_sys::signer::ffi;
 use std::fmt::{Debug, Formatter};
+use std::marker::PhantomData;
 use std::path::Path;
 use std::pin::Pin;
 
@@ -66,7 +68,7 @@ pub trait PartialSigner: sealed::Sealed {
     /// Returns the additional User-Agent info for time-stamp and OCSP requests.
     ///
     /// If not empty, libdigidocpp uses it in place of the one from
-    /// [`initialize_with_user_agent`](crate::initialize_with_user_agent). See
+    /// [`Library<Uninitialized>::initialize_with_user_agent`](crate::Library<crate::Uninitialized>::initialize_with_user_agent). See
     /// [`PartialSigner::set_user_agent`].
     ///
     /// # Errors
@@ -156,7 +158,7 @@ pub trait PartialSigner: sealed::Sealed {
     /// Sets additional User-Agent info for time-stamp and OCSP requests.
     ///
     /// If not empty, libdigidocpp currently uses it in place of the one from
-    /// [`initialize_with_user_agent`](crate::initialize_with_user_agent).
+    /// [`Library<Uninitialized>::initialize_with_user_agent`](crate::Library<crate::Uninitialized>::initialize_with_user_agent).
     ///
     /// # Errors
     #[doc = library_and_ffi_variants_doc!()]
@@ -264,23 +266,32 @@ pub trait Signer: PartialSigner {
 /// Use it to prepare a signature that is signed externally. Intended use case is calling
 /// [`SignatureMut::extend_signature_profile`](crate::signature::SignatureMut::extend_signature_profile) and
 /// [`Container::extend_container_validity`](crate::Container::extend_container_validity).
-pub struct ExternalPartialSigner(UniquePtr<ffi::ExternalPartialSigner>);
+pub struct ExternalPartialSigner<'lib>(
+    UniquePtr<ffi::ExternalPartialSigner>,
+    PhantomData<&'lib Library<Initialized>>,
+);
 
-impl ExternalPartialSigner {
+impl<'lib> ExternalPartialSigner<'lib> {
     /// Creates a signer for the DER certificate `cert`.
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
     /// For example, libdigidocpp fails when `cert` is not empty and not a valid certificate.
     #[doc = ffi_variant_doc!()]
-    pub fn new(cert: impl Into<DerCert>) -> Result<Self, Error> {
+    pub fn new(
+        _library: &'lib Library<Initialized>,
+        cert: impl Into<DerCert>,
+    ) -> Result<Self, Error> {
         let cert: DerCert = cert.into();
 
-        Ok(Self(ffi::make_external_partial_signer(cert.as_ref())?))
+        Ok(Self(
+            ffi::make_external_partial_signer(cert.as_ref())?,
+            PhantomData,
+        ))
     }
 }
 
-impl sealed::Sealed for ExternalPartialSigner {
+impl sealed::Sealed for ExternalPartialSigner<'_> {
     fn ffi_signer(&self) -> &ffi::Signer {
         ffi::external_as_signer(&self.0)
     }
@@ -290,9 +301,9 @@ impl sealed::Sealed for ExternalPartialSigner {
     }
 }
 
-impl PartialSigner for ExternalPartialSigner {}
+impl PartialSigner for ExternalPartialSigner<'_> {}
 
-impl Debug for ExternalPartialSigner {
+impl Debug for ExternalPartialSigner<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ExternalPartialSigner")
             .finish_non_exhaustive()
@@ -304,17 +315,20 @@ impl Debug for ExternalPartialSigner {
 /// It uses the signing certificate of the inserted card. Wraps upstream [`digidoc::PKCS11Signer`].
 ///
 /// [`digidoc::PKCS11Signer`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1PKCS11Signer.html
-pub struct Pkcs11Signer(UniquePtr<ffi::PKCS11Signer>);
+pub struct Pkcs11Signer<'lib>(
+    UniquePtr<ffi::PKCS11Signer>,
+    PhantomData<&'lib Library<Initialized>>,
+);
 
-impl Pkcs11Signer {
+impl<'lib> Pkcs11Signer<'lib> {
     /// Loads the driver from [`Conf::pkcs11_driver`](crate::conf::Conf::pkcs11_driver).
     ///
     /// # Errors
     #[doc = library_variant_doc!()]
     /// For example, libdigidocpp fails when the driver cannot be loaded.
     #[doc = ffi_variant_doc!()]
-    pub fn new() -> Result<Self, Error> {
-        Ok(Self(ffi::make_pkcs11_signer("")?))
+    pub fn new(_library: &'lib Library<Initialized>) -> Result<Self, Error> {
+        Ok(Self(ffi::make_pkcs11_signer("")?, PhantomData))
     }
 
     /// Loads the PKCS #11 driver at `driver`, for example `/usr/lib/opensc-pkcs11.so`.
@@ -324,12 +338,15 @@ impl Pkcs11Signer {
     /// For example, libdigidocpp fails when the driver cannot be loaded.
     /// Returns [`Error::Internal`] when `driver` is empty or not valid UTF-8.
     #[doc = ffi_variant_doc!()]
-    pub fn with_driver(driver: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn with_driver(
+        _library: &'lib Library<Initialized>,
+        driver: impl AsRef<Path>,
+    ) -> Result<Self, Error> {
         let driver = path_to_str(driver.as_ref())?;
         if driver.is_empty() {
             return Err(Error::Internal(String::from("driver path is empty")));
         }
-        Ok(Self(ffi::make_pkcs11_signer(driver)?))
+        Ok(Self(ffi::make_pkcs11_signer(driver)?, PhantomData))
     }
 
     /// Sets the PIN used to sign (PIN2 on Estonian ID cards).
@@ -346,7 +363,7 @@ impl Pkcs11Signer {
     }
 }
 
-impl sealed::Sealed for Pkcs11Signer {
+impl sealed::Sealed for Pkcs11Signer<'_> {
     fn ffi_signer(&self) -> &ffi::Signer {
         ffi::pkcs11_as_signer(&self.0)
     }
@@ -356,11 +373,11 @@ impl sealed::Sealed for Pkcs11Signer {
     }
 }
 
-impl PartialSigner for Pkcs11Signer {}
+impl PartialSigner for Pkcs11Signer<'_> {}
 
-impl Signer for Pkcs11Signer {}
+impl Signer for Pkcs11Signer<'_> {}
 
-impl Debug for Pkcs11Signer {
+impl Debug for Pkcs11Signer<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Pkcs11Signer").finish_non_exhaustive()
     }
@@ -372,16 +389,19 @@ impl Debug for Pkcs11Signer {
 ///
 /// [`digidoc::WinSigner`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1WinSigner.html
 #[cfg(any(windows, docs_rs))]
-pub struct WinSigner(UniquePtr<ffi::WinSigner>);
+pub struct WinSigner<'lib>(
+    UniquePtr<ffi::WinSigner>,
+    PhantomData<&'lib Library<Initialized>>,
+);
 
 #[cfg(any(windows, docs_rs))]
-impl WinSigner {
+impl<'lib> WinSigner<'lib> {
     /// Creates a signer.
     ///
     /// # Errors
     #[doc = library_and_ffi_variants_doc!()]
-    pub fn new() -> Result<Self, Error> {
-        Ok(Self(ffi::make_win_signer()?))
+    pub fn new(_library: &'lib Library<Initialized>) -> Result<Self, Error> {
+        Ok(Self(ffi::make_win_signer()?, PhantomData))
     }
 
     /// Sets the PIN that libdigidocpp passes to Windows when signing.
@@ -414,7 +434,7 @@ impl WinSigner {
 }
 
 #[cfg(any(windows, docs_rs))]
-impl sealed::Sealed for WinSigner {
+impl sealed::Sealed for WinSigner<'_> {
     fn ffi_signer(&self) -> &ffi::Signer {
         ffi::win_as_signer(&self.0)
     }
@@ -425,13 +445,13 @@ impl sealed::Sealed for WinSigner {
 }
 
 #[cfg(any(windows, docs_rs))]
-impl PartialSigner for WinSigner {}
+impl PartialSigner for WinSigner<'_> {}
 
 #[cfg(any(windows, docs_rs))]
-impl Signer for WinSigner {}
+impl Signer for WinSigner<'_> {}
 
 #[cfg(any(windows, docs_rs))]
-impl Debug for WinSigner {
+impl Debug for WinSigner<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WinSigner").finish_non_exhaustive()
     }
@@ -442,9 +462,12 @@ impl Debug for WinSigner {
 /// Wraps upstream [`digidoc::PKCS12Signer`].
 ///
 /// [`digidoc::PKCS12Signer`]: https://open-eid.github.io/libdigidocpp/classdigidoc_1_1PKCS12Signer.html
-pub struct Pkcs12Signer(UniquePtr<ffi::PKCS12Signer>);
+pub struct Pkcs12Signer<'lib>(
+    UniquePtr<ffi::PKCS12Signer>,
+    PhantomData<&'lib Library<Initialized>>,
+);
 
-impl Pkcs12Signer {
+impl<'lib> Pkcs12Signer<'lib> {
     /// Loads the PKCS #12 file at `path`, decrypted with `pass`.
     ///
     /// # Errors
@@ -453,15 +476,22 @@ impl Pkcs12Signer {
     /// invalid.
     /// Returns [`Error::Internal`] when `path` is not valid UTF-8.
     #[doc = ffi_variant_doc!()]
-    pub fn new(path: impl AsRef<Path>, pass: impl Into<SecretString>) -> Result<Self, Error> {
+    pub fn new(
+        _library: &'lib Library<Initialized>,
+        path: impl AsRef<Path>,
+        pass: impl Into<SecretString>,
+    ) -> Result<Self, Error> {
         let path = path_to_str(path.as_ref())?;
         let pass = pass.into();
 
-        Ok(Self(ffi::make_pkcs12_signer(path, pass.expose_secret())?))
+        Ok(Self(
+            ffi::make_pkcs12_signer(path, pass.expose_secret())?,
+            PhantomData,
+        ))
     }
 }
 
-impl sealed::Sealed for Pkcs12Signer {
+impl sealed::Sealed for Pkcs12Signer<'_> {
     fn ffi_signer(&self) -> &ffi::Signer {
         ffi::pkcs12_as_signer(&self.0)
     }
@@ -471,11 +501,11 @@ impl sealed::Sealed for Pkcs12Signer {
     }
 }
 
-impl PartialSigner for Pkcs12Signer {}
+impl PartialSigner for Pkcs12Signer<'_> {}
 
-impl Signer for Pkcs12Signer {}
+impl Signer for Pkcs12Signer<'_> {}
 
-impl Debug for Pkcs12Signer {
+impl Debug for Pkcs12Signer<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Pkcs12Signer").finish_non_exhaustive()
     }

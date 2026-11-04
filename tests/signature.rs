@@ -11,7 +11,7 @@
 )]
 mod common;
 
-use crate::common::{create_empty_asice_container, init_with_valid_tsl, parse_common_name};
+use crate::common::{TestEnv, init_with_valid_tsl, parse_common_name};
 use bon::Builder;
 use digidocpp::algorithm::{Algorithm, DigestAlgorithm, SignatureAlgorithm, SignatureProfile};
 use digidocpp::error::ExceptionCode;
@@ -19,10 +19,8 @@ use digidocpp::signature::{TSAInfo, ValidatorResult, ValidatorStatus};
 use digidocpp::{Container, DerCert, Signature};
 use itertools::Itertools;
 use rstest::rstest;
-use serial_test::serial;
 use std::error::Error as StdError;
 use std::fmt::Debug;
-use tempfile::TempDir;
 
 #[rstest]
 #[case::asice_with_expired_certificates("test.asice", vec![expired_signature()])]
@@ -37,23 +35,22 @@ use tempfile::TempDir;
 #[case::asice_with_subfolder_contents("asice-path.asice", vec![])]
 #[case::asice_with_forged_signature("forged_lt.asice", vec![forged_signature()])]
 #[case::asice_for_tsl_validation("tsl.asice", vec![valid_signature_d()])]
-#[serial]
 fn reads_signatures_from_containers(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
     #[case] fixture: &str,
     #[case] signatures: Vec<SignatureExpectation>,
 ) -> Result<(), Box<dyn StdError>> {
-    let container = Container::open(common::fixture_path(fixture))?;
+    let container = Container::open(&library, common::fixture_path(fixture))?;
 
     assert_signatures(&container, &signatures)
 }
 
 #[rstest]
-#[serial]
 fn empty_asice_container_has_no_signatures(
-    #[from(init_with_valid_tsl)] _temp_dir: TempDir,
-    #[from(create_empty_asice_container)] container: Container,
+    #[from(init_with_valid_tsl)] TestEnv { library, .. }: TestEnv,
 ) -> Result<(), Box<dyn StdError>> {
+    let container = Container::create(&library, "new.asice")?;
+
     assert_signatures(&container, &[])
 }
 
