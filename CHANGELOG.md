@@ -6,21 +6,11 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
-## [0.2.0](https://github.com/DanBondarenko/digidocpp-rs/compare/digidocpp-v0.1.0...digidocpp-v0.2.0) - 2026-11-04
+## [0.2.0](https://github.com/DanBondarenko/digidocpp-rs/compare/digidocpp-v0.1.0...digidocpp-v0.2.0) - 2026-11-05
 
 ### Added
 
-- *(digidocpp)* [**breaking**] add thread-safe library handle, required for accessing API
-
-### Other
-
-- split crate versions and changelogs
-- add release-plz
-- bump the cargo group across 1 directory with 3 updates
-
-### Added
-
-- Most of the API now requires the thread-exclusive library handle `Library`.
+- [**breaking**] Most of the API now requires the thread-exclusive library handle `Library`.
   This handle is `!Send` and `!Sync`. This ensures only a single thread can use the library at a time.
   The library handle can be obtained via `acquire`/`try_acquire` or `Library<_>::acquire`/`Library<_>::try_acquire`.
   The library can be in one of several process-wide states: pre-initialization (`Library<Uninitialized>`),
@@ -33,20 +23,20 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ### Changed
 
-- **Breaking:** Free functions relating to the library lifecycle and information are now methods of `Library`.
+- [**breaking**] Free functions relating to the library lifecycle and information are now methods of `Library`.
   This includes: `initialize`, `initialize_with_app_info`, `initialize_with_user_agent`, `init_conf`, `terminate`,
   `version`, `app_info` and `user_agent`.
-- **Breaking:** Constructors now generally take a library handle as the first parameter.
+- [**breaking**] Constructors now generally take a library handle as the first parameter.
   These now require `&Library<Uninitialized>`: `Conf::new`, `Conf::from_file`, `Conf::from_file_with_schema`,
   `Conf::with_schema`.
   These now require `&Library<Initialized>`: `Container::open`, `Container::create`,
   `Container::open_requiring_online_validation_consent`, `ExternalPartialSigner::new`, `Pkcs12Signer::new`,
   `Pkcs11Signer::new`, `WinSigner::new`.
-- **Breaking:** `Container` and signers now carry a lifetime that borrows `&Library<Initialized>`.
-- **Breaking:** the library can now only be initialized and terminated only once per process. This is enforced at type
+- [**breaking**] `Container` and signers now carry a lifetime that borrows `&Library<Initialized>`.
+- [**breaking**] the library can now only be initialized and terminated only once per process. This is enforced at type
   level.
 
-## [0.1.0] - 2026-10-19
+## [0.1.0](https://github.com/DanBondarenko/digidocpp-rs/releases/tag/v0.1.0) - 2026-10-19
 
 Initial release.
 
@@ -60,6 +50,3 @@ Initial release.
 
 - Requires libdigidocpp 4.5.0 or newer, linked dynamically.
 - Requires Rust 1.88 or newer and a C++20 compiler.
-
-[Unreleased]: https://github.com/DanBondarenko/digidocpp-rs/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/DanBondarenko/digidocpp-rs/releases/tag/v0.1.0
