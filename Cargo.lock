@@ -636,7 +636,7 @@ dependencies = [
 
 [[package]]
 name = "digidocpp-example-cli"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "bytesize",
@@ -655,7 +655,7 @@ dependencies = [
 
 [[package]]
 name = "digidocpp-example-server"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "axum",
