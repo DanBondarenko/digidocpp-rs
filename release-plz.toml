@@ -1,0 +1,12 @@
+[workspace]
+git_tag_name = "{{ package }}-v{{ version }}"
+release_always = false
+git_release_draft = true
+
+[[package]]
+name = "digidocpp-example-cli"
+release = false
+
+[[package]]
+name = "digidocpp-example-server"
+release = false

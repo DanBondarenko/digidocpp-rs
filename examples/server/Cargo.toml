@@ -1,6 +1,6 @@
 [package]
 name = "digidocpp-example-server"
-version.workspace = true
+version = "0.0.0"
 edition.workspace = true
 license.workspace = true
 exclude = ["tests/"]
@@ -9,7 +9,7 @@ publish = false
 [dependencies]
 anyhow = "1.0.104"
 axum = "0.8.9"
-digidocpp = { path = "../.." }
+digidocpp = { path = "../..", version = "0.1.0" }
 serde = { version = "1.0.229", features = ["derive"] }
 tempfile = "3.27.0"
 tokio = { version = "1.53.2", features = ["full"] }
@@ -17,7 +17,7 @@ strum = "0.28.0"
 axum_typed_multipart = { version = "0.16.8", default-features = false, features = ["tempfile_3"] }
 
 [build-dependencies]
-libdigidocpp-build = { path = "../../libdigidocpp-build" }
+libdigidocpp-build = { path = "../../libdigidocpp-build", version = "0.1.0" }
 
 [dev-dependencies]
 rstest = "0.27.0"

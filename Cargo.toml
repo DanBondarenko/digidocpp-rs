@@ -7,7 +7,6 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
 authors = ["Dan Bondarenko"]
 edition = "2024"
 rust-version = "1.88"
@@ -18,7 +17,7 @@ repository = "https://github.com/DanBondarenko/digidocpp-rs"
 [package]
 name = "digidocpp"
 description = "Safe bindings to libdigidocpp: create and validate eIDAS digital signatures in ASiC-E/XAdES containers"
-version.workspace = true
+version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 repository.workspace = true
