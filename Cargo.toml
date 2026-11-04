@@ -17,7 +17,7 @@ repository = "https://github.com/DanBondarenko/digidocpp-rs"
 [package]
 name = "digidocpp"
 description = "Safe bindings to libdigidocpp: create and validate eIDAS digital signatures in ASiC-E/XAdES containers"
-version = "0.1.0"
+version = "0.2.0"
 authors.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -45,7 +45,7 @@ exclude = [
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-libdigidocpp-sys = { path = "libdigidocpp-sys", version = "0.1.0" }
+libdigidocpp-sys = { path = "libdigidocpp-sys", version = "0.1.1" }
 cxx = "1.0.177"
 thiserror = "2.0.20"
 secrecy = "0.10.3"
@@ -53,7 +53,7 @@ strum = { version = "0.28.0", features = ["derive"] }
 derive_more = { version = "2.1.1", features = ["from"] }
 
 [build-dependencies]
-libdigidocpp-build = { path = "libdigidocpp-build", version = "0.1.0" }
+libdigidocpp-build = { path = "libdigidocpp-build", version = "0.1.1" }
 
 [dev-dependencies]
 bon = "3.10.1"
