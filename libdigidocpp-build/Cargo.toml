@@ -1,7 +1,7 @@
 [package]
 name = "libdigidocpp-build"
 description = "Build-script helpers to find libdigidocpp on Linux, macOS and Windows, and to emit its runtime rpath"
-version = "0.1.0"
+version = "0.1.1"
 authors.workspace = true
 edition.workspace = true
 repository.workspace = true

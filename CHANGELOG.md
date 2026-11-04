@@ -6,6 +6,18 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/DanBondarenko/digidocpp-rs/compare/digidocpp-v0.1.0...digidocpp-v0.2.0) - 2026-11-04
+
+### Added
+
+- *(digidocpp)* [**breaking**] add thread-safe library handle, required for accessing API
+
+### Other
+
+- split crate versions and changelogs
+- add release-plz
+- bump the cargo group across 1 directory with 3 updates
+
 ### Added
 
 - Most of the API now requires the thread-exclusive library handle `Library`.

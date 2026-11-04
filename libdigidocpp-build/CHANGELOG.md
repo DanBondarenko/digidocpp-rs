@@ -6,6 +6,12 @@ and this crate adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/DanBondarenko/digidocpp-rs/compare/libdigidocpp-build-v0.1.0...libdigidocpp-build-v0.1.1) - 2026-11-04
+
+### Other
+
+- split crate versions and changelogs
+
 ## [0.1.0] - 2026-10-19
 
 Initial release.
